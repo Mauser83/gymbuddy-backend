@@ -1,0 +1,253 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+// Enums
+enum AppRole {
+  ADMIN
+  MODERATOR
+}
+
+enum UserRole {
+  USER
+  PREMIUM_USER
+  PERSONAL_TRAINER
+}
+
+enum GymRole {
+  GYM_MODERATOR
+  GYM_ADMIN
+}
+
+// Models
+model User {
+  id                  Int       @id @default(autoincrement())
+  username            String    @unique @db.VarChar(30)
+  email               String    @unique @db.VarChar(255)
+  password            String    @db.VarChar(100) // Hashed password storage
+  appRole             AppRole?
+  userRole            UserRole  @default(USER)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  tokenVersion        Int       @default(1)
+
+  // Relations
+  exercises          Exercise[]
+  gymManagementRoles GymManagementRole[]
+  workoutPlans       WorkoutPlan[]
+  exerciseLogs       ExerciseLog[]
+  gymsAsTrainer      GymTrainer[]
+  chatMemberships    GymChatMember[]
+  sharedWorkouts     WorkoutPlan[]       @relation("SharedWorkouts")
+  createdGyms        Gym[]               @relation("UserCreatedGyms")
+}
+
+model WorkoutPlan {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(100)
+  description String?
+  isPublic    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  exercises    Exercise[]    @relation("WorkoutExercises")
+  exerciseLogs ExerciseLog[] @relation("WorkoutLogs")
+  sharedWith   User[]        @relation("SharedWorkouts")
+
+  @@index([userId])
+}
+
+model Exercise {
+  id          Int        @id @default(autoincrement())
+  name        String     @db.VarChar(50)
+  description String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id])
+  equipmentId Int?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  sets        Int?       @default(3) @db.SmallInt
+  reps        Int?       @default(10) @db.SmallInt
+  weight      Decimal?   @db.Decimal(5, 2) // Max 999.99
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  workoutPlans WorkoutPlan[] @relation("WorkoutExercises")
+  exerciseLogs ExerciseLog[]
+
+  @@index([userId])
+  @@index([equipmentId])
+}
+
+model ExerciseLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  workoutPlan   WorkoutPlan? @relation("WorkoutLogs", fields: [workoutPlanId], references: [id])
+  workoutPlanId Int?
+
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  exerciseId Int
+
+  sets   Int?
+  reps   Int?
+  weight Float?
+  gym    Gym?   @relation(fields: [gymId], references: [id])
+  gymId  Int?
+
+  @@index([userId])
+  @@index([workoutPlanId])
+  @@index([exerciseId])
+  @@index([gymId])
+}
+
+model Equipment {
+  id             Int       @id @default(autoincrement())
+  name           String    @db.VarChar(100)
+  description    String?   @db.VarChar(500)
+  brand          String    @db.VarChar(50)
+  manualUrl      String?   @db.VarChar(200)
+
+  category       EquipmentCategory   @relation(fields: [categoryId], references: [id])
+  categoryId     Int
+
+  subcategory    EquipmentSubcategory? @relation(fields: [subcategoryId], references: [id])
+  subcategoryId  Int?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  exercises      Exercise[]
+  gym            Gym?      @relation(fields: [gymId], references: [id])
+  gymId          Int?
+
+  @@index([gymId])
+  @@index([categoryId])
+  @@index([subcategoryId])
+  @@index([brand])
+}
+
+model EquipmentCategory {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique             // Display name: "Free Weights"
+  slug       String      @unique             // URL-friendly version: "free-weights"
+  subcategories EquipmentSubcategory[]
+  equipments Equipment[]
+}
+
+model EquipmentSubcategory {
+  id         Int                 @id @default(autoincrement())
+  name       String              @unique
+  slug       String              @unique
+  category   EquipmentCategory   @relation(fields: [categoryId], references: [id])
+  categoryId Int
+  equipments Equipment[]
+}
+
+model Gym {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  country     String
+  countryCode String?
+  state       String?
+  stateCode   String?
+  city        String
+  address     String
+  postalCode  String?
+  latitude    Float?
+  longitude   Float?
+  websiteUrl  String?
+  imageUrl    String?
+  phone       String?
+  email       String?
+  isApproved  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  creator   User? @relation("UserCreatedGyms", fields: [creatorId], references: [id])
+  creatorId Int?
+
+  gymRoles     GymManagementRole[]
+  equipment    Equipment[]
+  trainers     GymTrainer[]
+  chatMembers  GymChatMember[]
+  exerciseLogs ExerciseLog[]
+
+  @@index([name])
+  @@index([city])
+  @@index([country])
+  @@index([latitude, longitude])
+}
+
+model GymManagementRole {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  gym       Gym      @relation(fields: [gymId], references: [id])
+  gymId     Int
+  role      GymRole
+  createdAt DateTime @default(now())
+
+  @@unique([userId, gymId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  action    String // e.g. "USER_LOGIN", "DATA_UPDATE"
+  entity    String? // e.g. "User", "Workout"
+  entityId  Int? // ID of affected entity
+  userId    Int? // User who performed action
+  metadata  Json? // Additional context data
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model GymTrainer {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+  gym    Gym  @relation(fields: [gymId], references: [id])
+  gymId  Int
+
+  @@unique([userId, gymId])
+}
+
+model GymChatMember {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     Int
+  gym        Gym       @relation(fields: [gymId], references: [id])
+  gymId      Int
+  joinedAt   DateTime  @default(now())
+  lastActive DateTime?
+  isBanned   Boolean   @default(false)
+
+  @@unique([userId, gymId])
+}
