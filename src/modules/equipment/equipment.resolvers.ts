@@ -33,9 +33,9 @@ export const EquipmentResolvers = {
       return service.getEquipment(Number(args.id));
     },
 
-    allEquipments: async (_: unknown, __: unknown, context: AuthContext) => {
+    allEquipments: async (_: unknown, args: { search?: string }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.getAllEquipments();
+      return service.getAllEquipments(args.search);
     },
 
     equipmentCategories: async (_: any, __: any, context: AuthContext) => {

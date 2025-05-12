@@ -42,9 +42,24 @@ export class EquipmentService {
     });
   }
 
-  async getAllEquipments() {
-    return this.prisma.equipment.findMany();
-  }
+  async getAllEquipments(search?: string) {
+  return this.prisma.equipment.findMany({
+    where: search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { brand: { contains: search, mode: 'insensitive' } },
+            { category: { name: { contains: search, mode: 'insensitive' } } },
+            { subcategory: { name: { contains: search, mode: 'insensitive' } } },
+          ],
+        }
+      : undefined,
+    include: {
+      category: true,
+      subcategory: true,
+    },
+  });
+}
 
   async updateEquipment(id: number, input: UpdateEquipmentInput, context: AuthContext) {
     await validateInput(input, UpdateEquipmentDto);

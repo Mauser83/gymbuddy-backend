@@ -64,7 +64,7 @@ export const equipmentTypeDefs = `
 
   extend type Query {
     equipment(id: ID!): Equipment
-    allEquipments: [Equipment]
+    allEquipments(search: String): [Equipment]
     equipmentCategories: [EquipmentCategory!]!
     equipmentSubcategories(categoryId: Int): [EquipmentSubcategory!]!
   }
