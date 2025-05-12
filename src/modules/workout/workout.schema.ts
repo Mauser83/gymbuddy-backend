@@ -1,6 +1,6 @@
 export const workoutTypeDefs = `#graphql
   type Workout {
-    id: ID!
+    id: Int!
     name: String!
     description: String
   }
@@ -22,8 +22,8 @@ export const workoutTypeDefs = `#graphql
 
   extend type Mutation {
     createWorkout(input: CreateWorkoutInput!): Workout
-    updateWorkout(id: ID!, input: UpdateWorkoutInput!): Workout
-    deleteWorkout(id: ID!): String
-    shareWorkout(workoutId: ID!, shareWithUserId: ID): Workout
+    updateWorkout(id: Int!, input: UpdateWorkoutInput!): Workout
+    deleteWorkout(id: Int!): String
+    shareWorkout(workoutId: Int!, shareWithUserId: Int): Workout
   }
 `;

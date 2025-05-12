@@ -1,7 +1,7 @@
 export const userTypeDefs = `
 
   type User {
-    id: ID!
+    id: Int!
     email: String!
     username: String
     appRole: String
@@ -41,12 +41,12 @@ export const userTypeDefs = `
 
   extend type Query {
     users(search: String): [User]
-    userById(id: ID!): User
+    userById(id: Int!): User
   }
 
   extend type Mutation {
-    deleteUser(id: ID!): String
-    updateUserRoles(userId: ID!, input: UpdateUserRolesInput!): User!
+    deleteUser(id: Int!): String
+    updateUserRoles(userId: Int!, input: UpdateUserRolesInput!): User!
   }
 
   extend type Subscription {

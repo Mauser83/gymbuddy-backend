@@ -1,6 +1,6 @@
 export const equipmentTypeDefs = `
   type Equipment {
-    id: ID!
+    id: Int!
     name: String!
     description: String
     category: EquipmentCategory!
@@ -17,14 +17,14 @@ export const equipmentTypeDefs = `
   }
 
   type EquipmentCategory {
-    id: ID!
+    id: Int!
     name: String!
     slug: String!
     subcategories: [EquipmentSubcategory!]!
   }
 
   type EquipmentSubcategory {
-    id: ID!
+    id: Int!
     name: String!
     slug: String!
     category: EquipmentCategory!
@@ -73,23 +73,23 @@ export const equipmentTypeDefs = `
   }
 
   extend type Query {
-    equipment(id: ID!): Equipment
+    equipment(id: Int!): Equipment
     allEquipments(search: String): [Equipment]
     equipmentCategories: [EquipmentCategory!]!
-    equipmentSubcategories(categoryId: Int): [EquipmentSubcategory!]!
+    equipmentSubcategories(categoryId: ID): [EquipmentSubcategory!]!
   }
 
   extend type Mutation {
     createEquipment(input: CreateEquipmentInput!): Equipment!
-    updateEquipment(id: ID!, input: UpdateEquipmentInput!): Equipment!
-    deleteEquipment(id: ID!): Boolean!
+    updateEquipment(id: Int!, input: UpdateEquipmentInput!): Equipment!
+    deleteEquipment(id: Int!): Boolean!
 
     createEquipmentCategory(input: CreateEquipmentCategoryInput!): EquipmentCategory!
-    updateEquipmentCategory(id: ID!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!
-    deleteEquipmentCategory(id: ID!): Boolean!
+    updateEquipmentCategory(id: Int!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!
+    deleteEquipmentCategory(id: Int!): Boolean!
 
     createEquipmentSubcategory(input: CreateEquipmentSubcategoryInput!): EquipmentSubcategory!
-    updateEquipmentSubcategory(id: ID!, input: UpdateEquipmentSubcategoryInput!): EquipmentSubcategory!
-    deleteEquipmentSubcategory(id: ID!): Boolean!
+    updateEquipmentSubcategory(id: Int!, input: UpdateEquipmentSubcategoryInput!): EquipmentSubcategory!
+    deleteEquipmentSubcategory(id: Int!): Boolean!
   }
 `;

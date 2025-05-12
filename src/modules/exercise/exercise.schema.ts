@@ -1,6 +1,6 @@
 export const exerciseTypeDefs = `
   type Exercise {
-    id: ID!
+    id: Int!
     name: String!
     description: String
     sets: Int

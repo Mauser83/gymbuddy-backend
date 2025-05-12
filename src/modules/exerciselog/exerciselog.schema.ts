@@ -1,6 +1,6 @@
 export const exerciselogTypeDefs = `
   type ExerciseLog {
-    id: ID!
+    id: Int!
     userId: Int!
     exerciseId: Int!
     workoutPlanId: Int

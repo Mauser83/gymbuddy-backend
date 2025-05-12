@@ -63,17 +63,17 @@ export const gymTypeDefs = `
 
   extend type Query {
     gyms(search: String): [Gym]
-    gymById(id: ID!): Gym
+    gymById(id: Int!): Gym
     pendingGyms: [Gym]
   }
 
   extend type Mutation {
     createGym(input: CreateGymInput!): Gym
-    updateGym(id: ID!, input: UpdateGymInput!): Gym
-    approveGym(gymId: ID!): String
-    deleteGym(id: ID!): String
-    addTrainer(gymId: ID!, userId: ID!): String
-    removeTrainer(gymId: ID!, userId: ID!): String
+    updateGym(id: Int!, input: UpdateGymInput!): Gym
+    approveGym(gymId: Int!): String
+    deleteGym(id: Int!): String
+    addTrainer(gymId: Int!, userId: Int!): String
+    removeTrainer(gymId: Int!, userId: Int!): String
   }
 
   extend type Subscription {
