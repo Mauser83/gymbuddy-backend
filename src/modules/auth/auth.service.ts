@@ -1,27 +1,27 @@
-import { PrismaClient } from '../../generated/prisma';
-import { hashPassword, comparePassword } from '../auth/auth.helpers';
+import { PrismaClient } from "../../generated/prisma";
+import { hashPassword, comparePassword } from "../auth/auth.helpers";
 import {
   RegisterInput,
   LoginInput,
   RefreshTokenInput,
   RequestPasswordResetInput,
   ResetPasswordInput,
-} from './auth.types';
+} from "./auth.types";
 import {
   RegisterDto,
   LoginDto,
   RefreshTokenDto,
   RequestPasswordResetDto,
   ResetPasswordDto,
-} from './auth.dto';
-import { validateInput } from '../../middlewares/validation';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import { JWT_SECRET } from '../../server';
-import { AppRole, GymRole, UserRole } from '../../lib/prisma';
+} from "./auth.dto";
+import { validateInput } from "../../middlewares/validation";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { JWT_SECRET } from "../../server";
+import { AppRole, GymRole, UserRole } from "../../lib/prisma";
 
-const ACCESS_TOKEN_EXPIRATION = '15m';
-const REFRESH_TOKEN_EXPIRATION = '7d';
+const ACCESS_TOKEN_EXPIRATION = "15m";
+const REFRESH_TOKEN_EXPIRATION = "7d";
 
 export interface AccessTokenPayload {
   userId: number;
@@ -29,7 +29,7 @@ export interface AccessTokenPayload {
   appRole: AppRole | null;
   userRole: UserRole;
   gymRoles: {
-    gymId: string;
+    gymId: number;
     role: GymRole;
   }[];
   tokenVersion: number;
@@ -42,23 +42,25 @@ export class AuthService {
     this.prisma = prisma;
   }
 
-  private async getUserGymRoles(userId: string): Promise<Array<{ gymId: string; role: GymRole }>> {
+  private async getUserGymRoles(
+    userId: number
+  ): Promise<Array<{ gymId: number; role: GymRole }>> {
     const memberships = await this.prisma.gymManagementRole.findMany({
-      where: { userId: Number(userId) },
+      where: { userId: userId },
       select: { gymId: true, role: true },
     });
     return memberships.map((m) => ({
-      gymId: m.gymId.toString(),
+      gymId: m.gymId,
       role: m.role as GymRole,
     }));
   }
 
   private generateAccessToken(user: AccessTokenPayload) {
-    if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
+    if (!JWT_SECRET) throw new Error("JWT_SECRET not defined");
 
     return jwt.sign(
       {
-        sub: user.userId,
+        sub: user.userId.toString(),
         username: user.username,
         appRole: user.appRole,
         userRole: user.userRole,
@@ -71,7 +73,7 @@ export class AuthService {
   }
 
   private generateRefreshToken(userId: number, tokenVersion: number) {
-    if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
+    if (!JWT_SECRET) throw new Error("JWT_SECRET not defined");
 
     return jwt.sign({ sub: userId, tokenVersion }, JWT_SECRET, {
       expiresIn: REFRESH_TOKEN_EXPIRATION,
@@ -88,7 +90,7 @@ export class AuthService {
         username: input.username,
         email: input.email,
         password: hashedPassword,
-        userRole: 'USER',
+        userRole: "USER",
       },
       select: {
         id: true,
@@ -120,7 +122,7 @@ export class AuthService {
       appRole: user.appRole,
       userRole: user.userRole,
       gymRoles: user.gymManagementRoles.map((role) => ({
-        gymId: role.gym.id.toString(),
+        gymId: role.gym.id,
         role: role.role,
       })),
       tokenVersion: user.tokenVersion,
@@ -163,7 +165,7 @@ export class AuthService {
     });
 
     if (!user || !(await comparePassword(input.password, user.password))) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
 
     const payload: AccessTokenPayload = {
@@ -172,7 +174,7 @@ export class AuthService {
       appRole: user.appRole,
       userRole: user.userRole,
       gymRoles: user.gymManagementRoles.map((role) => ({
-        gymId: role.gym.id.toString(),
+        gymId: role.gym.id,
         role: role.role,
       })),
       tokenVersion: user.tokenVersion,
@@ -196,10 +198,12 @@ export class AuthService {
   async requestPasswordReset(input: RequestPasswordResetInput) {
     await validateInput(input, RequestPasswordResetDto);
 
-    const user = await this.prisma.user.findUnique({ where: { email: input.email } });
-    if (!user) throw new Error('Invalid email');
+    const user = await this.prisma.user.findUnique({
+      where: { email: input.email },
+    });
+    if (!user) throw new Error("Invalid email");
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpiresAt = new Date(Date.now() + 3600000);
 
     await this.prisma.user.update({
@@ -211,7 +215,7 @@ export class AuthService {
     });
 
     // TODO: Send resetToken via email
-    return { message: 'Reset email sent' };
+    return { message: "Reset email sent" };
   }
 
   async resetPassword(input: ResetPasswordInput) {
@@ -224,7 +228,7 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new Error('Invalid or expired token');
+    if (!user) throw new Error("Invalid or expired token");
 
     const hashedPassword = await hashPassword(input.password);
 
@@ -238,23 +242,27 @@ export class AuthService {
       },
     });
 
-    return { message: 'Password reset successfully' };
+    return { message: "Password reset successfully" };
   }
 
   async refreshToken(input: RefreshTokenInput) {
     await validateInput(input, RefreshTokenDto);
 
     try {
-    if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
-
+      if (!JWT_SECRET) throw new Error("JWT_SECRET not defined");
 
       const payload = jwt.verify(input.refreshToken, JWT_SECRET) as unknown as {
-        sub: number;
+        sub: string;
         tokenVersion: number;
       };
 
+      const userId = parseInt(payload.sub, 10);
+      if (isNaN(userId)) {
+        throw new Error("Invalid user ID in refresh token");
+      }
+
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { id: userId },
         select: {
           id: true,
           username: true,
@@ -276,8 +284,9 @@ export class AuthService {
         },
       });
 
-      if (!user) throw new Error('User not found');
-      if (user.tokenVersion !== payload.tokenVersion) throw new Error('Token version mismatch');
+      if (!user) throw new Error("User not found");
+      if (user.tokenVersion !== payload.tokenVersion)
+        throw new Error("Token version mismatch");
 
       return {
         accessToken: this.generateAccessToken({
@@ -286,7 +295,7 @@ export class AuthService {
           appRole: user.appRole,
           userRole: user.userRole,
           gymRoles: user.gymManagementRoles.map((role) => ({
-            gymId: role.gym.id.toString(),
+            gymId: role.gym.id,
             role: role.role,
           })),
           tokenVersion: user.tokenVersion,
@@ -295,7 +304,7 @@ export class AuthService {
       };
     } catch (err) {
       console.error(err);
-      throw new Error('Invalid or expired refresh token');
+      throw new Error("Invalid or expired refresh token");
     }
   }
 }

@@ -1,4 +1,4 @@
-import { AuthContext } from '../auth/auth.types';
+import { AuthContext } from "../auth/auth.types";
 import { GymService } from "./gym.service";
 import { PermissionService } from "../core/permission.service";
 import { CreateGymInput, UpdateGymInput } from "./gym.types";
@@ -36,27 +36,29 @@ export const GymResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getGyms(
-        context.userId ? Number(context.userId) : undefined,
+        context.userId ? context.userId : undefined,
         args.search
       );
     },
-    gymById: async (_: unknown, args: { id: string }, context: AuthContext) => {
+    gymById: async (_: unknown, args: { id: number }, context: AuthContext) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.getGymById(
-        Number(args.id),
-        Number(context.userId),
-        context.appRole
-      );
+
+      return service.getGymById(args.id, context.userId, context.appRole);
     },
     pendingGyms: async (_: unknown, __: unknown, context: AuthContext) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.getPendingGyms(Number(context.userId));
+
+      return service.getPendingGyms(context.userId);
     },
   },
   Mutation: {
@@ -65,82 +67,83 @@ export const GymResolvers = {
       args: { input: CreateGymInput },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       await validateInput(args.input, CreateGymDto);
+
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.createGym(Number(context.userId), args.input);
+      return service.createGym(context.userId, args.input);
     },
 
     updateGym: async (
       _: any,
-      args: { id: string; input: UpdateGymInput },
+      args: { id: number; input: UpdateGymInput },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       await validateInput(args.input, UpdateGymDto);
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
       return service.updateGym(
-        Number(context.userId),
-        Number(args.id),
+        context.userId,
+        args.id,
         args.input,
         context.appRole
       );
     },
     approveGym: async (
       _: any,
-      args: { gymId: string },
+      args: { gymId: number },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.approveGym(Number(context.userId), Number(args.gymId));
+      return service.approveGym(context.userId, args.gymId);
     },
-    deleteGym: async (_: any, args: { id: string }, context: AuthContext) => {
+    deleteGym: async (_: any, args: { id: number }, context: AuthContext) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.deleteGym(
-        Number(context.userId),
-        Number(args.id),
-        context.appRole
-      );
+      return service.deleteGym(context.userId, args.id, context.appRole);
     },
     addTrainer: async (
       _: any,
-      args: { gymId: string; userId: string },
+      args: { gymId: number; userId: number },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.addTrainer(
-        Number(context.userId),
-        Number(args.gymId),
-        Number(args.userId)
-      );
+      return service.addTrainer(context.userId, args.gymId, args.userId);
     },
     removeTrainer: async (
       _: any,
-      args: { gymId: string; userId: string },
+      args: { gymId: number; userId: number },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.removeTrainer(
-        Number(context.userId),
-        Number(args.gymId),
-        Number(args.userId)
-      );
+      return service.removeTrainer(context.userId, args.gymId, args.userId);
     },
   },
 };

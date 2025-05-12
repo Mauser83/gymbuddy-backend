@@ -6,12 +6,14 @@ import { PermissionService } from "../core/permission.service";
 export const WorkoutResolvers = {
   Query: {
     workouts: async (_: unknown, __: unknown, context: AuthContext) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const workoutService = new WorkoutService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.getWorkouts(Number(context.userId));
+      return workoutService.getWorkouts(context.userId);
     },
   },
   Mutation: {
@@ -20,58 +22,59 @@ export const WorkoutResolvers = {
       args: { input: any },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const workoutService = new WorkoutService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.createWorkout(Number(context.userId), args.input);
+      return workoutService.createWorkout(context.userId, args.input);
     },
     updateWorkout: async (
       _: unknown,
-      args: { id: string; input: any },
+      args: { id: number; input: any },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const workoutService = new WorkoutService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.updateWorkout(
-        Number(context.userId),
-        Number(args.id),
-        args.input
-      );
+      return workoutService.updateWorkout(context.userId, args.id, args.input);
     },
     deleteWorkout: async (
       _: unknown,
-      args: { id: string },
+      args: { id: number },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const workoutService = new WorkoutService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.deleteWorkout(
-        Number(context.userId),
-        Number(args.id)
-      );
+      return workoutService.deleteWorkout(context.userId, args.id);
     },
     shareWorkout: async (
       _: unknown,
-      args: { workoutId: string; shareWithUserId?: string },
+      args: { workoutId: number; shareWithUserId?: number },
       context: AuthContext
     ) => {
+      if (context.userId === null)
+        throw new Error("Unauthenticated: userId is null.");
       const workoutService = new WorkoutService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
       return workoutService.shareWorkout(
-        Number(context.userId),
-        Number(args.workoutId),
-        args.shareWithUserId ? Number(args.shareWithUserId) : null
+        context.userId,
+        args.workoutId,
+        args.shareWithUserId ? args.shareWithUserId : null
       );
     },
   },

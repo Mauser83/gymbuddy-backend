@@ -21,9 +21,7 @@ export class WorkoutService {
   }
 
   private async verifyWorkoutAccess(userId: number, workoutId: number) {
-    const userRoles = await this.permissionService.getUserRoles(
-      userId.toString()
-    );
+    const userRoles = await this.permissionService.getUserRoles(userId);
 
     const workout = await this.prisma.workoutPlan.findUnique({
       where: { id: workoutId },
@@ -46,9 +44,7 @@ export class WorkoutService {
   async createWorkout(userId: number, data: CreateWorkoutInput) {
     if (!userId) throw new Error("Unauthorized");
 
-    const userRoles = await this.permissionService.getUserRoles(
-      userId.toString()
-    );
+    const userRoles = await this.permissionService.getUserRoles(userId);
     const hasPremium = this.permissionService.verifyPremiumAccess(
       userRoles.userRoles,
       true
@@ -70,9 +66,7 @@ export class WorkoutService {
   async getWorkouts(userId: number) {
     if (!userId) throw new Error("Unauthorized");
 
-    const userRoles = await this.permissionService.getUserRoles(
-      userId.toString()
-    );
+    const userRoles = await this.permissionService.getUserRoles(userId);
 
     const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, [
       "ADMIN",
@@ -129,9 +123,9 @@ export class WorkoutService {
 
     if (shareWithUserId) {
       return this.sharingService.shareWorkout(
-        ownerId.toString(),
-        workoutId.toString(),
-        shareWithUserId.toString(),
+        ownerId,
+        workoutId,
+        shareWithUserId,
         "VIEW"
       );
     }

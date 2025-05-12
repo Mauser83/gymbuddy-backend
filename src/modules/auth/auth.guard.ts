@@ -7,7 +7,11 @@ import { AuditService } from "../core/audit.service";
 import { prisma } from "../../lib/prisma";
 import { AppRole, UserRole, GymRole, AuthContext } from "./auth.types";
 
-export const graphqlAuth = async ({ req }: { req: Request }): Promise<Partial<AuthContext>> => {
+export const graphqlAuth = async ({
+  req,
+}: {
+  req: Request;
+}): Promise<Partial<AuthContext>> => {
   const container = DIContainer.getInstance();
   const auditService = container.resolve<AuditService>("AuditService");
 
@@ -40,13 +44,18 @@ export const graphqlAuth = async ({ req }: { req: Request }): Promise<Partial<Au
       sub: string;
       appRole?: AppRole;
       userRole: UserRole;
-      gymRoles: { gymId: string; role: GymRole }[];
+      gymRoles: { gymId: number; role: GymRole }[];
       isPremium: boolean;
       tokenVersion: number;
     };
 
+    const userId = parseInt(decoded.sub, 10);
+    if (isNaN(userId)) {
+      throw new Error("Invalid user ID in token.");
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: Number(decoded.sub) },
+      where: { id: userId },
       select: { tokenVersion: true },
     });
 
@@ -56,10 +65,10 @@ export const graphqlAuth = async ({ req }: { req: Request }): Promise<Partial<Au
       });
     }
 
-    await auditService.logUserLogin(Number(decoded.sub), req.ip || "unknown");
+    await auditService.logUserLogin(userId, req.ip || "unknown");
 
     return {
-      userId: decoded.sub,
+      userId,
       appRole: decoded.appRole,
       userRole: decoded.userRole,
       gymRoles: decoded.gymRoles || [],

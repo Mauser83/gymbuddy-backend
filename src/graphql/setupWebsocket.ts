@@ -50,8 +50,14 @@ export function setupWebSocket(
 
         if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined");
         const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const userId = parseInt(decoded.sub, 10);
+
+        if (isNaN(userId)) {
+          throw new Error("Invalid user ID from token.");
+        }
+
         const user = await prisma.user.findUnique({
-          where: { id: Number(decoded.sub) },
+          where: { id: userId },
           select: { tokenVersion: true },
         });
 
@@ -62,7 +68,7 @@ export function setupWebSocket(
         }
 
         return {
-          userId: decoded.sub,
+          userId: userId,
           appRole: decoded.appRole,
           userRole: decoded.userRole,
           gymRoles: decoded.gymRoles || [],

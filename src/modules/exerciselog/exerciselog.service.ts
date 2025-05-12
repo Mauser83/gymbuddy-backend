@@ -21,13 +21,13 @@ export class ExerciseLogService {
 
     if (!log) throw new Error('Exercise log not found');
 
-    const roles = await this.permissionService.getUserRoles(userId.toString());
+    const roles = await this.permissionService.getUserRoles(userId);
 
     if (this.permissionService.verifyAppRoles(roles.appRoles, ['ADMIN'])) return;
 
     if (
       log.gymId &&
-      this.permissionService.verifyGymRoles(roles.gymRoles, log.gymId.toString(), ['GYM_ADMIN'])
+      this.permissionService.verifyGymRoles(roles.gymRoles, log.gymId, ['GYM_ADMIN'])
     ) {
       return;
     }
@@ -38,7 +38,7 @@ export class ExerciseLogService {
   }
 
   async getExerciseLogs(userId: number) {
-    const roles = await this.permissionService.getUserRoles(userId.toString());
+    const roles = await this.permissionService.getUserRoles(userId);
 
     if (this.permissionService.verifyAppRoles(roles.appRoles, ['ADMIN'])) {
       return this.prisma.exerciseLog.findMany();

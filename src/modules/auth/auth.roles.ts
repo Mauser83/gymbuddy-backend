@@ -8,7 +8,7 @@ export function verifyRoles(
     | {
         requireAppRole?: "ADMIN" | "MODERATOR";
         requireUserRole?: "USER" | "PREMIUM_USER" | "PERSONAL_TRAINER";
-        requireGymRole?: { gymId: string; role: GymRole };
+        requireGymRole?: { gymId: number; role: GymRole };
       }
     | { or: any[] }
 ) {
@@ -37,12 +37,12 @@ export function verifyRoles(
 export function verifyGymScope(
   context: AuthContext,
   permissionService: PermissionService,
-  gymId: string,
+  gymId: number,
   requiredRoles: GymRole[] = [GymRole.GYM_ADMIN, GymRole.GYM_MODERATOR]
 ) {
   if (context.appRole === "ADMIN") return;
 
-  const gymRoles = new Map<string, GymRole[]>();
+  const gymRoles = new Map<number, GymRole[]>();
   for (const role of context.gymRoles) {
     const current = gymRoles.get(role.gymId) || [];
     current.push(role.role);

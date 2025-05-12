@@ -36,7 +36,7 @@ export class EquipmentService {
 
     if (input.gymId) {
       if (context.appRole !== 'ADMIN') {
-        await verifyGymScope(context, this.permissionService, input.gymId.toString(), [GymRole.GYM_ADMIN]);
+        await verifyGymScope(context, this.permissionService, input.gymId, [GymRole.GYM_ADMIN]);
       }
     } else {
       verifyRoles(context, { requireAppRole: 'ADMIN' });
@@ -85,7 +85,7 @@ export class EquipmentService {
 
     if (equipment?.gymId) {
       if (context.appRole !== 'ADMIN') {
-        await verifyGymScope(context, this.permissionService, equipment.gymId.toString(), [GymRole.GYM_ADMIN]);
+        await verifyGymScope(context, this.permissionService, equipment.gymId, [GymRole.GYM_ADMIN]);
       }
     } else {
       verifyRoles(context, { requireAppRole: 'ADMIN' });
@@ -107,7 +107,7 @@ export class EquipmentService {
 
     if (equipment?.gymId) {
       if (context.appRole !== 'ADMIN') {
-        await verifyGymScope(context, this.permissionService, equipment.gymId.toString(), [GymRole.GYM_ADMIN]);
+        await verifyGymScope(context, this.permissionService, equipment.gymId, [GymRole.GYM_ADMIN]);
       }
     } else {
       verifyRoles(context, { requireAppRole: 'ADMIN' });

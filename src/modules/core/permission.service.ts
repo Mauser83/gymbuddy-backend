@@ -4,7 +4,7 @@ import { PermissionType } from "../auth/auth.types";
 interface UserRoles {
   appRoles: AppRole[];
   userRoles: UserRole[];
-  gymRoles: Map<string, GymRole[]>;
+  gymRoles: Map<number, GymRole[]>;
 }
 
 export class PermissionService {
@@ -16,10 +16,10 @@ export class PermissionService {
     this.prismaInstanceId = prismaInstanceId || "default";
   }
 
-  async getUserRoles(userId: string): Promise<UserRoles> {
+  async getUserRoles(userId: number): Promise<UserRoles> {
 
     const user = await this.prisma.user.findUnique({
-      where: { id: Number(userId) },
+      where: { id: userId },
       include: { gymManagementRoles: true },
     });
 
@@ -29,11 +29,11 @@ export class PermissionService {
       throw new Error("User not found");
     }
 
-    const gymRoles = new Map<string, GymRole[]>();
+    const gymRoles = new Map<number, GymRole[]>();
     user.gymManagementRoles.forEach(role => {
-      const roles = gymRoles.get(role.gymId.toString()) || [];
+      const roles = gymRoles.get(role.gymId) || [];
       roles.push(role.role);
-      gymRoles.set(role.gymId.toString(), roles);
+      gymRoles.set(role.gymId, roles);
     });
 
     return {
@@ -68,8 +68,8 @@ export class PermissionService {
    * @param requiredRoles Required roles (OR condition)
    */
   verifyGymRoles(
-    userGymRoles: Map<string, GymRole[]>,
-    gymId: string,
+    userGymRoles: Map<number, GymRole[]>,
+    gymId: number,
     requiredRoles: GymRole[]
   ): boolean {
     const roles = userGymRoles.get(gymId) || [];
@@ -81,7 +81,7 @@ export class PermissionService {
    * @param ownerId Resource owner's ID
    * @param userId Current user's ID
    */
-  verifyOwnership(ownerId: string, userId: string): boolean {
+  verifyOwnership(ownerId: number, userId: number): boolean {
     return ownerId === userId;
   }
 
@@ -103,15 +103,15 @@ export class PermissionService {
    */
   checkPermission(options: {
     permissionType: PermissionType;
-    userId: string;
+    userId: number;
     userRoles: {
       appRoles: AppRole[];
       userRoles: UserRole[];
-      gymRoles: Map<string, GymRole[]>;
+      gymRoles: Map<number, GymRole[]>;
     };
     resource?: {
-      ownerId?: string;
-      gymId?: string;
+      ownerId?: number;
+      gymId?: number;
     };
     isPremiumActive?: boolean;
     requiredRoles?: {

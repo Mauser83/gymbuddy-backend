@@ -57,17 +57,17 @@ export enum PermissionType {
 }
 
 export interface JwtPayload {
-  userId: string;
+  userId: number;
   appRole?: AppRole;
-  gymRoles?: Record<string, GymRole>;
+  gymRoles?: Record<number, GymRole>;
 }
 
 export interface AuthContext {
-  userId: string | null;
+  userId: number | null;
   appRole?: AppRole;
   userRole: UserRole;
   gymRoles: {
-    gymId: string;
+    gymId: number;
     role: GymRole;
   }[];
   isPremium: boolean;

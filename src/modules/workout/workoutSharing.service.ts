@@ -12,7 +12,7 @@ export class SharingService {
     this.permissionService = permissionService;
   }
 
-  async shareWorkout(ownerId: string, workoutId: string, userId: string, accessLevel: 'VIEW' | 'EDIT') {
+  async shareWorkout(ownerId: number, workoutId: number, userId: number, accessLevel: 'VIEW' | 'EDIT') {
     // Verify owner has permission to share
     const canShare = await this.verifySharingPermission(ownerId, workoutId);
     if (!canShare) {
@@ -20,16 +20,16 @@ export class SharingService {
     }
 
     return this.prisma.workoutPlan.update({
-      where: { id: Number(workoutId) },
+      where: { id: workoutId },
       data: {
         sharedWith: {
-          connect: { id: Number(userId) }
+          connect: { id: userId }
         }
       }
     });
   }
 
-  async verifySharingPermission(userId: string, resourceId: string): Promise<boolean> {
+  async verifySharingPermission(userId: number, resourceId: number): Promise<boolean> {
     const userRoles = await this.permissionService.getUserRoles(userId);
     return this.permissionService.checkPermission({
       permissionType: PermissionType.OWNERSHIP,
@@ -39,18 +39,18 @@ export class SharingService {
     });
   }
 
-  async canAccessWorkout(userId: string, workoutId: string): Promise<boolean> {
+  async canAccessWorkout(userId: number, workoutId: number): Promise<boolean> {
     const workout = await this.prisma.workoutPlan.findUnique({
-      where: { id: Number(workoutId) },
+      where: { id: workoutId },
       include: { sharedWith: true }
     });
 
     if (!workout) return false;
 
     // Check ownership
-    if (workout.userId === Number(userId)) return true;
+    if (workout.userId === userId) return true;
 
     // Check sharing
-    return workout.sharedWith.some((user: User) => user.id === Number(userId));
+    return workout.sharedWith.some((user: User) => user.id === userId);
   }
 }

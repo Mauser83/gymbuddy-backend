@@ -28,9 +28,9 @@ export const EquipmentResolvers = {
   },
 
   Query: {
-    equipment: async (_: unknown, args: { id: string }, context: AuthContext) => {
+    equipment: async (_: unknown, args: { id: number }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.getEquipment(Number(args.id));
+      return service.getEquipment(args.id);
     },
 
     allEquipments: async (_: unknown, args: { search?: string }, context: AuthContext) => {
@@ -55,14 +55,14 @@ export const EquipmentResolvers = {
       return service.createEquipment(args.input, context);
     },
 
-    updateEquipment: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
+    updateEquipment: async (_: any, args: { id: number; input: any }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.updateEquipment(Number(args.id), args.input, context);
+      return service.updateEquipment(args.id, args.input, context);
     },
 
-    deleteEquipment: async (_: any, args: { id: string }, context: AuthContext) => {
+    deleteEquipment: async (_: any, args: { id: number }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.deleteEquipment(Number(args.id), context);
+      return service.deleteEquipment(args.id, context);
     },
 
     createEquipmentCategory: async (_: any, args: { input: any }, context: AuthContext) => {
@@ -70,14 +70,14 @@ export const EquipmentResolvers = {
       return service.createEquipmentCategory(args.input, context);
     },
 
-    updateEquipmentCategory: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
+    updateEquipmentCategory: async (_: any, args: { id: number; input: any }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.updateEquipmentCategory(Number(args.id), args.input, context);
+      return service.updateEquipmentCategory(args.id, args.input, context);
     },
 
-    deleteEquipmentCategory: async (_: any, args: { id: string }, context: AuthContext) => {
+    deleteEquipmentCategory: async (_: any, args: { id: number }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.deleteEquipmentCategory(Number(args.id), context);
+      return service.deleteEquipmentCategory(args.id, context);
     },
 
     createEquipmentSubcategory: async (_: any, args: { input: any }, context: AuthContext) => {
@@ -85,15 +85,15 @@ export const EquipmentResolvers = {
       return service.createEquipmentSubcategory(args.input, context);
     },
 
-    updateEquipmentSubcategory: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
+    updateEquipmentSubcategory: async (_: any, args: { id: number; input: any }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.updateEquipmentSubcategory(Number(args.id), args.input, context);
+      return service.updateEquipmentSubcategory(args.id, args.input, context);
     },
 
-    deleteEquipmentSubcategory: async (_: any, args: { id: string }, context: AuthContext) => {
+    deleteEquipmentSubcategory: async (_: any, args: { id: number }, context: AuthContext) => {
       console.log("was called");
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.deleteEquipmentSubcategory(Number(args.id), context);
+      return service.deleteEquipmentSubcategory(args.id, context);
     },
   },
 };

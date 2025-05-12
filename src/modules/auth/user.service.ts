@@ -17,7 +17,7 @@ export class UserService {
     this.auditService = auditService;
   }
 
-  async getUsers(requesterId: string) {
+  async getUsers(requesterId: number) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
     const canViewAll = this.permissionService.verifyAppRoles(
       userRoles.appRoles,
@@ -25,7 +25,7 @@ export class UserService {
     );
 
     return this.prisma.user.findMany({
-      where: canViewAll ? {} : { id: Number(requesterId) },
+      where: canViewAll ? {} : { id: requesterId },
       select: {
         id: true,
         email: true,
@@ -34,7 +34,7 @@ export class UserService {
     });
   }
 
-  async updateUser(requesterId: string, userId: string, data: any) {
+  async updateUser(requesterId: number, userId: number, data: any) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
     const isAdmin = this.permissionService.verifyAppRoles(
       userRoles.appRoles, 
@@ -47,7 +47,7 @@ export class UserService {
     }
 
     const updatedUser = await this.prisma.user.update({
-      where: { id: Number(userId) },
+      where: { id: userId },
       data,
       select: {
         id: true,
@@ -57,7 +57,7 @@ export class UserService {
     });
 
     await this.auditService.logDataUpdate({
-      userId: Number(requesterId),
+      userId: requesterId,
       entity: 'User',
       entityId: updatedUser.id,
       changes: data
@@ -66,7 +66,7 @@ export class UserService {
     return updatedUser;
   }
 
-  async deleteUser(requesterId: string, userId: string) {
+  async deleteUser(requesterId: number, userId: number) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
     const isAdmin = this.permissionService.verifyAppRoles(
       userRoles.appRoles,
@@ -78,12 +78,12 @@ export class UserService {
     }
 
     const result = await this.prisma.user.update({
-      where: { id: Number(userId) },
+      where: { id: userId },
       data: { deletedAt: new Date() }
     });
 
     await this.auditService.logDataDeletion({
-      userId: Number(requesterId),
+      userId: requesterId,
       entity: 'User',
       entityId: result.id
     });

@@ -27,12 +27,12 @@ export class GymService {
     gymId: number,
     requiredRoles?: ('GYM_ADMIN' | 'GYM_MODERATOR')[]
   ) {
-    const userRoles = await this.permissionService.getUserRoles(userId.toString());
+    const userRoles = await this.permissionService.getUserRoles(userId);
     return this.permissionService.checkPermission({
       permissionType: PermissionType.GYM_SCOPE,
-      userId: userId.toString(),
+      userId: userId,
       userRoles,
-      resource: { gymId: gymId.toString() },
+      resource: { gymId: gymId },
       requiredRoles: {
         gymRoles: requiredRoles || ['GYM_ADMIN', 'GYM_MODERATOR']
       }
@@ -120,7 +120,7 @@ export class GymService {
   }
 
   async getPendingGyms(userId: number) {
-    const roles = await this.permissionService.getUserRoles(userId.toString());
+    const roles = await this.permissionService.getUserRoles(userId);
     const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, ["ADMIN", "MODERATOR"]);
     if (!isAllowed) throw new Error("Forbidden");
 
@@ -132,7 +132,7 @@ export class GymService {
   }
 
   async approveGym(userId: number, gymId: number) {
-    const roles = await this.permissionService.getUserRoles(userId.toString());
+    const roles = await this.permissionService.getUserRoles(userId);
     const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, ["ADMIN", "MODERATOR"]);
     if (!isAllowed) throw new Error("Forbidden");
 
