@@ -55,14 +55,45 @@ export const EquipmentResolvers = {
       return service.createEquipment(args.input, context);
     },
 
-    updateEquipment: async (_: any, args: { id: number; input: any }, context: AuthContext) => {
+    updateEquipment: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.updateEquipment(args.id, args.input, context);
+      return service.updateEquipment(Number(args.id), args.input, context);
     },
 
-    deleteEquipment: async (_: any, args: { id: number }, context: AuthContext) => {
+    deleteEquipment: async (_: any, args: { id: string }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
-      return service.deleteEquipment(args.id, context);
+      return service.deleteEquipment(Number(args.id), context);
+    },
+
+    createEquipmentCategory: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.createEquipmentCategory(args.input, context);
+    },
+
+    updateEquipmentCategory: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.updateEquipmentCategory(Number(args.id), args.input, context);
+    },
+
+    deleteEquipmentCategory: async (_: any, args: { id: string }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.deleteEquipmentCategory(Number(args.id), context);
+    },
+
+    createEquipmentSubcategory: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.createEquipmentSubcategory(args.input, context);
+    },
+
+    updateEquipmentSubcategory: async (_: any, args: { id: string; input: any }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.updateEquipmentSubcategory(Number(args.id), args.input, context);
+    },
+
+    deleteEquipmentSubcategory: async (_: any, args: { id: string }, context: AuthContext) => {
+      console.log("was called");
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.deleteEquipmentSubcategory(Number(args.id), context);
     },
   },
 };

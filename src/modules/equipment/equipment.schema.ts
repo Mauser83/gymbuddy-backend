@@ -62,6 +62,16 @@ export const equipmentTypeDefs = `
     categoryId: Int!
   }
 
+  input UpdateEquipmentCategoryInput {
+    name: String!
+    slug: String!
+  }
+
+  input UpdateEquipmentSubcategoryInput {
+    name: String!
+    slug: String!
+  }
+
   extend type Query {
     equipment(id: ID!): Equipment
     allEquipments(search: String): [Equipment]
@@ -73,7 +83,13 @@ export const equipmentTypeDefs = `
     createEquipment(input: CreateEquipmentInput!): Equipment!
     updateEquipment(id: ID!, input: UpdateEquipmentInput!): Equipment!
     deleteEquipment(id: ID!): Boolean!
+
     createEquipmentCategory(input: CreateEquipmentCategoryInput!): EquipmentCategory!
+    updateEquipmentCategory(id: ID!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!
+    deleteEquipmentCategory(id: ID!): Boolean!
+
     createEquipmentSubcategory(input: CreateEquipmentSubcategoryInput!): EquipmentSubcategory!
+    updateEquipmentSubcategory(id: ID!, input: UpdateEquipmentSubcategoryInput!): EquipmentSubcategory!
+    deleteEquipmentSubcategory(id: ID!): Boolean!
   }
 `;

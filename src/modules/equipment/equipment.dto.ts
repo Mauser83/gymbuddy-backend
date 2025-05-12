@@ -68,3 +68,51 @@ export class UpdateEquipmentDto {
   @IsInt({ message: 'Gym ID must be an integer' })
   gymId?: number;
 }
+
+// --- Category DTOs ---
+
+export class CreateEquipmentCategoryDto {
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  name!: string;
+
+  @IsString({ message: 'Slug must be a string' })
+  @IsNotEmpty({ message: 'Slug is required' })
+  slug!: string;
+}
+
+export class UpdateEquipmentCategoryDto {
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  name!: string;
+
+  @IsString({ message: 'Slug must be a string' })
+  @IsNotEmpty({ message: 'Slug is required' })
+  slug!: string;
+}
+
+// --- Subcategory DTOs ---
+
+export class CreateEquipmentSubcategoryDto {
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  name!: string;
+
+  @IsString({ message: 'Slug must be a string' })
+  @IsNotEmpty({ message: 'Slug is required' })
+  slug!: string;
+
+  @IsInt({ message: 'Category ID must be an integer' })
+  @Min(1, { message: 'Category ID must be a positive number' })
+  categoryId!: number;
+}
+
+export class UpdateEquipmentSubcategoryDto {
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  name!: string;
+
+  @IsString({ message: 'Slug must be a string' })
+  @IsNotEmpty({ message: 'Slug is required' })
+  slug!: string;
+}

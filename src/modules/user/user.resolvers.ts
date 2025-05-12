@@ -6,7 +6,7 @@ export const UserResolvers = {
   User: {
     gymManagementRoles: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.gymManagementRole.findMany({
-        where: { userId: Number(parent.id) },
+        where: { userId: parent.id },
         include: { gym: true },
       });
     },
@@ -18,28 +18,28 @@ export const UserResolvers = {
       return userService.searchUsers(context, args.search);
     },
 
-    userById: async (_: unknown, args: { id: string }, context: AuthContext) => {
+    userById: async (_: unknown, args: { id: number }, context: AuthContext) => {
       const userService = new UserService(context.prisma);
-      return userService.getUserById(context, Number(args.id));
+      return userService.getUserById(context, args.id);
     },
   },
 
   Mutation: {
-    deleteUser: async (_: unknown, args: { id: string }, context: AuthContext) => {
+    deleteUser: async (_: unknown, args: { id: number }, context: AuthContext) => {
       const userService = new UserService(context.prisma);
-      await userService.deleteUser(context, Number(args.id));
+      await userService.deleteUser(context, args.id);
       return "User deleted successfully";
     },
 
     updateUserRoles: async (
       _: unknown,
-      args: { userId: string; input: { appRole?: string; userRole: string } },
+      args: { userId: number; input: { appRole?: string; userRole: string } },
       context: AuthContext
     ) => {
       const userService = new UserService(context.prisma);
 
       const updatedUser = await userService.updateUserRoles(context, {
-        userId: Number(args.userId),
+        userId: args.userId,
         ...args.input,
       });
 

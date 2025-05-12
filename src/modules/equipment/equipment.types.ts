@@ -37,8 +37,18 @@ export interface CreateEquipmentCategoryInput {
   slug: string;
 }
 
+export interface UpdateEquipmentCategoryInput {
+  name: string;
+  slug: string;
+}
+
 export interface CreateEquipmentSubcategoryInput {
   name: string;
   slug: string;
   categoryId: number;
+}
+
+export interface UpdateEquipmentSubcategoryInput {
+  name: string;
+  slug: string;
 }
