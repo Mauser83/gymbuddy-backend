@@ -4,7 +4,10 @@ import {
   IsOptional,
   IsInt,
   Min,
+  IsUrl,
 } from 'class-validator';
+
+// --- Equipment DTOs ---
 
 export class CreateEquipmentDto {
   @IsString({ message: 'Name must be a string' })
@@ -31,10 +34,6 @@ export class CreateEquipmentDto {
   @IsInt({ message: 'Subcategory ID must be an integer' })
   @Min(1, { message: 'Subcategory ID must be a positive number' })
   subcategoryId?: number;
-
-  @IsOptional()
-  @IsInt({ message: 'Gym ID must be an integer' })
-  gymId?: number;
 }
 
 export class UpdateEquipmentDto {
@@ -63,10 +62,16 @@ export class UpdateEquipmentDto {
   @IsInt({ message: 'Subcategory ID must be an integer' })
   @Min(1, { message: 'Subcategory ID must be a positive number' })
   subcategoryId?: number;
+}
 
-  @IsOptional()
-  @IsInt({ message: 'Gym ID must be an integer' })
-  gymId?: number;
+// --- Equipment Image DTO ---
+
+export class UploadEquipmentImageDto {
+  @IsInt({ message: 'Equipment ID must be an integer' })
+  equipmentId!: number;
+
+  @IsUrl({}, { message: 'URL must be valid' })
+  url!: string;
 }
 
 // --- Category DTOs ---

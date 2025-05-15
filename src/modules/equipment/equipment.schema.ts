@@ -9,11 +9,17 @@ export const equipmentTypeDefs = `
     subcategoryId: Int
     brand: String!
     manualUrl: String
-    gymId: Int
-    gym: Gym
     createdAt: String!
     updatedAt: String!
     deletedAt: String
+    images: [EquipmentImage!]!
+  }
+
+  type EquipmentImage {
+    id: Int!
+    equipmentId: Int!
+    url: String!
+    createdAt: String!
   }
 
   type EquipmentCategory {
@@ -38,7 +44,6 @@ export const equipmentTypeDefs = `
     subcategoryId: Int
     brand: String!
     manualUrl: String
-    gymId: Int
   }
 
   input UpdateEquipmentInput {
@@ -48,10 +53,19 @@ export const equipmentTypeDefs = `
     subcategoryId: Int
     brand: String
     manualUrl: String
-    gymId: Int
+  }
+
+  input UploadEquipmentImageInput {
+    equipmentId: Int!
+    url: String!
   }
 
   input CreateEquipmentCategoryInput {
+    name: String!
+    slug: String!
+  }
+
+  input UpdateEquipmentCategoryInput {
     name: String!
     slug: String!
   }
@@ -60,11 +74,6 @@ export const equipmentTypeDefs = `
     name: String!
     slug: String!
     categoryId: Int!
-  }
-
-  input UpdateEquipmentCategoryInput {
-    name: String!
-    slug: String!
   }
 
   input UpdateEquipmentSubcategoryInput {
@@ -83,6 +92,9 @@ export const equipmentTypeDefs = `
     createEquipment(input: CreateEquipmentInput!): Equipment!
     updateEquipment(id: Int!, input: UpdateEquipmentInput!): Equipment!
     deleteEquipment(id: Int!): Boolean!
+
+    uploadEquipmentImage(input: UploadEquipmentImageInput!): EquipmentImage!
+    deleteEquipmentImage(imageId: Int!): Boolean!
 
     createEquipmentCategory(input: CreateEquipmentCategoryInput!): EquipmentCategory!
     updateEquipmentCategory(id: Int!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!

@@ -5,6 +5,8 @@ import {
   IsLongitude,
   IsEmail,
   IsUrl,
+  IsInt,
+  Min,
   MaxLength,
 } from 'class-validator';
 
@@ -152,4 +154,47 @@ export class UpdateGymDto {
   @IsEmail()
   @MaxLength(100)
   email?: string;
+}
+
+// --- New DTOs ---
+
+export class AssignEquipmentToGymDto {
+  @IsInt()
+  gymId!: number;
+
+  @IsInt()
+  equipmentId!: number;
+
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UpdateGymEquipmentDto {
+  @IsInt()
+  gymEquipmentId!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  quantity?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UploadGymEquipmentImageDto {
+  @IsInt()
+  gymEquipmentId!: number;
+
+  @IsUrl()
+  @MaxLength(500)
+  url!: string;
 }

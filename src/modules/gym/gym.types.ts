@@ -57,3 +57,43 @@ export interface UpdateGymInput {
   phone?: string;
   email?: string;
 }
+
+// --- New Relational Types ---
+
+export interface GymEquipment {
+  id: number;
+  gymId: number;
+  equipmentId: number;
+  quantity: number;
+  note?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  images: GymEquipmentImage[];
+}
+
+export interface GymEquipmentImage {
+  id: number;
+  gymEquipmentId: number;
+  url: string;
+  createdAt: Date;
+}
+
+// --- Inputs ---
+
+export interface AssignEquipmentToGymInput {
+  gymId: number;
+  equipmentId: number;
+  quantity: number;
+  note?: string;
+}
+
+export interface UpdateGymEquipmentInput {
+  gymEquipmentId: number;
+  quantity?: number;
+  note?: string;
+}
+
+export interface UploadGymEquipmentImageInput {
+  gymEquipmentId: number;
+  url: string;
+}

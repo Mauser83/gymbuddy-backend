@@ -2,7 +2,7 @@ import { PrismaClient } from '../../lib/prisma';
 import { PermissionService } from '../core/permission.service';
 import { CreateGymInput, UpdateGymInput } from './gym.types';
 import { PermissionType } from '../auth/auth.types';
-import { CreateGymDto } from './gym.dto';
+import { CreateGymDto, AssignEquipmentToGymDto, UpdateGymDto, UploadGymEquipmentImageDto, UpdateGymEquipmentDto } from './gym.dto';
 import { validateInput } from '../../middlewares/validation';
 import { pubsub } from '../../graphql/rootResolvers';
 
@@ -209,4 +209,87 @@ export class GymService {
 
     return "Trainer removed successfully";
   }
+
+  async assignEquipmentToGym(input: AssignEquipmentToGymDto) {
+  await validateInput(input, AssignEquipmentToGymDto);
+
+  const exists = await this.prisma.gymEquipment.findFirst({
+    where: {
+      gymId: input.gymId,
+      equipmentId: input.equipmentId,
+    },
+  });
+
+  if (exists) {
+    throw new Error("This equipment is already assigned to this gym");
+  }
+
+  return this.prisma.gymEquipment.create({
+    data: {
+      gymId: input.gymId,
+      equipmentId: input.equipmentId,
+      quantity: input.quantity,
+      note: input.note,
+    },
+    include: { equipment: true, images: true },
+  });
 }
+
+async updateGymEquipment(input: UpdateGymEquipmentDto) {
+  await validateInput(input, UpdateGymEquipmentDto);
+
+  return this.prisma.gymEquipment.update({
+    where: { id: input.gymEquipmentId },
+    data: {
+      quantity: input.quantity,
+      note: input.note,
+    },
+    include: { equipment: true, images: true },
+  });
+}
+
+async removeGymEquipment(gymEquipmentId: number) {
+  await this.prisma.gymEquipmentImage.deleteMany({
+    where: { gymEquipmentId },
+  });
+
+  await this.prisma.gymEquipment.delete({
+    where: { id: gymEquipmentId },
+  });
+
+  return true;
+}
+
+async uploadGymEquipmentImage(input: UploadGymEquipmentImageDto) {
+  await validateInput(input, UploadGymEquipmentImageDto);
+
+  return this.prisma.gymEquipmentImage.create({
+    data: {
+      gymEquipmentId: input.gymEquipmentId,
+      url: input.url,
+    },
+  });
+}
+
+async deleteGymEquipmentImage(imageId: number) {
+  await this.prisma.gymEquipmentImage.delete({
+    where: { id: imageId },
+  });
+  return true;
+}
+
+async getGymEquipment(gymId: number) {
+  return this.prisma.gymEquipment.findMany({
+    where: { gymId },
+    include: { equipment: true, images: true },
+  });
+}
+
+async getGymEquipmentDetail(gymEquipmentId: number) {
+  return this.prisma.gymEquipment.findUnique({
+    where: { id: gymEquipmentId },
+    include: { equipment: true, images: true },
+  });
+}
+}
+

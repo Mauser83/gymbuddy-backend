@@ -107,6 +107,9 @@ model ExerciseLog {
   exercise   Exercise @relation(fields: [exerciseId], references: [id])
   exerciseId Int
 
+  gymEquipment   GymEquipment? @relation(fields: [gymEquipmentId], references: [id])
+  gymEquipmentId Int?
+
   sets   Int?
   reps   Int?
   weight Float?
@@ -137,10 +140,9 @@ model Equipment {
   deletedAt      DateTime?
 
   exercises      Exercise[]
-  gym            Gym?      @relation(fields: [gymId], references: [id])
-  gymId          Int?
+  images         EquipmentImage[]
+  gyms           GymEquipment[]
 
-  @@index([gymId])
   @@index([categoryId])
   @@index([subcategoryId])
   @@index([brand])
@@ -190,10 +192,11 @@ model Gym {
   creatorId Int?
 
   gymRoles     GymManagementRole[]
-  equipment    Equipment[]
+
   trainers     GymTrainer[]
   chatMembers  GymChatMember[]
   exerciseLogs ExerciseLog[]
+  gymEquipment GymEquipment[]
 
   @@index([name])
   @@index([city])
@@ -250,4 +253,44 @@ model GymChatMember {
   isBanned   Boolean   @default(false)
 
   @@unique([userId, gymId])
+}
+
+model EquipmentImage {
+  id          Int       @id @default(autoincrement())
+  url         String    @db.VarChar(300)
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId Int
+  createdAt   DateTime  @default(now())
+
+  @@index([equipmentId])
+}
+
+model GymEquipment {
+  id           Int       @id @default(autoincrement())
+  gym          Gym       @relation(fields: [gymId], references: [id])
+  gymId        Int
+  equipment    Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId  Int
+
+  quantity     Int       @default(1)
+  note         String?   @db.VarChar(300)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  images       GymEquipmentImage[]
+  exerciseLogs ExerciseLog[]
+
+  @@unique([gymId, equipmentId])
+  @@index([gymId])
+  @@index([equipmentId])
+}
+
+model GymEquipmentImage {
+  id             Int           @id @default(autoincrement())
+  url            String        @db.VarChar(300)
+  gymEquipment   GymEquipment  @relation(fields: [gymEquipmentId], references: [id])
+  gymEquipmentId Int
+  createdAt      DateTime      @default(now())
+
+  @@index([gymEquipmentId])
 }

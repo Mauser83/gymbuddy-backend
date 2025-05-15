@@ -6,10 +6,17 @@ export interface Equipment {
   subcategoryId?: number;
   brand: string;
   manualUrl?: string;
-  gymId?: number;
   createdAt: string; // ISO string
   updatedAt: string;
   deletedAt?: string;
+  images?: EquipmentImage[]; // NEW
+}
+
+export interface EquipmentImage {
+  id: number;
+  equipmentId: number;
+  url: string;
+  createdAt: string;
 }
 
 export interface CreateEquipmentInput {
@@ -19,7 +26,6 @@ export interface CreateEquipmentInput {
   subcategoryId?: number;
   brand: string;
   manualUrl?: string;
-  gymId?: number;
 }
 
 export interface UpdateEquipmentInput {
@@ -29,7 +35,11 @@ export interface UpdateEquipmentInput {
   subcategoryId?: number;
   brand?: string;
   manualUrl?: string;
-  gymId?: number;
+}
+
+export interface UploadEquipmentImageInput {
+  equipmentId: number;
+  url: string;
 }
 
 export interface CreateEquipmentCategoryInput {

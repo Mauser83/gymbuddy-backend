@@ -8,7 +8,7 @@ export const gymTypeDefs = `
     state: String
     stateCode: String
     city: String!
-    address: String!  # required
+    address: String!
     postalCode: String
     latitude: Float
     longitude: Float
@@ -20,9 +20,27 @@ export const gymTypeDefs = `
     createdAt: String
     creator: User
 
-    equipment: [Equipment!]!
+    gymEquipment: [GymEquipment!]!
     trainers: [User!]!
     gymRoles: [GymManagementRole!]!
+  }
+
+  type GymEquipment {
+    id: Int!
+    gym: Gym!
+    equipment: Equipment!
+    quantity: Int!
+    note: String
+    images: [GymEquipmentImage!]!
+    createdAt: String
+    updatedAt: String
+  }
+
+  type GymEquipmentImage {
+    id: Int!
+    gymEquipment: GymEquipment!
+    url: String!
+    createdAt: String
   }
 
   input CreateGymInput {
@@ -33,7 +51,7 @@ export const gymTypeDefs = `
     state: String
     stateCode: String
     city: String!
-    address: String!  # required
+    address: String!
     postalCode: String
     latitude: Float
     longitude: Float
@@ -61,10 +79,31 @@ export const gymTypeDefs = `
     email: String
   }
 
+  input AssignEquipmentToGymInput {
+    gymId: Int!
+    equipmentId: Int!
+    quantity: Int!
+    note: String
+  }
+
+  input UpdateGymEquipmentInput {
+    gymEquipmentId: Int!
+    quantity: Int
+    note: String
+  }
+
+  input UploadGymEquipmentImageInput {
+    gymEquipmentId: Int!
+    url: String!
+  }
+
   extend type Query {
     gyms(search: String): [Gym]
     gymById(id: Int!): Gym
     pendingGyms: [Gym]
+
+    getGymEquipment(gymId: Int!): [GymEquipment!]!
+    getGymEquipmentDetail(gymEquipmentId: Int!): GymEquipment
   }
 
   extend type Mutation {
@@ -74,6 +113,12 @@ export const gymTypeDefs = `
     deleteGym(id: Int!): String
     addTrainer(gymId: Int!, userId: Int!): String
     removeTrainer(gymId: Int!, userId: Int!): String
+
+    assignEquipmentToGym(input: AssignEquipmentToGymInput!): GymEquipment!
+    updateGymEquipment(input: UpdateGymEquipmentInput!): GymEquipment!
+    removeGymEquipment(gymEquipmentId: Int!): Boolean!
+    uploadGymEquipmentImage(input: UploadGymEquipmentImageInput!): GymEquipmentImage!
+    deleteGymEquipmentImage(imageId: Int!): Boolean!
   }
 
   extend type Subscription {

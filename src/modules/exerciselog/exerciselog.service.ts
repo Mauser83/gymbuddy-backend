@@ -74,9 +74,10 @@ export class ExerciseLogService {
     return this.prisma.exerciseLog.create({
       data: {
         userId,
-        workoutPlanId: data.workoutPlanId,
+        workoutPlanId: data.workoutPlanId ?? null,
         exerciseId: data.exerciseId,
         gymId: data.gymId ?? null,
+        gymEquipmentId: data.gymEquipmentId ?? null, // ✅ NEW FIELD
         sets: data.sets,
         reps: data.reps,
         weight: data.weight,

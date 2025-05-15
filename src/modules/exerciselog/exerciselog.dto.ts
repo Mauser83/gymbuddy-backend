@@ -5,53 +5,61 @@ export class CreateExerciseLogDto {
   @IsNotEmpty({ message: 'Exercise ID is required' })
   exerciseId!: number;
 
-  @IsNumber({}, { message: 'Workout Plan ID must be a number' })
   @IsOptional()
+  @IsNumber({}, { message: 'Workout Plan ID must be a number' })
   workoutPlanId?: number;
 
-  @IsNumber({}, { message: 'Gym ID must be a number' })
   @IsOptional()
+  @IsNumber({}, { message: 'Gym ID must be a number' })
   gymId?: number;
 
-  @IsNumber({}, { message: 'Sets must be a number' })
   @IsOptional()
+  @IsNumber({}, { message: 'Gym Equipment ID must be a number' })
+  gymEquipmentId?: number; // ✅ NEW FIELD
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Sets must be a number' })
   @Min(1, { message: 'Minimum 1 set required' })
   @Max(20, { message: 'Maximum 20 sets allowed' })
   sets?: number;
 
-  @IsNumber({}, { message: 'Reps must be a number' })
   @IsOptional()
+  @IsNumber({}, { message: 'Reps must be a number' })
   @Min(1, { message: 'Minimum 1 rep required' })
   @Max(100, { message: 'Maximum 100 reps allowed' })
   reps?: number;
 
-  @IsNumber({}, { message: 'Weight must be a number' })
   @IsOptional()
+  @IsNumber({}, { message: 'Weight must be a number' })
   weight?: number;
 }
 
 export class UpdateExerciseLogDto {
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   exerciseId?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   workoutPlanId?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   gymId?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
+  gymEquipmentId?: number; // ✅ NEW FIELD
+
+  @IsOptional()
+  @IsNumber()
   sets?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   reps?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   weight?: number;
 }

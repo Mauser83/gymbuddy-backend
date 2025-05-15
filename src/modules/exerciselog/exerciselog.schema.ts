@@ -8,6 +8,7 @@ export const exerciselogTypeDefs = `
     reps: Int
     weight: Float
     gymId: Int
+    gymEquipmentId: Int
     createdAt: String!
     updatedAt: String!
   }
@@ -19,6 +20,7 @@ export const exerciselogTypeDefs = `
     reps: Int
     weight: Float
     gymId: Int
+    gymEquipmentId: Int
   }
 
   input UpdateExerciseLogInput {
@@ -28,6 +30,7 @@ export const exerciselogTypeDefs = `
     reps: Int
     weight: Float
     gymId: Int
+    gymEquipmentId: Int
   }
 
   extend type Query {

@@ -4,16 +4,17 @@ import { PermissionService } from '../core/permission.service';
 
 export const EquipmentResolvers = {
   Equipment: {
-    gym: (parent: any, _: any, context: AuthContext) => {
-      if (!parent.gymId) return null;
-      return context.prisma.gym.findUnique({ where: { id: parent.gymId } });
-    },
     category: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.equipmentCategory.findUnique({ where: { id: parent.categoryId } });
     },
     subcategory: (parent: any, _: any, context: AuthContext) => {
       if (!parent.subcategoryId) return null;
       return context.prisma.equipmentSubcategory.findUnique({ where: { id: parent.subcategoryId } });
+    },
+    images: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.equipmentImage.findMany({
+        where: { equipmentId: parent.id },
+      });
     },
   },
 
@@ -65,6 +66,16 @@ export const EquipmentResolvers = {
       return service.deleteEquipment(args.id, context);
     },
 
+    uploadEquipmentImage: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.uploadEquipmentImage(args.input, context);
+    },
+
+    deleteEquipmentImage: async (_: any, args: { imageId: number }, context: AuthContext) => {
+      const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
+      return service.deleteEquipmentImage(args.imageId, context);
+    },
+
     createEquipmentCategory: async (_: any, args: { input: any }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
       return service.createEquipmentCategory(args.input, context);
@@ -91,7 +102,6 @@ export const EquipmentResolvers = {
     },
 
     deleteEquipmentSubcategory: async (_: any, args: { id: number }, context: AuthContext) => {
-      console.log("was called");
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
       return service.deleteEquipmentSubcategory(args.id, context);
     },
