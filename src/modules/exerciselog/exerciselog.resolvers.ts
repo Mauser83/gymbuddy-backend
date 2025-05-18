@@ -3,6 +3,16 @@ import { ExerciseLogService } from "./exerciselog.service";
 import { PermissionService } from "../core/permission.service";
 
 export const ExerciseLogResolvers = {
+  ExerciseLog: {
+    workoutSession: (parent: any, _: any, context: AuthContext) => {
+      return parent.workoutSessionId
+        ? context.prisma.workoutSession.findUnique({
+            where: { id: parent.workoutSessionId },
+          })
+        : null;
+    },
+  },
+
   Query: {
     exerciseLogs: async (_: unknown, __: unknown, context: AuthContext) => {
       if (!context.userId) throw new Error("Unauthorized");
@@ -44,7 +54,11 @@ export const ExerciseLogResolvers = {
         new PermissionService(context.prisma)
       );
 
-      return service.updateExerciseLog(args.id, args.input, Number(context.userId));
+      return service.updateExerciseLog(
+        args.id,
+        args.input,
+        Number(context.userId)
+      );
     },
 
     deleteExerciseLog: async (

@@ -23,6 +23,8 @@ export const gymTypeDefs = `
     gymEquipment: [GymEquipment!]!
     trainers: [User!]!
     gymRoles: [GymManagementRole!]!
+    exerciseLogs: [ExerciseLog!]!  # ➕ Added
+
   }
 
   type GymEquipment {

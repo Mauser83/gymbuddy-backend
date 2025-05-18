@@ -1,4 +1,52 @@
-import { IsString, IsNotEmpty, Length, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  Length,
+  IsOptional,
+  IsBoolean,
+  ValidateNested,
+  IsInt,
+  Min,
+  Max,
+  IsNumber,
+  ArrayMaxSize,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import 'reflect-metadata';
+
+
+// ➕ New input class for structured plan data
+export class WorkoutPlanExerciseInputDto {
+  @IsInt()
+  @Min(1)
+  exerciseId!: number;
+
+  @IsOptional()
+  @IsInt()
+  order?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  targetSets?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  targetReps?: number;
+
+  @IsOptional()
+  @IsNumber()
+  targetWeight?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  targetRpe?: number;
+}
 
 export class CreateWorkoutDto {
   @IsString({ message: 'Name must be a string' })
@@ -14,6 +62,12 @@ export class CreateWorkoutDto {
   @IsOptional()
   @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => WorkoutPlanExerciseInputDto)
+  @ArrayMaxSize(100)
+  exercises?: WorkoutPlanExerciseInputDto[];
 }
 
 export class UpdateWorkoutDto {
@@ -30,4 +84,10 @@ export class UpdateWorkoutDto {
   @IsOptional()
   @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => WorkoutPlanExerciseInputDto)
+  @ArrayMaxSize(100)
+  exercises?: WorkoutPlanExerciseInputDto[];
 }

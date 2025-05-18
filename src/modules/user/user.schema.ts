@@ -9,6 +9,11 @@ export const userTypeDefs = `
     createdAt: String!
     updatedAt: String!
     gymManagementRoles: [GymManagementRole]
+
+    # ➕ NEW FIELDS
+    assignedWorkouts: [AssignedWorkout!]      # Plans assigned TO this user
+    assignedByWorkouts: [AssignedWorkout!]    # Plans assigned BY this user (as trainer)
+    workoutSessions: [WorkoutSession!]        # Grouped logs per session
   }
 
   type GymManagementRole {

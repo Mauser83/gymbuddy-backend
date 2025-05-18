@@ -1,4 +1,5 @@
 export const equipmentTypeDefs = `
+
   type Equipment {
     id: Int!
     name: String!
@@ -13,6 +14,9 @@ export const equipmentTypeDefs = `
     updatedAt: String!
     deletedAt: String
     images: [EquipmentImage!]!
+
+    # ➕ NEW: Many-to-many relation to Exercises via ExerciseEquipment
+    exercises: [Exercise!]!
   }
 
   type EquipmentImage {

@@ -10,6 +10,30 @@ export const UserResolvers = {
         include: { gym: true },
       });
     },
+
+    // ➕ NEW: assigned workouts this user received
+    assignedWorkouts: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.assignedWorkout.findMany({
+        where: { assigneeId: parent.id },
+        include: { workoutPlan: true },
+      });
+    },
+
+    // ➕ NEW: workouts this user (as trainer) assigned
+    assignedByWorkouts: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.assignedWorkout.findMany({
+        where: { trainerId: parent.id },
+        include: { assignee: true, workoutPlan: true },
+      });
+    },
+
+    // ➕ NEW: sessions created by this user
+    workoutSessions: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.workoutSession.findMany({
+        where: { userId: parent.id },
+        orderBy: { startedAt: 'desc' },
+      });
+    },
   },
 
   Query: {

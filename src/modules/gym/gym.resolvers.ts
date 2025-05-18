@@ -29,6 +29,11 @@ export const GymResolvers = {
         include: { user: true },
       });
     },
+      exerciseLogs: (parent: any, _: any, context: AuthContext) => {
+    return context.prisma.exerciseLog.findMany({
+      where: { gymId: parent.id },
+    });
+  },
   },
 
   Query: {

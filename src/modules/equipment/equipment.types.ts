@@ -1,3 +1,5 @@
+import { Exercise } from "../exercise/exercise.types";
+
 export interface Equipment {
   id: number;
   name: string;
@@ -9,7 +11,10 @@ export interface Equipment {
   createdAt: string; // ISO string
   updatedAt: string;
   deletedAt?: string;
-  images?: EquipmentImage[]; // NEW
+  images?: EquipmentImage[];
+
+  // ➕ NEW: Exercises that use this equipment
+  exercises?: Exercise[];
 }
 
 export interface EquipmentImage {

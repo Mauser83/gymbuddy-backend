@@ -1,4 +1,12 @@
-import { IsNumber, IsNotEmpty, Min, Max, IsOptional } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  Min,
+  Max,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateExerciseLogDto {
   @IsNumber({}, { message: 'Exercise ID must be a number' })
@@ -10,28 +18,27 @@ export class CreateExerciseLogDto {
   workoutPlanId?: number;
 
   @IsOptional()
+  @IsNumber({}, { message: 'Workout Session ID must be a number' })
+  workoutSessionId?: number;
+
+  @IsOptional()
   @IsNumber({}, { message: 'Gym ID must be a number' })
   gymId?: number;
 
   @IsOptional()
   @IsNumber({}, { message: 'Gym Equipment ID must be a number' })
-  gymEquipmentId?: number; // ✅ NEW FIELD
+  gymEquipmentId?: number;
 
   @IsOptional()
-  @IsNumber({}, { message: 'Sets must be a number' })
-  @Min(1, { message: 'Minimum 1 set required' })
-  @Max(20, { message: 'Maximum 20 sets allowed' })
-  sets?: number;
+  @IsNumber({}, { message: 'RPE must be a number between 0 and 10' })
+  @Min(0)
+  @Max(10)
+  rpe?: number;
 
   @IsOptional()
-  @IsNumber({}, { message: 'Reps must be a number' })
-  @Min(1, { message: 'Minimum 1 rep required' })
-  @Max(100, { message: 'Maximum 100 reps allowed' })
-  reps?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'Weight must be a number' })
-  weight?: number;
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
 }
 
 export class UpdateExerciseLogDto {
@@ -45,21 +52,24 @@ export class UpdateExerciseLogDto {
 
   @IsOptional()
   @IsNumber()
+  workoutSessionId?: number;
+
+  @IsOptional()
+  @IsNumber()
   gymId?: number;
 
   @IsOptional()
   @IsNumber()
-  gymEquipmentId?: number; // ✅ NEW FIELD
+  gymEquipmentId?: number;
 
   @IsOptional()
   @IsNumber()
-  sets?: number;
+  @Min(0)
+  @Max(10)
+  rpe?: number;
 
   @IsOptional()
-  @IsNumber()
-  reps?: number;
-
-  @IsOptional()
-  @IsNumber()
-  weight?: number;
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
 }

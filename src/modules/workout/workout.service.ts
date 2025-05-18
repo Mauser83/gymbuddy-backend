@@ -41,6 +41,22 @@ export class WorkoutService {
     }
   }
 
+  private async createPlanExercises(workoutPlanId: number, exercises: any[]) {
+    if (!exercises?.length) return;
+
+    await this.prisma.workoutPlanExercise.createMany({
+      data: exercises.map((ex, idx) => ({
+        workoutPlanId,
+        exerciseId: ex.exerciseId,
+        order: ex.order ?? idx,
+        targetSets: ex.targetSets ?? null,
+        targetReps: ex.targetReps ?? null,
+        targetWeight: ex.targetWeight ?? null,
+        targetRpe: ex.targetRpe ?? null,
+      })),
+    });
+  }
+
   async createWorkout(userId: number, data: CreateWorkoutInput) {
     if (!userId) throw new Error("Unauthorized");
 
@@ -54,13 +70,49 @@ export class WorkoutService {
 
     await validateInput(data, CreateWorkoutDto);
 
-    return this.prisma.workoutPlan.create({
+    const workout = await this.prisma.workoutPlan.create({
       data: {
         name: data.name,
         description: data.description,
         userId,
+        isPublic: data.isPublic ?? false,
       },
     });
+
+    await this.createPlanExercises(workout.id, data.exercises || []);
+    return workout;
+  }
+
+  async createWorkoutVersion(userId: number, parentPlanId: number, data: CreateWorkoutInput) {
+    await this.verifyWorkoutAccess(userId, parentPlanId);
+    await validateInput(data, CreateWorkoutDto);
+
+    const parent = await this.prisma.workoutPlan.findUnique({
+      where: { id: parentPlanId },
+      select: { userId: true },
+    });
+
+    if (!parent || parent.userId !== userId) {
+      throw new Error("Only the original creator can version this workout");
+    }
+
+    const versionCount = await this.prisma.workoutPlan.count({
+      where: { parentPlanId },
+    });
+
+    const newVersion = await this.prisma.workoutPlan.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        isPublic: data.isPublic ?? false,
+        parentPlanId,
+        version: versionCount + 2,
+        userId,
+      },
+    });
+
+    await this.createPlanExercises(newVersion.id, data.exercises || []);
+    return newVersion;
   }
 
   async getWorkouts(userId: number) {
@@ -83,6 +135,11 @@ export class WorkoutService {
     });
   }
 
+  async getWorkoutById(userId: number, workoutId: number) {
+    await this.verifyWorkoutAccess(userId, workoutId);
+    return this.prisma.workoutPlan.findUnique({ where: { id: workoutId } });
+  }
+
   async updateWorkout(
     userId: number,
     workoutId: number,
@@ -93,10 +150,23 @@ export class WorkoutService {
     await this.verifyWorkoutAccess(userId, workoutId);
     await validateInput(data, UpdateWorkoutDto);
 
-    return this.prisma.workoutPlan.update({
+    const updated = await this.prisma.workoutPlan.update({
       where: { id: workoutId },
-      data,
+      data: {
+        name: data.name,
+        description: data.description,
+        isPublic: data.isPublic,
+      },
     });
+
+    if (data.exercises) {
+      await this.prisma.workoutPlanExercise.deleteMany({
+        where: { workoutPlanId: workoutId },
+      });
+      await this.createPlanExercises(workoutId, data.exercises);
+    }
+
+    return updated;
   }
 
   async deleteWorkout(userId: number, workoutId: number) {
