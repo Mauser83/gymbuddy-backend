@@ -36,14 +36,35 @@ export class ExerciseService {
       throw new Error('Upgrade to premium to create exercises');
     }
 
-    const { equipmentIds, ...exerciseData } = input;
+    const {
+      equipmentIds,
+      primaryMuscleIds,
+      secondaryMuscleIds,
+      difficultyId,
+      exerciseTypeId,
+      ...exerciseData
+    } = input;
 
-    const createdExercise = await this.prisma.exercise.create({
-      data: {
-        ...exerciseData,
-        userId,
+    const data: any = {
+      ...exerciseData,
+      userId,
+      primaryMuscles: {
+        connect: primaryMuscleIds.map((id) => ({ id })),
       },
-    });
+      secondaryMuscles: {
+        connect: secondaryMuscleIds?.map((id) => ({ id })) ?? [],
+      },
+    };
+
+    if (difficultyId) {
+      data.difficulty = { connect: { id: difficultyId } };
+    }
+
+    if (exerciseTypeId) {
+      data.exerciseType = { connect: { id: exerciseTypeId } };
+    }
+
+    const createdExercise = await this.prisma.exercise.create({ data });
 
     if (equipmentIds?.length) {
       await this.prisma.exerciseEquipment.createMany({
@@ -74,20 +95,49 @@ export class ExerciseService {
     await this.verifyOwnership(userId, id);
     await validateInput(input, UpdateExerciseDto);
 
-    const { equipmentIds, ...exerciseData } = input;
+    const {
+      equipmentIds,
+      primaryMuscleIds,
+      secondaryMuscleIds,
+      difficultyId,
+      exerciseTypeId,
+      ...exerciseData
+    } = input;
+
+    const data: any = {
+      ...exerciseData,
+    };
+
+    if (difficultyId !== undefined) {
+      data.difficulty = { connect: { id: difficultyId } };
+    }
+
+    if (exerciseTypeId !== undefined) {
+      data.exerciseType = { connect: { id: exerciseTypeId } };
+    }
+
+    if (primaryMuscleIds) {
+      data.primaryMuscles = {
+        set: primaryMuscleIds.map((id) => ({ id })),
+      };
+    }
+
+    if (secondaryMuscleIds) {
+      data.secondaryMuscles = {
+        set: secondaryMuscleIds.map((id) => ({ id })),
+      };
+    }
 
     const updatedExercise = await this.prisma.exercise.update({
       where: { id },
-      data: exerciseData,
+      data,
     });
 
     if (equipmentIds) {
-      // Remove old links
       await this.prisma.exerciseEquipment.deleteMany({
         where: { exerciseId: id },
       });
 
-      // Insert new ones
       if (equipmentIds.length > 0) {
         await this.prisma.exerciseEquipment.createMany({
           data: equipmentIds.map((equipmentId) => ({

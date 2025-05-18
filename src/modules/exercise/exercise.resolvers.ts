@@ -4,7 +4,6 @@ import { PermissionService } from '../core/permission.service';
 
 export const ExerciseResolvers = {
   Exercise: {
-    // ➕ Linked equipments via ExerciseEquipment
     equipments: async (parent: any, _: any, context: AuthContext) => {
       const links = await context.prisma.exerciseEquipment.findMany({
         where: { exerciseId: parent.id },
@@ -13,11 +12,42 @@ export const ExerciseResolvers = {
       return links.map(link => link.equipment);
     },
 
-    // ➕ Linked workout plan entries
     workoutPlanEntries: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.workoutPlanExercise.findMany({
         where: { exerciseId: parent.id },
       });
+    },
+
+    // 🔗 New relation: difficulty level
+    difficulty: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.exercise
+        .findUnique({ where: { id: parent.id } })
+        .difficulty();
+    },
+
+    // 🔗 New relation: exercise type
+    exerciseType: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.exercise
+        .findUnique({ where: { id: parent.id } })
+        .exerciseType();
+    },
+
+    // 🔗 New relation: primary muscles
+    primaryMuscles: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.exercise
+        .findUnique({ where: { id: parent.id } })
+        .primaryMuscles({
+          include: { bodyPart: true },
+        });
+    },
+
+    // 🔗 New relation: secondary muscles
+    secondaryMuscles: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.exercise
+        .findUnique({ where: { id: parent.id } })
+        .secondaryMuscles({
+          include: { bodyPart: true },
+        });
     },
   },
 

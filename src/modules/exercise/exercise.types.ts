@@ -2,15 +2,41 @@ export interface Exercise {
   id: number;
   name: string;
   description?: string;
+  videoUrl?: string;
   createdAt: string;
   updatedAt: string;
+  userId: number;
 
-  // ➕ NEW: Relation fields
+  // ➕ NEW: Relations
+  difficulty?: ExerciseDifficulty;
+  exerciseType?: ExerciseType;
+  primaryMuscles?: Muscle[];
+  secondaryMuscles?: Muscle[];
   equipments?: Equipment[];
   workoutPlanEntries?: WorkoutPlanExercise[];
 }
 
-// Use these if not already declared elsewhere
+export interface Muscle {
+  id: number;
+  name: string;
+  bodyPart: BodyPart;
+}
+
+export interface BodyPart {
+  id: number;
+  name: string;
+}
+
+export interface ExerciseType {
+  id: number;
+  name: string;
+}
+
+export interface ExerciseDifficulty {
+  id: number;
+  level: string;
+}
+
 export interface Equipment {
   id: number;
   name: string;
@@ -32,13 +58,21 @@ export interface WorkoutPlanExercise {
 export interface CreateExerciseInput {
   name: string;
   description?: string;
-
-  // ➕ NEW: Support multi-equipment link
+  videoUrl?: string;
+  difficultyId?: number;
+  exerciseTypeId?: number;
+  primaryMuscleIds: number[];
+  secondaryMuscleIds?: number[];
   equipmentIds?: number[];
 }
 
 export interface UpdateExerciseInput {
   name?: string;
   description?: string;
+  videoUrl?: string;
+  difficultyId?: number;
+  exerciseTypeId?: number;
+  primaryMuscleIds?: number[];
+  secondaryMuscleIds?: number[];
   equipmentIds?: number[];
 }

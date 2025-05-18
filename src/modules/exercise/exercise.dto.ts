@@ -5,6 +5,7 @@ import {
   IsInt,
   ArrayNotEmpty,
   ArrayUnique,
+  IsUrl,
 } from 'class-validator';
 
 export class CreateExerciseDto {
@@ -15,7 +16,30 @@ export class CreateExerciseDto {
   @IsString()
   description?: string;
 
-  // ➕ NEW: optional list of equipment IDs to attach
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
+
+  @IsOptional()
+  @IsInt()
+  difficultyId?: number;
+
+  @IsOptional()
+  @IsInt()
+  exerciseTypeId?: number;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  primaryMuscleIds!: number[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  secondaryMuscleIds?: number[];
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()
@@ -31,6 +55,30 @@ export class UpdateExerciseDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
+
+  @IsOptional()
+  @IsInt()
+  difficultyId?: number;
+
+  @IsOptional()
+  @IsInt()
+  exerciseTypeId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  primaryMuscleIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  secondaryMuscleIds?: number[];
 
   @IsOptional()
   @IsArray()

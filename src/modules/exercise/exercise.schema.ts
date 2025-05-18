@@ -4,28 +4,62 @@ export const exerciseTypeDefs = `
     id: Int!
     name: String!
     description: String
+    videoUrl: String
     userId: Int!
     createdAt: String!
     updatedAt: String!
 
-    # ➕ NEW RELATIONS
+    difficulty: ExerciseDifficulty
+    exerciseType: ExerciseType
+    primaryMuscles: [Muscle!]!
+    secondaryMuscles: [Muscle!]!
     equipments: [Equipment!]!
     workoutPlanEntries: [WorkoutPlanExercise!]!
+  }
+
+  type Muscle {
+    id: Int!
+    name: String!
+    bodyPart: BodyPart!
+  }
+
+  type BodyPart {
+    id: Int!
+    name: String!
+    muscles: [Muscle!]!
+  }
+
+  type ExerciseType {
+    id: Int!
+    name: String!
+  }
+
+  type ExerciseDifficulty {
+    id: Int!
+    level: String!
   }
 
   input CreateExerciseInput {
     name: String!
     description: String
+    videoUrl: String
 
-    # Optionally: allow linking equipment at creation
+    difficultyId: Int
+    exerciseTypeId: Int
+    primaryMuscleIds: [Int!]!
+    secondaryMuscleIds: [Int!]
     equipmentIds: [Int!]
   }
 
   input UpdateExerciseInput {
     name: String
     description: String
+    videoUrl: String
 
-    # Optionally: update equipment links
+    difficultyId: Int
+    exerciseTypeId: Int
+    primaryMuscleIds: [Int!]
+    secondaryMuscleIds: [Int!]
     equipmentIds: [Int!]
   }
 

@@ -107,12 +107,23 @@ model WorkoutPlanExercise {
 }
 
 model Exercise {
-  id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(50)
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(50)
+  description     String?
+  videoUrl        String?   @db.VarChar(300)
+
+  difficulty      ExerciseDifficulty? @relation(fields: [difficultyId], references: [id])
+  difficultyId    Int?
+
+  exerciseType    ExerciseType? @relation(fields: [exerciseTypeId], references: [id])
+  exerciseTypeId  Int?
+
+  primaryMuscles   Muscle[] @relation("PrimaryMuscles")
+  secondaryMuscles Muscle[] @relation("SecondaryMuscles")
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
@@ -135,6 +146,40 @@ model ExerciseEquipment {
   @@unique([exerciseId, equipmentId])
   @@index([exerciseId])
   @@index([equipmentId])
+}
+
+model BodyPart {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  muscles  Muscle[]
+
+  @@index([name])
+}
+
+model Muscle {
+  id       Int      @id @default(autoincrement())
+  name     String   @unique
+  bodyPart BodyPart @relation(fields: [bodyPartId], references: [id])
+  bodyPartId Int
+
+  primaryInExercises   Exercise[] @relation("PrimaryMuscles")
+  secondaryInExercises Exercise[] @relation("SecondaryMuscles")
+}
+
+model ExerciseType {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  exercises Exercise[]
+
+  @@index([name])
+}
+
+model ExerciseDifficulty {
+  id        Int       @id @default(autoincrement())
+  level     String    @unique // e.g. "Beginner", "Intermediate", "Advanced"
+  exercises Exercise[]
+
+  @@index([level])
 }
 
 model ExerciseLog {
