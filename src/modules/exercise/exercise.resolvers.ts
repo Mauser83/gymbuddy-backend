@@ -18,84 +18,121 @@ export const ExerciseResolvers = {
       });
     },
 
-    // 🔗 New relation: difficulty level
     difficulty: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.exercise
         .findUnique({ where: { id: parent.id } })
         .difficulty();
     },
 
-    // 🔗 New relation: exercise type
     exerciseType: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.exercise
         .findUnique({ where: { id: parent.id } })
         .exerciseType();
     },
 
-    // 🔗 New relation: primary muscles
     primaryMuscles: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.exercise
         .findUnique({ where: { id: parent.id } })
-        .primaryMuscles({
-          include: { bodyPart: true },
-        });
+        .primaryMuscles({ include: { bodyPart: true } });
     },
 
-    // 🔗 New relation: secondary muscles
     secondaryMuscles: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.exercise
         .findUnique({ where: { id: parent.id } })
-        .secondaryMuscles({
-          include: { bodyPart: true },
-        });
+        .secondaryMuscles({ include: { bodyPart: true } });
     },
   },
 
   Query: {
     getMyExercises: async (_: unknown, __: unknown, context: AuthContext) => {
       if (!context.userId) throw new Error('Unauthorized');
-
-      const service = new ExerciseService(
-        context.prisma,
-        new PermissionService(context.prisma)
-      );
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
       return service.getMyExercises(Number(context.userId));
+    },
+
+    allExerciseTypes: (_: any, __: any, context: AuthContext) => {
+      return context.prisma.exerciseType.findMany();
+    },
+
+    allExerciseDifficulties: (_: any, __: any, context: AuthContext) => {
+      return context.prisma.exerciseDifficulty.findMany();
+    },
+
+    allBodyParts: (_: any, __: any, context: AuthContext) => {
+      return context.prisma.bodyPart.findMany({
+        include: { muscles: { include: { bodyPart: true } } },
+      });
+    },
+
+    musclesByBodyPart: (_: any, args: { bodyPartId: number }, context: AuthContext) => {
+      return context.prisma.muscle.findMany({
+        where: { bodyPartId: args.bodyPartId },
+        include: { bodyPart: true },
+      });
     },
   },
 
   Mutation: {
     createExercise: async (_: any, args: { input: any }, context: AuthContext) => {
       if (!context.userId) throw new Error('Unauthorized');
-
-      const service = new ExerciseService(
-        context.prisma,
-        new PermissionService(context.prisma)
-      );
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
       return service.createExercise(args.input, Number(context.userId));
     },
 
-    updateExercise: async (
-      _: any,
-      args: { id: number; input: any },
-      context: AuthContext
-    ) => {
+    updateExercise: async (_: any, args: { id: number; input: any }, context: AuthContext) => {
       if (!context.userId) throw new Error('Unauthorized');
-
-      const service = new ExerciseService(
-        context.prisma,
-        new PermissionService(context.prisma)
-      );
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
       return service.updateExercise(args.id, args.input, Number(context.userId));
     },
 
     deleteExercise: async (_: any, args: { id: number }, context: AuthContext) => {
       if (!context.userId) throw new Error('Unauthorized');
-
-      const service = new ExerciseService(
-        context.prisma,
-        new PermissionService(context.prisma)
-      );
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
       return service.deleteExercise(args.id, Number(context.userId));
+    },
+
+    // --- ExerciseType ---
+    createExerciseType: (_: any, args: { input: any }, context: AuthContext) => {
+      return context.prisma.exerciseType.create({ data: args.input });
+    },
+    updateExerciseType: (_: any, args: { id: number; input: any }, context: AuthContext) => {
+      return context.prisma.exerciseType.update({ where: { id: args.id }, data: args.input });
+    },
+    deleteExerciseType: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.exerciseType.delete({ where: { id: args.id } }).then(() => true);
+    },
+
+    // --- ExerciseDifficulty ---
+    createExerciseDifficulty: (_: any, args: { input: any }, context: AuthContext) => {
+      return context.prisma.exerciseDifficulty.create({ data: args.input });
+    },
+    updateExerciseDifficulty: (_: any, args: { id: number; input: any }, context: AuthContext) => {
+      return context.prisma.exerciseDifficulty.update({ where: { id: args.id }, data: args.input });
+    },
+    deleteExerciseDifficulty: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.exerciseDifficulty.delete({ where: { id: args.id } }).then(() => true);
+    },
+
+    // --- BodyPart ---
+    createBodyPart: (_: any, args: { input: any }, context: AuthContext) => {
+      return context.prisma.bodyPart.create({ data: args.input });
+    },
+    updateBodyPart: (_: any, args: { id: number; input: any }, context: AuthContext) => {
+      return context.prisma.bodyPart.update({ where: { id: args.id }, data: args.input });
+    },
+    deleteBodyPart: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.bodyPart.delete({ where: { id: args.id } }).then(() => true);
+    },
+
+    // --- Muscle ---
+    createMuscle: (_: any, args: { input: any }, context: AuthContext) => {
+      return context.prisma.muscle.create({ data: args.input });
+    },
+    updateMuscle: (_: any, args: { id: number; input: any }, context: AuthContext) => {
+      return context.prisma.muscle.update({ where: { id: args.id }, data: args.input });
+    },
+    deleteMuscle: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.muscle.delete({ where: { id: args.id } }).then(() => true);
     },
   },
 };

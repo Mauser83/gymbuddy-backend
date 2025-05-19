@@ -40,11 +40,6 @@ export class CreateExerciseDto {
   @IsInt({ each: true })
   secondaryMuscleIds?: number[];
 
-  @IsOptional()
-  @IsArray()
-  @ArrayUnique()
-  @IsInt({ each: true })
-  equipmentIds?: number[];
 }
 
 export class UpdateExerciseDto {
@@ -85,4 +80,54 @@ export class UpdateExerciseDto {
   @ArrayUnique()
   @IsInt({ each: true })
   equipmentIds?: number[];
+}
+
+// ----------------------
+// ✨ New Reference DTOs
+// ----------------------
+
+export class CreateExerciseTypeDto {
+  @IsString()
+  name!: string;
+}
+
+export class UpdateExerciseTypeDto {
+  @IsString()
+  name!: string;
+}
+
+export class CreateExerciseDifficultyDto {
+  @IsString()
+  level!: string;
+}
+
+export class UpdateExerciseDifficultyDto {
+  @IsString()
+  level!: string;
+}
+
+export class CreateBodyPartDto {
+  @IsString()
+  name!: string;
+}
+
+export class UpdateBodyPartDto {
+  @IsString()
+  name!: string;
+}
+
+export class CreateMuscleDto {
+  @IsString()
+  name!: string;
+
+  @IsInt()
+  bodyPartId!: number;
+}
+
+export class UpdateMuscleDto {
+  @IsString()
+  name!: string;
+
+  @IsInt()
+  bodyPartId!: number;
 }
