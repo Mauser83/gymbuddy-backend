@@ -4,12 +4,23 @@ import { PermissionService } from '../core/permission.service';
 
 export const ExerciseResolvers = {
   Exercise: {
-    equipments: async (parent: any, _: any, context: AuthContext) => {
-      const links = await context.prisma.exerciseEquipment.findMany({
+    equipmentSlots: async (parent: any, _: any, context: AuthContext) => {
+      const slots = await context.prisma.exerciseEquipmentSlot.findMany({
         where: { exerciseId: parent.id },
-        include: { equipment: true },
+        include: {
+          options: {
+            include: {
+              subcategory: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { slotIndex: 'asc' },
       });
-      return links.map(link => link.equipment);
+      return slots;
     },
 
     workoutPlanEntries: (parent: any, _: any, context: AuthContext) => {

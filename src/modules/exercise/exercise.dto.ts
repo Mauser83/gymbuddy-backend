@@ -6,7 +6,10 @@ import {
   ArrayNotEmpty,
   ArrayUnique,
   IsUrl,
+  ValidateNested,
+  IsBoolean,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateExerciseDto {
   @IsString()
@@ -40,6 +43,10 @@ export class CreateExerciseDto {
   @IsInt({ each: true })
   secondaryMuscleIds?: number[];
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateExerciseSlotDto)
+  equipmentSlots!: CreateExerciseSlotDto[];
 }
 
 export class UpdateExerciseDto {
@@ -77,13 +84,39 @@ export class UpdateExerciseDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayUnique()
-  @IsInt({ each: true })
-  equipmentIds?: number[];
+  @ValidateNested({ each: true })
+  @Type(() => CreateExerciseSlotDto)
+  equipmentSlots?: CreateExerciseSlotDto[];
 }
 
 // ----------------------
-// ✨ New Reference DTOs
+// ✨ New Nested DTOs
+// ----------------------
+
+export class CreateExerciseSlotDto {
+  @IsInt()
+  slotIndex!: number;
+
+  @IsBoolean()
+  isRequired!: boolean;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateExerciseSlotOptionDto)
+  options!: CreateExerciseSlotOptionDto[];
+}
+
+export class CreateExerciseSlotOptionDto {
+  @IsInt()
+  subcategoryId!: number;
+}
+
+// ----------------------
+// ✨ Reference DTOs
 // ----------------------
 
 export class CreateExerciseTypeDto {

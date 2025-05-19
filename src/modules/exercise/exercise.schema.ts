@@ -13,8 +13,35 @@ export const exerciseTypeDefs = `
     exerciseType: ExerciseType
     primaryMuscles: [Muscle!]!
     secondaryMuscles: [Muscle!]!
-    equipments: [Equipment!]!
     workoutPlanEntries: [WorkoutPlanExercise!]!
+
+    equipmentSlots: [ExerciseEquipmentSlot!]!
+  }
+
+  type ExerciseEquipmentSlot {
+    id: Int!
+    slotIndex: Int!
+    isRequired: Boolean!
+    comment: String
+    options: [ExerciseEquipmentOption!]!
+  }
+
+  type ExerciseEquipmentOption {
+    id: Int!
+    subcategory: EquipmentSubcategory!
+  }
+
+  type EquipmentSubcategory {
+    id: Int!
+    name: String!
+    slug: String!
+    category: EquipmentCategory!
+  }
+
+  type EquipmentCategory {
+    id: Int!
+    name: String!
+    slug: String!
   }
 
   type Muscle {
@@ -39,6 +66,17 @@ export const exerciseTypeDefs = `
     level: String!
   }
 
+  input CreateExerciseSlotOptionInput {
+    subcategoryId: Int!
+  }
+
+  input CreateExerciseSlotInput {
+    slotIndex: Int!
+    isRequired: Boolean!
+    comment: String
+    options: [CreateExerciseSlotOptionInput!]!
+  }
+
   input CreateExerciseInput {
     name: String!
     description: String
@@ -48,7 +86,7 @@ export const exerciseTypeDefs = `
     exerciseTypeId: Int
     primaryMuscleIds: [Int!]!
     secondaryMuscleIds: [Int!]
-    equipmentIds: [Int!]
+    equipmentSlots: [CreateExerciseSlotInput!]!
   }
 
   input UpdateExerciseInput {
@@ -60,7 +98,7 @@ export const exerciseTypeDefs = `
     exerciseTypeId: Int
     primaryMuscleIds: [Int!]
     secondaryMuscleIds: [Int!]
-    equipmentIds: [Int!]
+    equipmentSlots: [CreateExerciseSlotInput!]
   }
 
   input CreateExerciseTypeInput {

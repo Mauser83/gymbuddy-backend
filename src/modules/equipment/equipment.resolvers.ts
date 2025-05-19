@@ -23,13 +23,22 @@ export const EquipmentResolvers = {
       });
     },
 
-    // ➕ NEW: List exercises linked via ExerciseEquipment
-    exercises: async (parent: any, _: any, context: AuthContext) => {
-      const links = await context.prisma.exerciseEquipment.findMany({
-        where: { equipmentId: parent.id },
-        include: { exercise: true },
+    compatibleExercises: async (parent: any, _: any, context: AuthContext) => {
+      if (!parent.subcategoryId) return [];
+
+      return context.prisma.exercise.findMany({
+        where: {
+          equipmentSlots: {
+            some: {
+              options: {
+                some: {
+                  subcategoryId: parent.subcategoryId,
+                },
+              },
+            },
+          },
+        },
       });
-      return links.map((link) => link.exercise);
     },
   },
 

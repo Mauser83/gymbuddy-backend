@@ -50,58 +50,66 @@ export class ExerciseService {
     }
   }
 
-  async createExercise(input: CreateExerciseInput, userId: number) {
-    await validateInput(input, CreateExerciseDto);
+async createExercise(input: CreateExerciseInput, userId: number) {
+  await validateInput(input, CreateExerciseDto);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { userRole: true },
-    });
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: { userRole: true },
+  });
 
-    if (
-      !user ||
-      !["PREMIUM_USER", "PERSONAL_TRAINER", "ADMIN"].includes(user.userRole)
-    ) {
-      throw new Error("Upgrade to premium to create exercises");
-    }
+  if (
+    !user ||
+    !["PREMIUM_USER", "PERSONAL_TRAINER", "ADMIN"].includes(user.userRole)
+  ) {
+    throw new Error("Upgrade to premium to create exercises");
+  }
 
-    const {
-      primaryMuscleIds,
-      secondaryMuscleIds,
-      difficultyId,
-      exerciseTypeId,
-      ...exerciseData
-    } = input;
+  const {
+    primaryMuscleIds,
+    secondaryMuscleIds,
+    difficultyId,
+    exerciseTypeId,
+    equipmentSlots,
+    ...exerciseData
+  } = input;
 
-    const data: any = {
+  const createdExercise = await this.prisma.exercise.create({
+    data: {
       ...exerciseData,
       userId,
-    };
-
-    if (difficultyId) {
-      data.difficultyId = difficultyId; // ✅
-    }
-
-    if (exerciseTypeId) {
-      data.exerciseTypeId = exerciseTypeId; // ✅
-    }
-
-    if (primaryMuscleIds?.length) {
-      data.primaryMuscles = {
+      difficultyId,
+      exerciseTypeId,
+      primaryMuscles: {
         connect: primaryMuscleIds.map((id) => ({ id })),
-      };
-    }
+      },
+      secondaryMuscles: {
+        connect: secondaryMuscleIds?.map((id) => ({ id })) || [],
+      },
+    },
+  });
 
-    if (secondaryMuscleIds?.length) {
-      data.secondaryMuscles = {
-        connect: secondaryMuscleIds.map((id) => ({ id })),
-      };
-    }
+  // Create slots + options
+  for (const slot of equipmentSlots) {
+    const createdSlot = await this.prisma.exerciseEquipmentSlot.create({
+      data: {
+        slotIndex: slot.slotIndex,
+        isRequired: slot.isRequired,
+        comment: slot.comment,
+        exerciseId: createdExercise.id,
+      },
+    });
 
-    const createdExercise = await this.prisma.exercise.create({ data });
-
-    return createdExercise;
+    await this.prisma.exerciseEquipmentOption.createMany({
+      data: slot.options.map((opt) => ({
+        slotId: createdSlot.id,
+        subcategoryId: opt.subcategoryId,
+      })),
+    });
   }
+
+  return createdExercise;
+}
 
   async getMyExercises(userId: number) {
     return this.prisma.exercise.findMany({
@@ -110,64 +118,77 @@ export class ExerciseService {
     });
   }
 
-  async updateExercise(id: number, input: UpdateExerciseInput, userId: number) {
-    await this.verifyOwnership(userId, id);
-    await validateInput(input, UpdateExerciseDto);
+async updateExercise(id: number, input: UpdateExerciseInput, userId: number) {
+  await this.verifyOwnership(userId, id);
+  await validateInput(input, UpdateExerciseDto);
 
-    const {
-      equipmentIds,
-      primaryMuscleIds,
-      secondaryMuscleIds,
-      difficultyId,
-      exerciseTypeId,
-      ...exerciseData
-    } = input;
+  const {
+    primaryMuscleIds,
+    secondaryMuscleIds,
+    difficultyId,
+    exerciseTypeId,
+    equipmentSlots,
+    ...exerciseData
+  } = input;
 
-    const data: any = { ...exerciseData };
+  const updatedExercise = await this.prisma.exercise.update({
+    where: { id },
+    data: {
+      ...exerciseData,
+      difficultyId: difficultyId ?? undefined,
+      exerciseTypeId: exerciseTypeId ?? undefined,
+      ...(primaryMuscleIds && {
+        primaryMuscles: {
+          set: primaryMuscleIds.map((id) => ({ id })),
+        },
+      }),
+      ...(secondaryMuscleIds && {
+        secondaryMuscles: {
+          set: secondaryMuscleIds.map((id) => ({ id })),
+        },
+      }),
+    },
+  });
 
-    if (difficultyId !== undefined) {
-      data.difficulty = { connect: { id: difficultyId } };
-    }
-
-    if (exerciseTypeId !== undefined) {
-      data.exerciseType = { connect: { id: exerciseTypeId } };
-    }
-
-    if (primaryMuscleIds) {
-      data.primaryMuscles = {
-        set: primaryMuscleIds.map((id) => ({ id })),
-      };
-    }
-
-    if (secondaryMuscleIds) {
-      data.secondaryMuscles = {
-        set: secondaryMuscleIds.map((id) => ({ id })),
-      };
-    }
-
-    const updatedExercise = await this.prisma.exercise.update({
-      where: { id },
-      data,
+  if (equipmentSlots) {
+    const oldSlots = await this.prisma.exerciseEquipmentSlot.findMany({
+      where: { exerciseId: id },
+      select: { id: true },
     });
 
-    if (equipmentIds) {
-      await this.prisma.exerciseEquipment.deleteMany({
-        where: { exerciseId: id },
+    const slotIds = oldSlots.map((s) => s.id);
+
+    // Delete old options and slots
+    await this.prisma.exerciseEquipmentOption.deleteMany({
+      where: { slotId: { in: slotIds } },
+    });
+
+    await this.prisma.exerciseEquipmentSlot.deleteMany({
+      where: { exerciseId: id },
+    });
+
+    // Recreate new slots and options
+    for (const slot of equipmentSlots) {
+      const createdSlot = await this.prisma.exerciseEquipmentSlot.create({
+        data: {
+          slotIndex: slot.slotIndex,
+          isRequired: slot.isRequired,
+          comment: slot.comment,
+          exerciseId: id,
+        },
       });
 
-      if (equipmentIds.length > 0) {
-        await this.prisma.exerciseEquipment.createMany({
-          data: equipmentIds.map((equipmentId) => ({
-            exerciseId: id,
-            equipmentId,
-          })),
-          skipDuplicates: true,
-        });
-      }
+      await this.prisma.exerciseEquipmentOption.createMany({
+        data: slot.options.map((opt) => ({
+          slotId: createdSlot.id,
+          subcategoryId: opt.subcategoryId,
+        })),
+      });
     }
-
-    return updatedExercise;
   }
+
+  return updatedExercise;
+}
 
   async deleteExercise(id: number, userId: number) {
     await this.verifyOwnership(userId, id);

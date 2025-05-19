@@ -15,8 +15,8 @@ export const equipmentTypeDefs = `
     deletedAt: String
     images: [EquipmentImage!]!
 
-    # ➕ NEW: Many-to-many relation to Exercises via ExerciseEquipment
-    exercises: [Exercise!]!
+    # ✅ NEW: Exercises that use this equipment's subcategory
+    compatibleExercises: [Exercise!]!
   }
 
   type EquipmentImage {

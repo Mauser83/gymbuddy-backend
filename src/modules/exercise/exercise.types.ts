@@ -15,8 +15,34 @@ export interface Exercise {
   exerciseType?: ExerciseType;
   primaryMuscles?: Muscle[];
   secondaryMuscles?: Muscle[];
-  equipments?: Equipment[];
+  equipmentSlots?: ExerciseEquipmentSlot[];
   workoutPlanEntries?: WorkoutPlanExercise[];
+}
+
+export interface ExerciseEquipmentSlot {
+  id: number;
+  slotIndex: number;
+  isRequired: boolean;
+  comment?: string;
+  options: ExerciseEquipmentOption[];
+}
+
+export interface ExerciseEquipmentOption {
+  id: number;
+  subcategory: EquipmentSubcategory;
+}
+
+export interface EquipmentSubcategory {
+  id: number;
+  name: string;
+  slug: string;
+  category: EquipmentCategory;
+}
+
+export interface EquipmentCategory {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export interface ExerciseType {
@@ -91,6 +117,7 @@ export interface CreateExerciseInput {
   exerciseTypeId?: number;
   primaryMuscleIds: number[];
   secondaryMuscleIds?: number[];
+  equipmentSlots: CreateExerciseSlotInput[];
 }
 
 export interface UpdateExerciseInput {
@@ -101,7 +128,18 @@ export interface UpdateExerciseInput {
   exerciseTypeId?: number;
   primaryMuscleIds?: number[];
   secondaryMuscleIds?: number[];
-  equipmentIds?: number[];
+  equipmentSlots?: CreateExerciseSlotInput[];
+}
+
+export interface CreateExerciseSlotInput {
+  slotIndex: number;
+  isRequired: boolean;
+  comment?: string;
+  options: CreateExerciseSlotOptionInput[];
+}
+
+export interface CreateExerciseSlotOptionInput {
+  subcategoryId: number;
 }
 
 // ---------------------

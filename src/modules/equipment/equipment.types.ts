@@ -13,8 +13,8 @@ export interface Equipment {
   deletedAt?: string;
   images?: EquipmentImage[];
 
-  // ➕ NEW: Exercises that use this equipment
-  exercises?: Exercise[];
+  // ✅ NEW: Exercises that use this equipment's subcategory
+  compatibleExercises?: Exercise[];
 }
 
 export interface EquipmentImage {

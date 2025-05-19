@@ -130,22 +130,35 @@ model Exercise {
 
   workoutPlanEntries WorkoutPlanExercise[]
   exerciseLogs       ExerciseLog[]
-  equipments         ExerciseEquipment[]
+  equipmentSlots     ExerciseEquipmentSlot[]
 
   @@index([userId])
 }
 
-model ExerciseEquipment {
+model ExerciseEquipmentSlot {
   id          Int       @id @default(autoincrement())
   exercise    Exercise  @relation(fields: [exerciseId], references: [id])
   exerciseId  Int
-  equipment   Equipment @relation(fields: [equipmentId], references: [id])
-  equipmentId Int
+  slotIndex   Int       // e.g., 1 = primary equipment, 2 = bench, etc.
   isRequired  Boolean   @default(true)
+  comment     String?   @db.VarChar(300)
 
-  @@unique([exerciseId, equipmentId])
+  options ExerciseEquipmentOption[]
+
   @@index([exerciseId])
-  @@index([equipmentId])
+  @@unique([exerciseId, slotIndex])
+}
+
+model ExerciseEquipmentOption {
+  id               Int                    @id @default(autoincrement())
+  slot             ExerciseEquipmentSlot @relation(fields: [slotId], references: [id])
+  slotId           Int
+  subcategory      EquipmentSubcategory  @relation(fields: [subcategoryId], references: [id])
+  subcategoryId    Int
+
+  @@index([slotId])
+  @@index([subcategoryId])
+  @@unique([slotId, subcategoryId])
 }
 
 model BodyPart {
@@ -275,7 +288,6 @@ model Equipment {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  exercises ExerciseEquipment[]
   images    EquipmentImage[]
   gyms      GymEquipment[]
 
@@ -299,6 +311,8 @@ model EquipmentSubcategory {
   category   EquipmentCategory @relation(fields: [categoryId], references: [id])
   categoryId Int
   equipments Equipment[]
+
+  exerciseOptions ExerciseEquipmentOption[] 
 }
 
 model Gym {
