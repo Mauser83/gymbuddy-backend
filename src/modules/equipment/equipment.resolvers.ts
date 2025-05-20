@@ -28,6 +28,7 @@ export const EquipmentResolvers = {
 
       return context.prisma.exercise.findMany({
         where: {
+          deletedAt: null,
           equipmentSlots: {
             some: {
               options: {
