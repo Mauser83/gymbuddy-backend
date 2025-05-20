@@ -97,6 +97,18 @@ export const EquipmentResolvers = {
         where: args.categoryId ? { categoryId: args.categoryId } : {},
       });
     },
+
+    gymEquipmentByGymId: async (
+      _: unknown,
+      args: { gymId: number },
+      context: AuthContext
+    ) => {
+      const service = new EquipmentService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getGymEquipmentByGymId(args.gymId);
+    },
   },
 
   Mutation: {

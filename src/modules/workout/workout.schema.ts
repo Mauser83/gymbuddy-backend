@@ -75,6 +75,7 @@ export const workoutTypeDefs = `#graphql
   extend type Query {
     workouts: [Workout]
     workoutById(id: Int!): Workout
+    sharedWorkouts: [Workout]
   }
 
   extend type Mutation {

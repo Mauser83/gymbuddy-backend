@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../lib/prisma';
+import { PrismaClient } from "../../lib/prisma";
 import {
   CreateEquipmentInput,
   UpdateEquipmentInput,
@@ -6,7 +6,7 @@ import {
   CreateEquipmentSubcategoryInput,
   UpdateEquipmentCategoryInput,
   UpdateEquipmentSubcategoryInput,
-} from './equipment.types';
+} from "./equipment.types";
 import {
   CreateEquipmentDto,
   UpdateEquipmentDto,
@@ -15,11 +15,11 @@ import {
   UpdateEquipmentCategoryDto,
   CreateEquipmentSubcategoryDto,
   UpdateEquipmentSubcategoryDto,
-} from './equipment.dto';
-import { validateInput } from '../../middlewares/validation';
-import { AuthContext } from '../auth/auth.types';
-import { PermissionService } from '../core/permission.service';
-import { verifyRoles } from '../auth/auth.roles';
+} from "./equipment.dto";
+import { validateInput } from "../../middlewares/validation";
+import { AuthContext } from "../auth/auth.types";
+import { PermissionService } from "../core/permission.service";
+import { verifyRoles } from "../auth/auth.roles";
 
 export class EquipmentService {
   private prisma: PrismaClient;
@@ -34,7 +34,7 @@ export class EquipmentService {
     await validateInput(input, CreateEquipmentDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipment.create({
@@ -53,10 +53,14 @@ export class EquipmentService {
       where: search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { brand: { contains: search, mode: 'insensitive' } },
-              { category: { name: { contains: search, mode: 'insensitive' } } },
-              { subcategory: { name: { contains: search, mode: 'insensitive' } } },
+              { name: { contains: search, mode: "insensitive" } },
+              { brand: { contains: search, mode: "insensitive" } },
+              { category: { name: { contains: search, mode: "insensitive" } } },
+              {
+                subcategory: {
+                  name: { contains: search, mode: "insensitive" },
+                },
+              },
             ],
           }
         : undefined,
@@ -67,11 +71,30 @@ export class EquipmentService {
     });
   }
 
-  async updateEquipment(id: number, input: UpdateEquipmentInput, context: AuthContext) {
+  async getGymEquipmentByGymId(gymId: number) {
+    return this.prisma.gymEquipment.findMany({
+      where: { gymId },
+      include: {
+        equipment: {
+          include: {
+            subcategory: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async updateEquipment(
+    id: number,
+    input: UpdateEquipmentInput,
+    context: AuthContext
+  ) {
     await validateInput(input, UpdateEquipmentDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipment.update({
@@ -82,7 +105,7 @@ export class EquipmentService {
 
   async deleteEquipment(id: number, context: AuthContext) {
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipment.delete({
@@ -90,11 +113,14 @@ export class EquipmentService {
     });
   }
 
-  async uploadEquipmentImage(input: UploadEquipmentImageDto, context: AuthContext) {
+  async uploadEquipmentImage(
+    input: UploadEquipmentImageDto,
+    context: AuthContext
+  ) {
     await validateInput(input, UploadEquipmentImageDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentImage.create({
@@ -107,7 +133,7 @@ export class EquipmentService {
 
   async deleteEquipmentImage(imageId: number, context: AuthContext) {
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentImage.delete({
@@ -115,21 +141,28 @@ export class EquipmentService {
     });
   }
 
-  async createEquipmentCategory(input: CreateEquipmentCategoryInput, context: AuthContext) {
+  async createEquipmentCategory(
+    input: CreateEquipmentCategoryInput,
+    context: AuthContext
+  ) {
     await validateInput(input, CreateEquipmentCategoryDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentCategory.create({ data: input });
   }
 
-  async updateEquipmentCategory(id: number, input: UpdateEquipmentCategoryInput, context: AuthContext) {
+  async updateEquipmentCategory(
+    id: number,
+    input: UpdateEquipmentCategoryInput,
+    context: AuthContext
+  ) {
     await validateInput(input, UpdateEquipmentCategoryDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentCategory.update({ where: { id }, data: input });
@@ -137,35 +170,45 @@ export class EquipmentService {
 
   async deleteEquipmentCategory(id: number, context: AuthContext) {
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentCategory.delete({ where: { id } });
   }
 
-  async createEquipmentSubcategory(input: CreateEquipmentSubcategoryInput, context: AuthContext) {
+  async createEquipmentSubcategory(
+    input: CreateEquipmentSubcategoryInput,
+    context: AuthContext
+  ) {
     await validateInput(input, CreateEquipmentSubcategoryDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentSubcategory.create({ data: input });
   }
 
-  async updateEquipmentSubcategory(id: number, input: UpdateEquipmentSubcategoryInput, context: AuthContext) {
+  async updateEquipmentSubcategory(
+    id: number,
+    input: UpdateEquipmentSubcategoryInput,
+    context: AuthContext
+  ) {
     await validateInput(input, UpdateEquipmentSubcategoryDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
-    return this.prisma.equipmentSubcategory.update({ where: { id }, data: input });
+    return this.prisma.equipmentSubcategory.update({
+      where: { id },
+      data: input,
+    });
   }
 
   async deleteEquipmentSubcategory(id: number, context: AuthContext) {
     verifyRoles(context, {
-      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
     return this.prisma.equipmentSubcategory.delete({ where: { id } });

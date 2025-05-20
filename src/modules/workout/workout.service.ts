@@ -205,4 +205,22 @@ export class WorkoutService {
       data: { isPublic: true },
     });
   }
+
+  async getSharedWorkouts(userId: number) {
+  if (!userId) throw new Error("Unauthorized");
+
+  return this.prisma.workoutPlan.findMany({
+    where: {
+      sharedWith: {
+        some: { id: userId },
+      },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+    },
+  });
+}
 }

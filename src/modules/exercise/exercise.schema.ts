@@ -142,6 +142,9 @@ export const exerciseTypeDefs = `
     allExerciseDifficulties: [ExerciseDifficulty!]!
     allBodyParts: [BodyPart!]!
     musclesByBodyPart(bodyPartId: Int!): [Muscle!]!
+
+    exercisesAvailableAtGym(gymId: Int!, search: String): [Exercise!]!
+
   }
 
   extend type Mutation {

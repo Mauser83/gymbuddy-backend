@@ -90,6 +90,8 @@ export const equipmentTypeDefs = `
     allEquipments(search: String): [Equipment]
     equipmentCategories: [EquipmentCategory!]!
     equipmentSubcategories(categoryId: ID): [EquipmentSubcategory!]!
+
+    gymEquipmentByGymId(gymId: Int!): [GymEquipment!]!
   }
 
   extend type Mutation {
