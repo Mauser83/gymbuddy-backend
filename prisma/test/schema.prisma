@@ -50,7 +50,6 @@ model User {
   exercises          Exercise[]
   gymManagementRoles GymManagementRole[]
   workoutPlans       WorkoutPlan[]
-  exerciseLogs       ExerciseLog[]
   gymsAsTrainer      GymTrainer[]
   chatMemberships    GymChatMember[]
   sharedWorkouts     WorkoutPlan[]       @relation("SharedWorkouts")
@@ -79,7 +78,6 @@ model WorkoutPlan {
   userId Int
 
   exercises        WorkoutPlanExercise[]
-  exerciseLogs     ExerciseLog[]         @relation("WorkoutLogs")
   sharedWith       User[]                @relation("SharedWorkouts")
   assignedWorkouts AssignedWorkout[]
   sessions         WorkoutSession[]
@@ -196,37 +194,27 @@ model ExerciseDifficulty {
 }
 
 model ExerciseLog {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  sets      Int?
-  reps      Int?
-  weight    Float?
-  rpe       Decimal? @db.Decimal(3, 1)
-  notes     String?  @db.VarChar(1000)
+  id               Int      @id @default(autoincrement())
+  exerciseId       Int
+  gymEquipmentId   Int
+  workoutSessionId Int
 
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId Int
+  setNumber        Int
+  reps             Int
+  weight           Float
+  rpe              Decimal? @db.Decimal(3,1)
+  notes            String?  @db.VarChar(1000)
 
-  exercise   Exercise @relation(fields: [exerciseId], references: [id])
-  exerciseId Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  workoutPlan   WorkoutPlan? @relation("WorkoutLogs", fields: [workoutPlanId], references: [id])
-  workoutPlanId Int?
+  exercise         Exercise        @relation(fields: [exerciseId], references: [id])
+  gymEquipment     GymEquipment    @relation(fields: [gymEquipmentId], references: [id])
+  workoutSession   WorkoutSession  @relation(fields: [workoutSessionId], references: [id])
 
-  workoutSession   WorkoutSession? @relation(fields: [workoutSessionId], references: [id])
-  workoutSessionId Int?
-
-  gym   Gym? @relation(fields: [gymId], references: [id])
-  gymId Int?
-
-  gymEquipment   GymEquipment? @relation(fields: [gymEquipmentId], references: [id])
-  gymEquipmentId Int?
-
-  @@index([userId])
   @@index([exerciseId])
-  @@index([workoutPlanId])
-  @@index([gymId])
+  @@index([gymEquipmentId])
+  @@index([workoutSessionId])
 }
 
 model WorkoutSession {
@@ -344,7 +332,6 @@ model Gym {
 
   trainers     GymTrainer[]
   chatMembers  GymChatMember[]
-  exerciseLogs ExerciseLog[]
   gymEquipment GymEquipment[]
 
   @@index([name])

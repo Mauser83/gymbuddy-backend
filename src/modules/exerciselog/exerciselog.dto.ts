@@ -6,31 +6,36 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  IsInt,
 } from 'class-validator';
 
 export class CreateExerciseLogDto {
-  @IsNumber({}, { message: 'Exercise ID must be a number' })
-  @IsNotEmpty({ message: 'Exercise ID is required' })
+  @IsInt()
+  @IsNotEmpty()
   exerciseId!: number;
 
-  @IsOptional()
-  @IsNumber({}, { message: 'Workout Plan ID must be a number' })
-  workoutPlanId?: number;
+  @IsInt()
+  @IsNotEmpty()
+  gymEquipmentId!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  workoutSessionId!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  setNumber!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  reps!: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  weight!: number;
 
   @IsOptional()
-  @IsNumber({}, { message: 'Workout Session ID must be a number' })
-  workoutSessionId?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'Gym ID must be a number' })
-  gymId?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'Gym Equipment ID must be a number' })
-  gymEquipmentId?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'RPE must be a number between 0 and 10' })
+  @IsNumber()
   @Min(0)
   @Max(10)
   rpe?: number;
@@ -43,24 +48,16 @@ export class CreateExerciseLogDto {
 
 export class UpdateExerciseLogDto {
   @IsOptional()
-  @IsNumber()
-  exerciseId?: number;
+  @IsInt()
+  setNumber?: number;
+
+  @IsOptional()
+  @IsInt()
+  reps?: number;
 
   @IsOptional()
   @IsNumber()
-  workoutPlanId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  workoutSessionId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  gymId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  gymEquipmentId?: number;
+  weight?: number;
 
   @IsOptional()
   @IsNumber()

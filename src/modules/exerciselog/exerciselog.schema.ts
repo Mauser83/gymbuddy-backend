@@ -2,20 +2,20 @@ export const exerciselogTypeDefs = `
 
   type ExerciseLog {
     id: Int!
-    userId: Int!
     exerciseId: Int!
-    workoutPlanId: Int
-    workoutSessionId: Int
-    workoutSession: WorkoutSession
-    gymId: Int
-    gymEquipmentId: Int
+    gymEquipmentId: Int!
+    workoutSessionId: Int!
+    setNumber: Int!
+    reps: Int!
+    weight: Float!
     rpe: Float
     notes: String
     createdAt: String!
     updatedAt: String!
+    workoutSession: WorkoutSession
   }
 
-    type WorkoutSession {
+  type WorkoutSession {
     id: Int!
     userId: Int!
     startedAt: String!
@@ -28,20 +28,19 @@ export const exerciselogTypeDefs = `
 
   input CreateExerciseLogInput {
     exerciseId: Int!
-    workoutPlanId: Int
-    workoutSessionId: Int
-    gymId: Int
-    gymEquipmentId: Int
+    gymEquipmentId: Int!
+    workoutSessionId: Int!
+    setNumber: Int!
+    reps: Int!
+    weight: Float!
     rpe: Float
     notes: String
   }
 
   input UpdateExerciseLogInput {
-    exerciseId: Int
-    workoutPlanId: Int
-    workoutSessionId: Int
-    gymId: Int
-    gymEquipmentId: Int
+    setNumber: Int
+    reps: Int
+    weight: Float
     rpe: Float
     notes: String
   }

@@ -1,12 +1,12 @@
 export interface ExerciseLog {
   id: number;
-  userId: number;
-  workoutPlanId?: number | null;
-  workoutSessionId?: number | null;
   exerciseId: number;
-  gymId?: number | null;
-  gymEquipmentId?: number | null;
+  gymEquipmentId: number;
+  workoutSessionId: number;
 
+  setNumber: number;
+  reps: number;
+  weight: number;
   rpe?: number;
   notes?: string;
 
@@ -16,22 +16,20 @@ export interface ExerciseLog {
 
 export interface CreateExerciseLogInput {
   exerciseId: number;
-  workoutPlanId?: number;
-  workoutSessionId?: number;
-  gymId?: number;
-  gymEquipmentId?: number;
+  gymEquipmentId: number;
+  workoutSessionId: number;
 
+  setNumber: number;
+  reps: number;
+  weight: number;
   rpe?: number;
   notes?: string;
 }
 
 export interface UpdateExerciseLogInput {
-  exerciseId?: number;
-  workoutPlanId?: number;
-  workoutSessionId?: number;
-  gymId?: number;
-  gymEquipmentId?: number;
-
+  setNumber?: number;
+  reps?: number;
+  weight?: number;
   rpe?: number;
   notes?: string;
 }
