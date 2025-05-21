@@ -3,7 +3,7 @@ import { gymTypeDefs } from "../modules/gym/gym.schema";
 import { exerciselogTypeDefs } from "../modules/exerciselog/exerciselog.schema";
 import { exerciseTypeDefs } from "../modules/exercise/exercise.schema";
 import { equipmentTypeDefs } from "../modules/equipment/equipment.schema";
-import { workoutTypeDefs } from "../modules/workout/workout.schema";
+import { workoutplanTypeDefs } from "../modules/workoutplan/workoutplan.schema";
 import { userTypeDefs } from "../modules/user/user.schema";
 import { authTypeDefs } from "../modules/auth/auth.schema";
 
@@ -19,7 +19,7 @@ const typeDefs = gql`
   ${exerciselogTypeDefs}
   ${exerciseTypeDefs}
   ${equipmentTypeDefs}
-  ${workoutTypeDefs}
+  ${workoutplanTypeDefs}
   ${userTypeDefs}
   ${authTypeDefs}
 

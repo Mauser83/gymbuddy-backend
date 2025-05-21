@@ -1,5 +1,5 @@
-export const workoutTypeDefs = `#graphql
-  type Workout {
+export const workoutplanTypeDefs = `#graphql
+  type WorkoutPlan {
     id: Int!
     name: String!
     description: String
@@ -38,7 +38,7 @@ export const workoutTypeDefs = `#graphql
     feedback: String
     createdAt: String!
 
-    workoutPlan: Workout!
+    workoutPlan: WorkoutPlan!
     trainer: User!
     assignee: User!
     sessions: [WorkoutSession!]!
@@ -59,32 +59,32 @@ export const workoutTypeDefs = `#graphql
     targetRpe: Float
   }
 
-  input CreateWorkoutInput {
+  input CreateWorkoutPlanInput {
     name: String!
     description: String
     isPublic: Boolean
     exercises: [WorkoutPlanExerciseInput!]
   }
 
-  input UpdateWorkoutInput {
+  input UpdateWorkoutPlanInput {
     name: String
     description: String
     exercises: [WorkoutPlanExerciseInput!]
   }
 
   extend type Query {
-    workouts: [Workout]
-    workoutById(id: Int!): Workout
-    sharedWorkouts: [Workout]
+    workoutPlans: [WorkoutPlan]
+    workoutPlanById(id: Int!): WorkoutPlan
+    sharedWorkoutPlans: [WorkoutPlan]
   }
 
   extend type Mutation {
-    createWorkout(input: CreateWorkoutInput!): Workout
-    updateWorkout(id: Int!, input: UpdateWorkoutInput!): Workout
-    deleteWorkout(id: Int!): String
-    shareWorkout(workoutId: Int!, shareWithUserId: Int): Workout
+    createWorkoutPlan(input: CreateWorkoutPlanInput!): WorkoutPlan
+    updateWorkoutPlan(id: Int!, input: UpdateWorkoutPlanInput!): WorkoutPlan
+    deleteWorkoutPlan(id: Int!): String
+    shareWorkoutPlan(workoutPlanId: Int!, shareWithUserId: Int): WorkoutPlan
 
     # ➕ NEW: Create a new version of an existing workout
-    createWorkoutVersion(parentPlanId: Int!, input: CreateWorkoutInput!): Workout
+    createWorkoutPlanVersion(parentPlanId: Int!, input: CreateWorkoutPlanInput!): WorkoutPlan
   }
 `;

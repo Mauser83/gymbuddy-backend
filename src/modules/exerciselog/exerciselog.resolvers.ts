@@ -12,6 +12,15 @@ export const ExerciseLogResolvers = {
         : null;
     },
   },
+  WorkoutSession: {
+    exerciseLogs: async (parent: any, _args: any, context: AuthContext) => {
+      return context.prisma.exerciseLog.findMany({
+        where: {
+          workoutSessionId: parent.id,
+        },
+      });
+    },
+  },
 
   Query: {
     exerciseLogs: async (_: unknown, __: unknown, context: AuthContext) => {
@@ -23,6 +32,40 @@ export const ExerciseLogResolvers = {
       );
 
       return service.getExerciseLogs(Number(context.userId));
+    },
+    workoutSessionById: async (
+      _: any,
+      { id }: { id: number },
+      context: AuthContext
+    ) => {
+      return context.prisma.workoutSession.findUnique({
+        where: { id },
+        include: {
+          gym: true,
+          workoutPlan: true,
+        },
+      });
+    },
+    workoutSessionsByUser: async (
+      _: any,
+      { userId }: { userId: number },
+      context: AuthContext
+    ) => {
+      return context.prisma.workoutSession.findMany({ where: { userId } });
+    },
+    activeWorkoutSession: async (
+      _: any,
+      { userId }: { userId: number },
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthorized");
+
+      const service = new ExerciseLogService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+
+      return service.getActiveWorkoutSession(userId);
     },
   },
 
@@ -74,6 +117,45 @@ export const ExerciseLogResolvers = {
       );
 
       return service.deleteExerciseLog(args.id, Number(context.userId));
+    },
+    createWorkoutSession: async (
+      _: any,
+      { input }: any,
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthorized");
+
+      const service = new ExerciseLogService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+
+      return service.createWorkoutSession(input, Number(context.userId));
+    },
+    updateWorkoutSession: async (
+      _: any,
+      { id, input }: any,
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthorized");
+
+      const service = new ExerciseLogService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+
+      return service.updateWorkoutSession(id, input, Number(context.userId));
+    },
+    deleteWorkoutSession: async (
+      _: any,
+      { id }: { id: number },
+      context: AuthContext
+    ) => {
+      await context.prisma.exerciseLog.deleteMany({
+        where: { workoutSessionId: id },
+      }); // cleanup
+      await context.prisma.workoutSession.delete({ where: { id } });
+      return true;
     },
   },
 };

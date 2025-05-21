@@ -28,7 +28,7 @@ export interface WorkoutPlanExercise {
   updatedAt: Date;
 }
 
-export interface CreateWorkoutInput {
+export interface CreateWorkoutPlanInput {
   name: string;
   description?: string;
   isPublic?: boolean;
@@ -36,7 +36,7 @@ export interface CreateWorkoutInput {
   exercises?: WorkoutPlanExerciseInput[]; // ➕ NEW
 }
 
-export interface UpdateWorkoutInput {
+export interface UpdateWorkoutPlanInput {
   name?: string;
   description?: string;
   isPublic?: boolean;

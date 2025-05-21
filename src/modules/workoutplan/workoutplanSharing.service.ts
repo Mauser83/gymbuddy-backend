@@ -12,15 +12,15 @@ export class SharingService {
     this.permissionService = permissionService;
   }
 
-  async shareWorkout(ownerId: number, workoutId: number, userId: number, accessLevel: 'VIEW' | 'EDIT') {
+  async shareWorkoutPlan(ownerId: number, workoutPlanId: number, userId: number, accessLevel: 'VIEW' | 'EDIT') {
     // Verify owner has permission to share
-    const canShare = await this.verifySharingPermission(ownerId, workoutId);
+    const canShare = await this.verifySharingPermission(ownerId, workoutPlanId);
     if (!canShare) {
       throw new Error('Insufficient permissions to share this workout');
     }
 
     return this.prisma.workoutPlan.update({
-      where: { id: workoutId },
+      where: { id: workoutPlanId },
       data: {
         sharedWith: {
           connect: { id: userId }
@@ -39,18 +39,18 @@ export class SharingService {
     });
   }
 
-  async canAccessWorkout(userId: number, workoutId: number): Promise<boolean> {
-    const workout = await this.prisma.workoutPlan.findUnique({
-      where: { id: workoutId },
+  async canAccessWorkoutPlan(userId: number, workoutPlanId: number): Promise<boolean> {
+    const workoutPlan = await this.prisma.workoutPlan.findUnique({
+      where: { id: workoutPlanId },
       include: { sharedWith: true }
     });
 
-    if (!workout) return false;
+    if (!workoutPlan) return false;
 
     // Check ownership
-    if (workout.userId === userId) return true;
+    if (workoutPlan.userId === userId) return true;
 
     // Check sharing
-    return workout.sharedWith.some((user: User) => user.id === userId);
+    return workoutPlan.sharedWith.some((user: User) => user.id === userId);
   }
 }

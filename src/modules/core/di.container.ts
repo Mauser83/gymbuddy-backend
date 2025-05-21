@@ -1,6 +1,6 @@
 import { prisma, PrismaClient } from '../../lib/prisma';
 import { PermissionService } from '../core/permission.service';
-import { SharingService } from '../workout/workoutSharing.service';
+import { SharingService } from '../workoutplan/workoutplanSharing.service';
 import { UserService } from '../auth/user.service';
 import { AuditService } from '../core/audit.service';
 

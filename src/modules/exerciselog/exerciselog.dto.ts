@@ -7,7 +7,8 @@ import {
   IsString,
   MaxLength,
   IsInt,
-} from 'class-validator';
+  IsDateString,
+} from "class-validator";
 
 export class CreateExerciseLogDto {
   @IsInt()
@@ -64,6 +65,46 @@ export class UpdateExerciseLogDto {
   @Min(0)
   @Max(10)
   rpe?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+}
+
+// ⬇️ Add these new DTOs for WorkoutSession
+
+export class CreateWorkoutSessionDto {
+  @IsInt()
+  @IsNotEmpty()
+  userId!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  gymId!: number;
+
+  @IsDateString()
+  @IsNotEmpty()
+  startedAt!: string;
+
+  @IsOptional()
+  @IsInt()
+  workoutPlanId?: number;
+
+  @IsOptional()
+  @IsInt()
+  assignedWorkoutId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+}
+
+export class UpdateWorkoutSessionDto {
+  @IsOptional()
+  @IsDateString()
+  endedAt?: string;
 
   @IsOptional()
   @IsString()

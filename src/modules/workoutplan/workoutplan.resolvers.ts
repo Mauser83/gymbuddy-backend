@@ -1,10 +1,10 @@
 import type { AuthContext } from "../auth/auth.types";
-import { WorkoutService } from "./workout.service";
-import { SharingService } from "./workoutSharing.service";
+import { WorkoutPlanService } from "./workoutplan.service";
+import { SharingService } from "./workoutplanSharing.service";
 import { PermissionService } from "../core/permission.service";
 
-export const WorkoutResolvers = {
-  Workout: {
+export const WorkoutPlanResolvers = {
+  WorkoutPlan: {
     exercises: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.workoutPlanExercise.findMany({
         where: { workoutPlanId: parent.id },
@@ -24,103 +24,103 @@ export const WorkoutResolvers = {
   },
 
   Query: {
-    workouts: async (_: unknown, __: unknown, context: AuthContext) => {
+    workoutPlans: async (_: unknown, __: unknown, context: AuthContext) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.getWorkouts(context.userId);
+      return workoutPlanService.getWorkoutPlans(context.userId);
     },
 
-    workoutById: async (
+    workoutPlanById: async (
       _: unknown,
       args: { id: number },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.getWorkoutById(context.userId, args.id);
+      return workoutPlanService.getWorkoutPlanById(context.userId, args.id);
     },
 
-    sharedWorkouts: async (_: unknown, __: unknown, context: AuthContext) => {
+    sharedWorkoutPlans: async (_: unknown, __: unknown, context: AuthContext) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.getSharedWorkouts(context.userId);
+      return workoutPlanService.getSharedWorkoutPlans(context.userId);
     },
   },
 
   Mutation: {
-    createWorkout: async (
+    createWorkoutPlan: async (
       _: unknown,
       args: { input: any },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.createWorkout(context.userId, args.input);
+      return workoutPlanService.createWorkoutPlan(context.userId, args.input);
     },
 
-    updateWorkout: async (
+    updateWorkoutPlan: async (
       _: unknown,
       args: { id: number; input: any },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.updateWorkout(context.userId, args.id, args.input);
+      return workoutPlanService.updateWorkoutPlan(context.userId, args.id, args.input);
     },
 
-    deleteWorkout: async (
+    deleteWorkoutPlan: async (
       _: unknown,
       args: { id: number },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.deleteWorkout(context.userId, args.id);
+      return workoutPlanService.deleteWorkoutPlan(context.userId, args.id);
     },
 
-    shareWorkout: async (
+    shareWorkoutPlan: async (
       _: unknown,
       args: { workoutId: number; shareWithUserId?: number },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.shareWorkout(
+      return workoutPlanService.shareWorkoutPlan(
         context.userId,
         args.workoutId,
         args.shareWithUserId ?? null
@@ -128,19 +128,19 @@ export const WorkoutResolvers = {
     },
 
     // ➕ NEW: create version of existing workout plan
-    createWorkoutVersion: async (
+    createWorkoutPlanVersion: async (
       _: unknown,
       args: { parentPlanId: number; input: any },
       context: AuthContext
     ) => {
       if (context.userId === null)
         throw new Error("Unauthenticated: userId is null.");
-      const workoutService = new WorkoutService(
+      const workoutPlanService = new WorkoutPlanService(
         context.prisma,
         new PermissionService(context.prisma),
         new SharingService(context.prisma, context.permissionService)
       );
-      return workoutService.createWorkoutVersion(
+      return workoutPlanService.createWorkoutPlanVersion(
         context.userId,
         args.parentPlanId,
         args.input

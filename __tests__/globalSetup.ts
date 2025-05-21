@@ -42,7 +42,7 @@ export default async function () {
       context: async () => ({
         prisma,
         permissionService: new PermissionService(prisma),
-        userId: '1',
+        userId: 1,
         userRole: UserRole.USER,
         isPremium: true,
         gymRoles: [],

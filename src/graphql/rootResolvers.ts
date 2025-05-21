@@ -2,7 +2,7 @@ import { PubSub } from "graphql-subscriptions";
 import { EquipmentResolvers } from "../modules/equipment/equipment.resolvers";
 import { GymResolvers } from "../modules/gym/gym.resolvers";
 import { UserResolvers } from "../modules/user/user.resolvers";
-import { WorkoutResolvers } from "../modules/workout/workout.resolvers";
+import { WorkoutPlanResolvers } from "../modules/workoutplan/workoutplan.resolvers";
 import { ExerciseResolvers } from "../modules/exercise/exercise.resolvers";
 import { ExerciseLogResolvers } from "../modules/exerciselog/exerciselog.resolvers";
 import { AuthResolvers } from "../modules/auth/auth.resolvers";
@@ -14,7 +14,7 @@ const resolvers = {
   ...EquipmentResolvers,
   ...GymResolvers,
   ...UserResolvers,
-  ...WorkoutResolvers,
+  ...WorkoutPlanResolvers,
   ...ExerciseResolvers,
   ...ExerciseLogResolvers,
   ...AuthResolvers,
@@ -24,7 +24,7 @@ const resolvers = {
     ...EquipmentResolvers.Query,
     ...GymResolvers.Query,
     ...UserResolvers.Query,
-    ...WorkoutResolvers.Query,
+    ...WorkoutPlanResolvers.Query,
     ...ExerciseResolvers.Query,
     ...ExerciseLogResolvers.Query,
   },
@@ -32,7 +32,7 @@ const resolvers = {
     ...EquipmentResolvers.Mutation,
     ...GymResolvers.Mutation,
     ...UserResolvers.Mutation,
-    ...WorkoutResolvers.Mutation,
+    ...WorkoutPlanResolvers.Mutation,
     ...ExerciseResolvers.Mutation,
     ...ExerciseLogResolvers.Mutation,
     ...AuthResolvers.Mutation,

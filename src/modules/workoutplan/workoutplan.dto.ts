@@ -48,7 +48,7 @@ export class WorkoutPlanExerciseInputDto {
   targetRpe?: number;
 }
 
-export class CreateWorkoutDto {
+export class CreateWorkoutPlanDto {
   @IsString({ message: 'Name must be a string' })
   @IsNotEmpty({ message: 'Name is required' })
   @Length(3, 100, { message: 'Name must be between 3-100 characters' })
@@ -70,7 +70,7 @@ export class CreateWorkoutDto {
   exercises?: WorkoutPlanExerciseInputDto[];
 }
 
-export class UpdateWorkoutDto {
+export class UpdateWorkoutPlanDto {
   @IsOptional()
   @IsString({ message: 'Name must be a string' })
   @Length(3, 100, { message: 'Name must be between 3-100 characters' })

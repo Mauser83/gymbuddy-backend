@@ -21,8 +21,11 @@ export const exerciselogTypeDefs = `
     startedAt: String!
     endedAt: String
     notes: String
+    gymId: Int!
     workoutPlanId: Int
     assignedWorkoutId: Int
+    gym: Gym
+    workoutPlan: WorkoutPlan
     exerciseLogs: [ExerciseLog!]!
   }
 
@@ -45,14 +48,36 @@ export const exerciselogTypeDefs = `
     notes: String
   }
 
+input CreateWorkoutSessionInput {
+  userId: Int!
+  gymId: Int!
+  startedAt: String!
+  workoutPlanId: Int
+  assignedWorkoutId: Int
+  notes: String
+}
+
+  input UpdateWorkoutSessionInput {
+    endedAt: String
+    notes: String
+  }
+
   extend type Query {
     exerciseLogs: [ExerciseLog!]!
     exerciseLogById(id: Int!): ExerciseLog
+
+    workoutSessionById(id: Int!): WorkoutSession
+    workoutSessionsByUser(userId: Int!): [WorkoutSession!]!
+    activeWorkoutSession(userId: Int!): WorkoutSession
   }
 
   extend type Mutation {
     createExerciseLog(input: CreateExerciseLogInput!): ExerciseLog!
     updateExerciseLog(id: Int!, input: UpdateExerciseLogInput!): ExerciseLog!
     deleteExerciseLog(id: Int!): Boolean!
+
+    createWorkoutSession(input: CreateWorkoutSessionInput!): WorkoutSession!
+    updateWorkoutSession(id: Int!, input: UpdateWorkoutSessionInput!): WorkoutSession!
+    deleteWorkoutSession(id: Int!): Boolean!
   }
 `;
