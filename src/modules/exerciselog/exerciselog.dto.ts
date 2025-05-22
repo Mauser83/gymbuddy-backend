@@ -17,10 +17,6 @@ export class CreateExerciseLogDto {
 
   @IsInt()
   @IsNotEmpty()
-  gymEquipmentId!: number;
-
-  @IsInt()
-  @IsNotEmpty()
   workoutSessionId!: number;
 
   @IsInt()
@@ -45,6 +41,10 @@ export class CreateExerciseLogDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  @IsNotEmpty()
+  @IsInt({ each: true })
+  equipmentIds!: number[];
 }
 
 export class UpdateExerciseLogDto {
@@ -70,6 +70,10 @@ export class UpdateExerciseLogDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  @IsOptional()
+  @IsInt({ each: true })
+  equipmentIds?: number[];
 }
 
 // ⬇️ Add these new DTOs for WorkoutSession

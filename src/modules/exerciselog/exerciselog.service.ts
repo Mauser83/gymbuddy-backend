@@ -47,45 +47,53 @@ export class ExerciseLogService {
   async createExerciseLog(data: CreateExerciseLogInput, userId: number) {
     await validateInput(data, CreateExerciseLogDto);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { userRole: true },
-    });
+    const { equipmentIds, ...logData } = data;
 
-    if (
-      !user ||
-      !["PREMIUM_USER", "PERSONAL_TRAINER", "ADMIN"].includes(user.userRole)
-    ) {
-      throw new Error("Upgrade to premium to create exercise logs");
-    }
-
-    return this.prisma.exerciseLog.create({
+    const newLog = await this.prisma.exerciseLog.create({
       data: {
-        exerciseId: data.exerciseId,
-        gymEquipmentId: data.gymEquipmentId,
-        workoutSessionId: data.workoutSessionId,
-        setNumber: data.setNumber,
-        reps: data.reps,
-        weight: data.weight,
-        rpe: data.rpe ?? null,
-        notes: data.notes ?? null,
+        ...logData,
       },
     });
+
+    await this.prisma.exerciseLogEquipment.createMany({
+      data: equipmentIds.map((id) => ({
+        exerciseLogId: newLog.id,
+        gymEquipmentId: id,
+      })),
+    });
+
+    return newLog;
   }
 
   async updateExerciseLog(
-    id: number,
-    data: UpdateExerciseLogInput,
-    userId: number
-  ) {
-    // Optional: Add ownership validation based on workoutSession.userId if desired
-    await validateInput(data, UpdateExerciseLogDto);
+  id: number,
+  data: UpdateExerciseLogInput,
+) {
+  await validateInput(data, UpdateExerciseLogDto);
 
-    return this.prisma.exerciseLog.update({
-      where: { id },
-      data,
+  const { equipmentIds, ...updateData } = data;
+
+  const updatedLog = await this.prisma.exerciseLog.update({
+    where: { id },
+    data: updateData,
+  });
+
+  if (equipmentIds) {
+    await this.prisma.exerciseLogEquipment.deleteMany({
+      where: { exerciseLogId: id },
+    });
+
+    await this.prisma.exerciseLogEquipment.createMany({
+      data: equipmentIds.map((eid) => ({
+        exerciseLogId: id,
+        gymEquipmentId: eid,
+      })),
     });
   }
+
+  return updatedLog;
+}
+
 
   async deleteExerciseLog(id: number, userId: number) {
     // Optional: Add ownership validation if necessary

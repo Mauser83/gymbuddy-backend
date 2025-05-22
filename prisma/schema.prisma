@@ -196,7 +196,6 @@ model ExerciseDifficulty {
 model ExerciseLog {
   id               Int      @id @default(autoincrement())
   exerciseId       Int
-  gymEquipmentId   Int
   workoutSessionId Int
 
   setNumber        Int
@@ -209,12 +208,24 @@ model ExerciseLog {
   updatedAt        DateTime @updatedAt
 
   exercise         Exercise        @relation(fields: [exerciseId], references: [id])
-  gymEquipment     GymEquipment    @relation(fields: [gymEquipmentId], references: [id])
   workoutSession   WorkoutSession  @relation(fields: [workoutSessionId], references: [id])
 
+  equipment        ExerciseLogEquipment[] 
+
+
   @@index([exerciseId])
-  @@index([gymEquipmentId])
   @@index([workoutSessionId])
+}
+
+model ExerciseLogEquipment {
+  id             Int           @id @default(autoincrement())
+  exerciseLogId  Int
+  gymEquipmentId Int
+
+  exerciseLog    ExerciseLog   @relation(fields: [exerciseLogId], references: [id], onDelete: Cascade)
+  gymEquipment   GymEquipment  @relation(fields: [gymEquipmentId], references: [id])
+
+  @@unique([exerciseLogId, gymEquipmentId])
 }
 
 model WorkoutSession {
@@ -422,7 +433,8 @@ model GymEquipment {
   updatedAt DateTime @updatedAt
 
   images       GymEquipmentImage[]
-  exerciseLogs ExerciseLog[]
+  exerciseLogConnections ExerciseLogEquipment[]
+
 
   @@unique([gymId, equipmentId])
   @@index([gymId])

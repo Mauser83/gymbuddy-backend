@@ -1,7 +1,6 @@
 export interface ExerciseLog {
   id: number;
   exerciseId: number;
-  gymEquipmentId: number;
   workoutSessionId: number;
 
   setNumber: number;
@@ -9,6 +8,8 @@ export interface ExerciseLog {
   weight: number;
   rpe?: number;
   notes?: string;
+
+  equipmentIds: number[]; // ✅ new field
 
   createdAt: Date;
   updatedAt: Date;
@@ -16,7 +17,6 @@ export interface ExerciseLog {
 
 export interface CreateExerciseLogInput {
   exerciseId: number;
-  gymEquipmentId: number;
   workoutSessionId: number;
 
   setNumber: number;
@@ -24,6 +24,8 @@ export interface CreateExerciseLogInput {
   weight: number;
   rpe?: number;
   notes?: string;
+
+  equipmentIds: number[]; // ✅ new field
 }
 
 export interface UpdateExerciseLogInput {
@@ -32,6 +34,8 @@ export interface UpdateExerciseLogInput {
   weight?: number;
   rpe?: number;
   notes?: string;
+
+  equipmentIds?: number[]; // ✅ new optional field
 }
 
 export interface WorkoutSession {

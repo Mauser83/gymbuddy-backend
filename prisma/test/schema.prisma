@@ -196,7 +196,6 @@ model ExerciseDifficulty {
 model ExerciseLog {
   id               Int      @id @default(autoincrement())
   exerciseId       Int
-  gymEquipmentId   Int
   workoutSessionId Int
 
   setNumber        Int
@@ -209,12 +208,24 @@ model ExerciseLog {
   updatedAt        DateTime @updatedAt
 
   exercise         Exercise        @relation(fields: [exerciseId], references: [id])
-  gymEquipment     GymEquipment    @relation(fields: [gymEquipmentId], references: [id])
   workoutSession   WorkoutSession  @relation(fields: [workoutSessionId], references: [id])
 
+  equipment        ExerciseLogEquipment[] 
+
+
   @@index([exerciseId])
-  @@index([gymEquipmentId])
   @@index([workoutSessionId])
+}
+
+model ExerciseLogEquipment {
+  id             Int           @id @default(autoincrement())
+  exerciseLogId  Int
+  gymEquipmentId Int
+
+  exerciseLog    ExerciseLog   @relation(fields: [exerciseLogId], references: [id])
+  gymEquipment   GymEquipment  @relation(fields: [gymEquipmentId], references: [id])
+
+  @@unique([exerciseLogId, gymEquipmentId])
 }
 
 model WorkoutSession {
@@ -225,6 +236,9 @@ model WorkoutSession {
 
   user   User @relation(fields: [userId], references: [id])
   userId Int
+
+  gym     Gym @relation(fields: [gymId], references: [id]) // ✅ Add this line
+  gymId   Int                                             // ✅ Add this line
 
   workoutPlan   WorkoutPlan? @relation(fields: [workoutPlanId], references: [id])
   workoutPlanId Int?
@@ -237,6 +251,7 @@ model WorkoutSession {
   @@index([userId])
   @@index([workoutPlanId])
   @@index([assignedWorkoutId])
+  @@index([gymId]) // ✅ Add this index for performance
 }
 
 model AssignedWorkout {
@@ -276,7 +291,6 @@ model Equipment {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  exercises ExerciseEquipment[]
   images    EquipmentImage[]
   gyms      GymEquipment[]
 
@@ -300,6 +314,8 @@ model EquipmentSubcategory {
   category   EquipmentCategory @relation(fields: [categoryId], references: [id])
   categoryId Int
   equipments Equipment[]
+
+  exerciseOptions ExerciseEquipmentOption[] 
 }
 
 model Gym {
@@ -323,6 +339,9 @@ model Gym {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+
+  workoutSessions WorkoutSession[] // ✅ Back-reference to fix the relation
+
 
   // Relations
   creator   User? @relation("UserCreatedGyms", fields: [creatorId], references: [id])
@@ -414,7 +433,8 @@ model GymEquipment {
   updatedAt DateTime @updatedAt
 
   images       GymEquipmentImage[]
-  exerciseLogs ExerciseLog[]
+  exerciseLogConnections ExerciseLogEquipment[]
+
 
   @@unique([gymId, equipmentId])
   @@index([gymId])

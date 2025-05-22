@@ -29,17 +29,24 @@ export const GymResolvers = {
         include: { user: true },
       });
     },
-    exerciseLogs: (parent: any, _: any, context: AuthContext) => {
-      return context.prisma.exerciseLog.findMany({
+    exerciseLogs: async (parent: any, _: any, context: AuthContext) => {
+      const equipment = await context.prisma.gymEquipment.findMany({
+        where: { gymId: parent.id },
+        select: { id: true },
+      });
+
+      const equipmentIds = equipment.map((e) => e.id);
+
+      const logs = await context.prisma.exerciseLogEquipment.findMany({
         where: {
-          gymEquipment: {
-            gymId: parent.id,
-          },
+          gymEquipmentId: { in: equipmentIds },
         },
         include: {
-          gymEquipment: true,
+          exerciseLog: true,
         },
       });
+
+      return logs.map((r) => r.exerciseLog);
     },
   },
 

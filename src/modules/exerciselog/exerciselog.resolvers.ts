@@ -11,6 +11,12 @@ export const ExerciseLogResolvers = {
           })
         : null;
     },
+    equipmentIds: async (parent: any, _args: any, context: AuthContext) => {
+      const records = await context.prisma.exerciseLogEquipment.findMany({
+        where: { exerciseLogId: parent.id },
+      });
+      return records.map((r) => r.gymEquipmentId);
+    },
   },
   WorkoutSession: {
     exerciseLogs: async (parent: any, _args: any, context: AuthContext) => {
@@ -100,7 +106,6 @@ export const ExerciseLogResolvers = {
       return service.updateExerciseLog(
         args.id,
         args.input,
-        Number(context.userId)
       );
     },
 

@@ -3,7 +3,7 @@ export const exerciselogTypeDefs = `
   type ExerciseLog {
     id: Int!
     exerciseId: Int!
-    gymEquipmentId: Int!
+    equipmentIds: [Int!]!
     workoutSessionId: Int!
     setNumber: Int!
     reps: Int!
@@ -31,7 +31,7 @@ export const exerciselogTypeDefs = `
 
   input CreateExerciseLogInput {
     exerciseId: Int!
-    gymEquipmentId: Int!
+    equipmentIds: [Int!]!
     workoutSessionId: Int!
     setNumber: Int!
     reps: Int!
@@ -41,6 +41,7 @@ export const exerciselogTypeDefs = `
   }
 
   input UpdateExerciseLogInput {
+    equipmentIds: [Int!]
     setNumber: Int
     reps: Int
     weight: Float
