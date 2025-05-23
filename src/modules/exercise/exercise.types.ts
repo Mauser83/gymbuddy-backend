@@ -163,3 +163,11 @@ export interface WorkoutPlanExercise {
   targetWeight?: number;
   targetRpe?: number;
 }
+
+
+export interface ExerciseQueryFilters {
+  exerciseType?: string[];
+  difficulty?: string[];
+  bodyPart?: string[];
+  muscle?: string[];
+}

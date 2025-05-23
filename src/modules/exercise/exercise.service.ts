@@ -1,6 +1,7 @@
 import { PrismaClient } from "../../lib/prisma";
 import { PermissionService } from "../core/permission.service";
 import { validateInput } from "../../middlewares/validation";
+import { ExerciseQueryFilters } from "./exercise.types";
 
 import {
   CreateExerciseInput,
@@ -111,10 +112,151 @@ export class ExerciseService {
     return createdExercise;
   }
 
-  async getMyExercises(userId: number) {
+  async getExercises(search?: string, filters?: ExerciseQueryFilters) {
+    const whereClause: any = {
+      deletedAt: null,
+      AND: [],
+    };
+
+    // Add full-text-like search
+    if (search) {
+      const orClause: any[] = [
+        { name: { contains: search, mode: "insensitive" as const } },
+      ];
+
+      if (!filters?.difficulty?.length) {
+        orClause.push({
+          difficulty: {
+            level: { contains: search, mode: "insensitive" as const },
+          },
+        });
+      }
+
+      if (!filters?.exerciseType?.length) {
+        orClause.push({
+          exerciseType: {
+            name: { contains: search, mode: "insensitive" as const },
+          },
+        });
+      }
+
+      if (!filters?.muscle?.length) {
+        orClause.push(
+          {
+            primaryMuscles: {
+              some: {
+                name: { contains: search, mode: "insensitive" as const },
+              },
+            },
+          },
+          {
+            secondaryMuscles: {
+              some: {
+                name: { contains: search, mode: "insensitive" as const },
+              },
+            },
+          }
+        );
+      }
+
+      if (!filters?.bodyPart?.length) {
+        orClause.push(
+          {
+            primaryMuscles: {
+              some: {
+                bodyPart: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
+            },
+          },
+          {
+            secondaryMuscles: {
+              some: {
+                bodyPart: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
+            },
+          }
+        );
+      }
+
+      whereClause.AND.push({ OR: orClause });
+    }
+
+    // Add structured filters
+    if (filters?.exerciseType?.length) {
+      whereClause.AND.push({
+        exerciseType: {
+          name: { in: filters.exerciseType },
+        },
+      });
+    }
+
+    if (filters?.difficulty?.length) {
+      whereClause.AND.push({
+        difficulty: {
+          level: { in: filters.difficulty },
+        },
+      });
+    }
+
+    if (filters?.bodyPart?.length) {
+      whereClause.AND.push({
+        OR: [
+          {
+            primaryMuscles: {
+              some: { bodyPart: { name: { in: filters.bodyPart } } },
+            },
+          },
+          {
+            secondaryMuscles: {
+              some: { bodyPart: { name: { in: filters.bodyPart } } },
+            },
+          },
+        ],
+      });
+    }
+
+    if (filters?.muscle?.length) {
+      whereClause.AND.push({
+        OR: [
+          {
+            primaryMuscles: {
+              some: { name: { in: filters.muscle } },
+            },
+          },
+          {
+            secondaryMuscles: {
+              some: { name: { in: filters.muscle } },
+            },
+          },
+        ],
+      });
+    }
+
     return this.prisma.exercise.findMany({
-      where: { userId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
+      where: whereClause,
+      orderBy: { name: "asc" },
+      include: {
+        difficulty: true,
+        primaryMuscles: { include: { bodyPart: true } },
+        secondaryMuscles: { include: { bodyPart: true } },
+        equipmentSlots: {
+          include: {
+            options: {
+              include: {
+                subcategory: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 

@@ -135,8 +135,15 @@ export const exerciseTypeDefs = `
     bodyPartId: Int!
   }
 
+  input ExerciseFilterInput {
+    exerciseType: [String]
+    difficulty: [String]
+    bodyPart: [String]
+    muscle: [String]
+  }
+
   extend type Query {
-    getMyExercises: [Exercise!]!
+    getExercises(search: String, filters: ExerciseFilterInput): [Exercise!]!
 
     allExerciseTypes: [ExerciseType!]!
     allExerciseDifficulties: [ExerciseDifficulty!]!

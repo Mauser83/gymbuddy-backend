@@ -1,6 +1,7 @@
 import type { AuthContext } from "../auth/auth.types";
 import { ExerciseService } from "./exercise.service";
 import { PermissionService } from "../core/permission.service";
+import { ExerciseQueryFilters } from "./exercise.types";
 
 export const ExerciseResolvers = {
   Exercise: {
@@ -55,13 +56,20 @@ export const ExerciseResolvers = {
   },
 
   Query: {
-    getMyExercises: async (_: unknown, __: unknown, context: AuthContext) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const service = new ExerciseService(
+    getExercises: async (
+      _: unknown,
+      args: {
+        search?: string;
+        filters?: ExerciseQueryFilters
+      },
+      context: AuthContext
+    ) => {
+      const exerciseService = new ExerciseService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.getMyExercises(Number(context.userId));
+
+      return exerciseService.getExercises(args.search, args.filters);
     },
 
     allExerciseTypes: (_: any, __: any, context: AuthContext) => {
@@ -89,8 +97,15 @@ export const ExerciseResolvers = {
       });
     },
 
-    exercisesAvailableAtGym: async (_: unknown, args: { gymId: number; search?: string }, context: AuthContext) => {
-      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
+    exercisesAvailableAtGym: async (
+      _: unknown,
+      args: { gymId: number; search?: string },
+      context: AuthContext
+    ) => {
+      const service = new ExerciseService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
       return service.getExercisesAvailableAtGym(args.gymId);
     },
   },
