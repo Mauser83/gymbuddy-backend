@@ -60,7 +60,7 @@ export const ExerciseResolvers = {
       _: unknown,
       args: {
         search?: string;
-        filters?: ExerciseQueryFilters
+        filters?: ExerciseQueryFilters;
       },
       context: AuthContext
     ) => {
@@ -70,6 +70,17 @@ export const ExerciseResolvers = {
       );
 
       return exerciseService.getExercises(args.search, args.filters);
+    },
+    getExerciseById: async (
+      _: any,
+      { id }: { id: number },
+      context: AuthContext
+    ) => {
+      const service = new ExerciseService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getExerciseById(id);
     },
 
     allExerciseTypes: (_: any, __: any, context: AuthContext) => {

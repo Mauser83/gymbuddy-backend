@@ -144,6 +144,7 @@ export const exerciseTypeDefs = `
 
   extend type Query {
     getExercises(search: String, filters: ExerciseFilterInput): [Exercise!]!
+    getExerciseById(id: Int!): Exercise
 
     allExerciseTypes: [ExerciseType!]!
     allExerciseDifficulties: [ExerciseDifficulty!]!

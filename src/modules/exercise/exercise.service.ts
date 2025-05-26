@@ -260,6 +260,44 @@ export class ExerciseService {
     });
   }
 
+  async getExerciseById(id: number) {
+    const exercise = await this.prisma.exercise.findUnique({
+      where: { id },
+      include: {
+        difficulty: true,
+        exerciseType: true,
+        primaryMuscles: {
+          include: {
+            bodyPart: true,
+          },
+        },
+        secondaryMuscles: {
+          include: {
+            bodyPart: true,
+          },
+        },
+        equipmentSlots: {
+          orderBy: { slotIndex: "asc" },
+          include: {
+            options: {
+              include: {
+                subcategory: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!exercise) return null;
+
+    return exercise;
+  }
+
   async getExercisesAvailableAtGym(gymId: number, search?: string) {
     const equipment = await this.prisma.gymEquipment.findMany({
       where: { gymId },
