@@ -1,9 +1,13 @@
 import { PrismaClient } from "../../lib/prisma";
-import { CreateWorkoutPlanInput, UpdateWorkoutPlanInput } from "./workoutplan.types";
+import {
+  CreateWorkoutPlanInput,
+  UpdateWorkoutPlanInput,
+} from "./workoutplan.types";
 import { PermissionService } from "../core/permission.service";
 import { SharingService } from "./workoutplanSharing.service";
 import { validateInput } from "../../middlewares/validation";
 import { CreateWorkoutPlanDto, UpdateWorkoutPlanDto } from "./workoutplan.dto";
+import { verifyRoles } from "../auth/auth.roles";
 
 export class WorkoutPlanService {
   private prisma: PrismaClient;
@@ -53,6 +57,8 @@ export class WorkoutPlanService {
         targetReps: ex.targetReps ?? null,
         targetWeight: ex.targetWeight ?? null,
         targetRpe: ex.targetRpe ?? null,
+        trainingMethodId: ex.trainingMethodId ?? null,
+        isWarmup: ex.isWarmup ?? false,
       })),
     });
   }
@@ -76,6 +82,12 @@ export class WorkoutPlanService {
         description: data.description,
         userId,
         isPublic: data.isPublic ?? false,
+        workoutTypeId: data.workoutTypeId ?? null,
+        muscleGroups: data.muscleGroupIds
+          ? {
+              connect: data.muscleGroupIds.map((id) => ({ id })),
+            }
+          : undefined,
       },
     });
 
@@ -83,7 +95,11 @@ export class WorkoutPlanService {
     return workoutPlan;
   }
 
-  async createWorkoutPlanVersion(userId: number, parentPlanId: number, data: CreateWorkoutPlanInput) {
+  async createWorkoutPlanVersion(
+    userId: number,
+    parentPlanId: number,
+    data: CreateWorkoutPlanInput
+  ) {
     await this.verifyWorkoutPlanAccess(userId, parentPlanId);
     await validateInput(data, CreateWorkoutPlanDto);
 
@@ -108,6 +124,12 @@ export class WorkoutPlanService {
         parentPlanId,
         version: versionCount + 2,
         userId,
+        workoutTypeId: data.workoutTypeId ?? null,
+        muscleGroups: data.muscleGroupIds
+          ? {
+              connect: data.muscleGroupIds.map((id) => ({ id })),
+            }
+          : undefined,
       },
     });
 
@@ -156,6 +178,12 @@ export class WorkoutPlanService {
         name: data.name,
         description: data.description,
         isPublic: data.isPublic,
+        workoutTypeId: data.workoutTypeId ?? undefined,
+        muscleGroups: data.muscleGroupIds
+          ? {
+              set: data.muscleGroupIds.map((id) => ({ id })),
+            }
+          : undefined,
       },
     });
 
@@ -207,20 +235,112 @@ export class WorkoutPlanService {
   }
 
   async getSharedWorkoutPlans(userId: number) {
-  if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new Error("Unauthorized");
 
-  return this.prisma.workoutPlan.findMany({
-    where: {
-      sharedWith: {
-        some: { id: userId },
+    return this.prisma.workoutPlan.findMany({
+      where: {
+        sharedWith: {
+          some: { id: userId },
+        },
+        deletedAt: null,
       },
-      deletedAt: null,
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-    },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+      },
+    });
+  }
+
+  // 🔒 WorkoutCategory
+async createWorkoutCategory(context: any, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
   });
+  return this.prisma.workoutCategory.create({ data: input });
+}
+
+async updateWorkoutCategory(context: any, id: number, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.workoutCategory.update({ where: { id }, data: input });
+}
+
+async deleteWorkoutCategory(context: any, id: number) {
+  verifyRoles(context, {
+    requireAppRole: "ADMIN",
+  });
+  await this.prisma.workoutCategory.delete({ where: { id } });
+  return true;
+}
+
+// 🔒 WorkoutType
+async createWorkoutType(context: any, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.workoutType.create({ data: input });
+}
+
+async updateWorkoutType(context: any, id: number, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.workoutType.update({ where: { id }, data: input });
+}
+
+async deleteWorkoutType(context: any, id: number) {
+  verifyRoles(context, {
+    requireAppRole: "ADMIN",
+  });
+  await this.prisma.workoutType.delete({ where: { id } });
+  return true;
+}
+
+// 🔒 MuscleGroup
+async createMuscleGroup(context: any, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.muscleGroup.create({ data: input });
+}
+
+async updateMuscleGroup(context: any, id: number, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.muscleGroup.update({ where: { id }, data: input });
+}
+
+async deleteMuscleGroup(context: any, id: number) {
+  verifyRoles(context, {
+    requireAppRole: "ADMIN",
+  });
+  await this.prisma.muscleGroup.delete({ where: { id } });
+  return true;
+}
+
+// 🔒 TrainingMethod
+async createTrainingMethod(context: any, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.trainingMethod.create({ data: input });
+}
+
+async updateTrainingMethod(context: any, id: number, input: any) {
+  verifyRoles(context, {
+    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+  });
+  return this.prisma.trainingMethod.update({ where: { id }, data: input });
+}
+
+async deleteTrainingMethod(context: any, id: number) {
+  verifyRoles(context, {
+    requireAppRole: "ADMIN",
+  });
+  await this.prisma.trainingMethod.delete({ where: { id } });
+  return true;
 }
 }

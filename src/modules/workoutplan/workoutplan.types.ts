@@ -9,7 +9,11 @@ export interface WorkoutPlan {
   updatedAt: Date;
   userId: number;
 
-  // ➕ NEW Relations
+  workoutType?: WorkoutType;
+  workoutTypeId?: number;
+
+  muscleGroups?: MuscleGroup[];
+
   exercises?: WorkoutPlanExercise[];
   assignedWorkouts?: AssignedWorkout[];
   sessions?: WorkoutSession[];
@@ -24,6 +28,9 @@ export interface WorkoutPlanExercise {
   targetReps?: number;
   targetWeight?: number;
   targetRpe?: number;
+  isWarmup: boolean;
+  trainingMethod?: TrainingMethod;
+  trainingMethodId?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,16 +39,18 @@ export interface CreateWorkoutPlanInput {
   name: string;
   description?: string;
   isPublic?: boolean;
-
-  exercises?: WorkoutPlanExerciseInput[]; // ➕ NEW
+  workoutTypeId?: number;
+  muscleGroupIds?: number[];
+  exercises?: WorkoutPlanExerciseInput[];
 }
 
 export interface UpdateWorkoutPlanInput {
   name?: string;
   description?: string;
   isPublic?: boolean;
-
-  exercises?: WorkoutPlanExerciseInput[]; // ➕ NEW
+  workoutTypeId?: number;
+  muscleGroupIds?: number[];
+  exercises?: WorkoutPlanExerciseInput[];
 }
 
 export interface WorkoutPlanExerciseInput {
@@ -51,6 +60,37 @@ export interface WorkoutPlanExerciseInput {
   targetReps?: number;
   targetWeight?: number;
   targetRpe?: number;
+  trainingMethodId?: number;
+  isWarmup?: boolean;
+}
+
+// ➕ New Types
+export interface WorkoutCategory {
+  id: number;
+  name: string;
+  slug: string;
+  types?: WorkoutType[];
+}
+
+export interface WorkoutType {
+  id: number;
+  name: string;
+  slug: string;
+  categoryId: number;
+  category?: WorkoutCategory;
+}
+
+export interface MuscleGroup {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface TrainingMethod {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
 }
 
 // Optional supporting types if needed in services/resolvers

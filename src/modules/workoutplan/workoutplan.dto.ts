@@ -10,12 +10,12 @@ import {
   Max,
   IsNumber,
   ArrayMaxSize,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import 'reflect-metadata';
 
-
-// ➕ New input class for structured plan data
+// ➕ Extended input class for structured plan exercise data
 export class WorkoutPlanExerciseInputDto {
   @IsInt()
   @Min(1)
@@ -46,6 +46,14 @@ export class WorkoutPlanExerciseInputDto {
   @Min(0)
   @Max(10)
   targetRpe?: number;
+
+  @IsOptional()
+  @IsInt()
+  trainingMethodId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isWarmup?: boolean;
 }
 
 export class CreateWorkoutPlanDto {
@@ -62,6 +70,15 @@ export class CreateWorkoutPlanDto {
   @IsOptional()
   @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
+
+  @IsOptional()
+  @IsInt({ message: 'workoutTypeId must be an integer' })
+  workoutTypeId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true, message: 'Each muscleGroupId must be an integer' })
+  muscleGroupIds?: number[];
 
   @IsOptional()
   @ValidateNested({ each: true })
@@ -84,6 +101,15 @@ export class UpdateWorkoutPlanDto {
   @IsOptional()
   @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
+
+  @IsOptional()
+  @IsInt({ message: 'workoutTypeId must be an integer' })
+  workoutTypeId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true, message: 'Each muscleGroupId must be an integer' })
+  muscleGroupIds?: number[];
 
   @IsOptional()
   @ValidateNested({ each: true })
