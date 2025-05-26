@@ -106,6 +106,48 @@ export const WorkoutPlanResolvers = {
     getTrainingMethods: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.trainingMethod.findMany();
     },
+
+    getWorkoutPrograms: async (
+      _: unknown,
+      __: unknown,
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.getWorkoutPrograms(context.userId);
+    },
+
+    getWorkoutProgramById: async (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.getWorkoutProgramById(context.userId, args.id);
+    },
+
+    getUserWorkoutPreferences: async (
+      _: unknown,
+      __: unknown,
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.getUserWorkoutPreferences(context.userId);
+    },
   },
 
   Mutation: {
@@ -330,6 +372,182 @@ export const WorkoutPlanResolvers = {
         new SharingService(context.prisma, context.permissionService)
       );
       return service.deleteTrainingMethod(context, id);
+    },
+
+    createWorkoutProgram: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createWorkoutProgram(context.userId, args.input);
+    },
+
+    updateWorkoutProgram: async (
+      _: unknown,
+      args: { id: number; input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.updateWorkoutProgram(context.userId, args.id, args.input);
+    },
+
+    deleteWorkoutProgram: async (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteWorkoutProgram(context.userId, args.id);
+    },
+
+    createWorkoutProgramDay: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createWorkoutProgramDay(context.userId, args.input);
+    },
+
+    updateWorkoutProgramDay: async (
+      _: unknown,
+      args: { id: number; input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.updateWorkoutProgramDay(
+        context.userId,
+        args.id,
+        args.input
+      );
+    },
+
+    deleteWorkoutProgramDay: async (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteWorkoutProgramDay(context.userId, args.id);
+    },
+
+    createWorkoutProgramCooldown: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createWorkoutProgramCooldown(context.userId, args.input);
+    },
+
+    deleteWorkoutProgramCooldown: async (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteWorkoutProgramCooldown(context.userId, args.id);
+    },
+
+    createWorkoutProgramAssignment: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createWorkoutProgramAssignment(context.userId, args.input);
+    },
+
+    deleteWorkoutProgramAssignment: async (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteWorkoutProgramAssignment(context.userId, args.id);
+    },
+
+    setUserWorkoutPreferences: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.setUserWorkoutPreferences(context.userId, args.input);
+    },
+
+    shareWorkoutProgram: async (
+      _: unknown,
+      args: { programId: number; shareWithUserId?: number },
+      context: AuthContext
+    ) => {
+      if (context.userId === null) throw new Error("Unauthenticated");
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.shareWorkoutProgram(
+        context.userId,
+        args.programId,
+        args.shareWithUserId ?? null
+      );
     },
   },
 };

@@ -53,11 +53,17 @@ model User {
   gymsAsTrainer      GymTrainer[]
   chatMemberships    GymChatMember[]
   sharedWorkouts     WorkoutPlan[]       @relation("SharedWorkouts")
-  createdGyms        Gym[]               @relation("UserCreatedGyms")
+  sharedPrograms     WorkoutProgram[]    @relation("SharedPrograms")
 
-  workoutSessions    WorkoutSession[]
-  trainerAssignments AssignedWorkout[] @relation("TrainerAssignments")
-  userAssignments    AssignedWorkout[] @relation("UserAssignments")
+  createdGyms Gym[] @relation("UserCreatedGyms")
+
+  workoutSessions            WorkoutSession[]
+  trainerAssignments         AssignedWorkout[]            @relation("TrainerAssignments")
+  userAssignments            AssignedWorkout[]            @relation("UserAssignments")
+  WorkoutProgram             WorkoutProgram[]
+  UserMuscleCooldownOverride UserMuscleCooldownOverride[]
+  WorkoutProgramAssignment   WorkoutProgramAssignment[]
+  UserWorkoutPreferences     UserWorkoutPreferences?
 }
 
 model WorkoutPlan {
@@ -82,10 +88,11 @@ model WorkoutPlan {
 
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
-  exercises        WorkoutPlanExercise[]
-  sharedWith       User[]                @relation("SharedWorkouts")
-  assignedWorkouts AssignedWorkout[]
-  sessions         WorkoutSession[]
+  exercises         WorkoutPlanExercise[]
+  sharedWith        User[]                @relation("SharedWorkouts")
+  assignedWorkouts  AssignedWorkout[]
+  sessions          WorkoutSession[]
+  WorkoutProgramDay WorkoutProgramDay[]
 
   @@index([userId])
 }
@@ -477,10 +484,12 @@ model WorkoutType {
 }
 
 model MuscleGroup {
-  id    Int           @id @default(autoincrement())
-  name  String        @unique
-  slug  String        @unique
-  plans WorkoutPlan[] @relation("PlanMuscleGroups")
+  id                           Int                            @id @default(autoincrement())
+  name                         String                         @unique
+  slug                         String                         @unique
+  plans                        WorkoutPlan[]                  @relation("PlanMuscleGroups")
+  WorkoutProgramMuscleCooldown WorkoutProgramMuscleCooldown[]
+  UserMuscleCooldownOverride   UserMuscleCooldownOverride[]
 }
 
 model TrainingMethod {
@@ -489,4 +498,75 @@ model TrainingMethod {
   slug          String                @unique
   description   String?
   planExercises WorkoutPlanExercise[]
+}
+
+model WorkoutProgram {
+  id        Int      @id @default(autoincrement())
+  name      String
+  notes     String?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  days        WorkoutProgramDay[]
+  cooldowns   WorkoutProgramMuscleCooldown[]
+  assignments WorkoutProgramAssignment[]
+
+  sharedWith User[] @relation("SharedPrograms")
+}
+
+model WorkoutProgramDay {
+  id            Int            @id @default(autoincrement())
+  programId     Int
+  program       WorkoutProgram @relation(fields: [programId], references: [id])
+  dayOfWeek     Int // 0 = Sunday ... 6 = Saturday
+  workoutPlanId Int
+  workoutPlan   WorkoutPlan    @relation(fields: [workoutPlanId], references: [id])
+  notes         String?
+
+  assignments WorkoutProgramAssignment[]
+}
+
+model WorkoutProgramMuscleCooldown {
+  id            Int            @id @default(autoincrement())
+  programId     Int
+  program       WorkoutProgram @relation(fields: [programId], references: [id])
+  muscleGroupId Int
+  muscleGroup   MuscleGroup    @relation(fields: [muscleGroupId], references: [id])
+  daysRequired  Int // e.g., 2 = 48h rest
+}
+
+model UserMuscleCooldownOverride {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id])
+  muscleGroupId Int
+  muscleGroup   MuscleGroup @relation(fields: [muscleGroupId], references: [id])
+  daysRequired  Int
+  notes         String?
+
+  @@unique([userId, muscleGroupId])
+}
+
+model WorkoutProgramAssignment {
+  id               Int               @id @default(autoincrement())
+  userId           Int
+  user             User              @relation(fields: [userId], references: [id])
+  programDayId     Int
+  programDay       WorkoutProgramDay @relation(fields: [programDayId], references: [id])
+  scheduledDate    DateTime
+  status           AssignmentStatus  @default(PENDING)
+  overrideDate     DateTime?
+  WorkoutProgram   WorkoutProgram?   @relation(fields: [workoutProgramId], references: [id])
+  workoutProgramId Int?
+}
+
+model UserWorkoutPreferences {
+  id                   Int     @id @default(autoincrement())
+  userId               Int     @unique
+  user                 User    @relation(fields: [userId], references: [id])
+  preferredWorkoutDays Int[] // e.g. [1, 2, 3, 4, 5]
+  preferredRestDays    Int[] // e.g. [0, 6]
+  autoReschedule       Boolean @default(true)
 }

@@ -82,6 +82,69 @@ export const workoutplanTypeDefs = `#graphql
     MISSED
   }
 
+    type WorkoutProgram {
+    id: Int!
+    name: String!
+    notes: String
+    userId: Int!
+    user: User!
+    createdAt: String!
+    updatedAt: String!
+    days: [WorkoutProgramDay!]!
+    cooldowns: [WorkoutProgramMuscleCooldown!]!
+    assignments: [WorkoutProgramAssignment!]!
+  }
+
+  type WorkoutProgramDay {
+    id: Int!
+    programId: Int!
+    program: WorkoutProgram!
+    dayOfWeek: Int!
+    workoutPlanId: Int!
+    workoutPlan: WorkoutPlan!
+    notes: String
+    assignments: [WorkoutProgramAssignment!]!
+  }
+
+  type WorkoutProgramMuscleCooldown {
+    id: Int!
+    programId: Int!
+    program: WorkoutProgram!
+    muscleGroupId: Int!
+    muscleGroup: MuscleGroup!
+    daysRequired: Int!
+  }
+
+  type UserMuscleCooldownOverride {
+    id: Int!
+    userId: Int!
+    user: User!
+    muscleGroupId: Int!
+    muscleGroup: MuscleGroup!
+    daysRequired: Int!
+    notes: String
+  }
+
+  type WorkoutProgramAssignment {
+    id: Int!
+    userId: Int!
+    user: User!
+    programDayId: Int!
+    programDay: WorkoutProgramDay!
+    scheduledDate: String!
+    status: AssignmentStatus!
+    overrideDate: String
+  }
+
+  type UserWorkoutPreferences {
+    id: Int!
+    userId: Int!
+    user: User!
+    preferredWorkoutDays: [Int!]!
+    preferredRestDays: [Int!]!
+    autoReschedule: Boolean!
+  }
+
   input WorkoutPlanExerciseInput {
     exerciseId: Int!
     order: Int
@@ -154,6 +217,48 @@ export const workoutplanTypeDefs = `#graphql
     description: String
   }
 
+    input CreateWorkoutProgramInput {
+    name: String!
+    notes: String
+  }
+
+  input UpdateWorkoutProgramInput {
+    name: String
+    notes: String
+  }
+
+  input CreateWorkoutProgramDayInput {
+    programId: Int!
+    dayOfWeek: Int!
+    workoutPlanId: Int!
+    notes: String
+  }
+
+  input UpdateWorkoutProgramDayInput {
+    dayOfWeek: Int
+    workoutPlanId: Int
+    notes: String
+  }
+
+  input CreateWorkoutProgramCooldownInput {
+    programId: Int!
+    muscleGroupId: Int!
+    daysRequired: Int!
+  }
+
+  input CreateWorkoutProgramAssignmentInput {
+    userId: Int!
+    programDayId: Int!
+    scheduledDate: String!
+    overrideDate: String
+  }
+
+  input SetUserWorkoutPreferencesInput {
+    preferredWorkoutDays: [Int!]!
+    preferredRestDays: [Int!]!
+    autoReschedule: Boolean
+  }
+
   extend type Query {
     workoutPlans: [WorkoutPlan]
     workoutPlanById(id: Int!): WorkoutPlan
@@ -164,13 +269,19 @@ export const workoutplanTypeDefs = `#graphql
     getWorkoutTypes: [WorkoutType!]!
     getMuscleGroups: [MuscleGroup!]!
     getTrainingMethods: [TrainingMethod!]!
+
+    getWorkoutPrograms: [WorkoutProgram!]!
+    getWorkoutProgramById(id: Int!): WorkoutProgram
+    getUserWorkoutPreferences: UserWorkoutPreferences
   }
 
   extend type Mutation {
     createWorkoutPlan(input: CreateWorkoutPlanInput!): WorkoutPlan
     updateWorkoutPlan(id: Int!, input: UpdateWorkoutPlanInput!): WorkoutPlan
     deleteWorkoutPlan(id: Int!): String
+
     shareWorkoutPlan(workoutPlanId: Int!, shareWithUserId: Int): WorkoutPlan
+    shareWorkoutProgram(programId: Int!, shareWithUserId: Int): WorkoutProgram
 
     # WorkoutCategory
     createWorkoutCategory(input: CreateWorkoutCategoryInput!): WorkoutCategory!
@@ -193,5 +304,21 @@ export const workoutplanTypeDefs = `#graphql
     deleteTrainingMethod(id: Int!): Boolean!
 
     createWorkoutPlanVersion(parentPlanId: Int!, input: CreateWorkoutPlanInput!): WorkoutPlan
+
+    createWorkoutProgram(input: CreateWorkoutProgramInput!): WorkoutProgram!
+    updateWorkoutProgram(id: Int!, input: UpdateWorkoutProgramInput!): WorkoutProgram!
+    deleteWorkoutProgram(id: Int!): Boolean!
+
+    createWorkoutProgramDay(input: CreateWorkoutProgramDayInput!): WorkoutProgramDay!
+    updateWorkoutProgramDay(id: Int!, input: UpdateWorkoutProgramDayInput!): WorkoutProgramDay!
+    deleteWorkoutProgramDay(id: Int!): Boolean!
+
+    createWorkoutProgramCooldown(input: CreateWorkoutProgramCooldownInput!): WorkoutProgramMuscleCooldown!
+    deleteWorkoutProgramCooldown(id: Int!): Boolean!
+
+    createWorkoutProgramAssignment(input: CreateWorkoutProgramAssignmentInput!): WorkoutProgramAssignment!
+    deleteWorkoutProgramAssignment(id: Int!): Boolean!
+
+    setUserWorkoutPreferences(input: SetUserWorkoutPreferencesInput!): UserWorkoutPreferences!
   }
 `;

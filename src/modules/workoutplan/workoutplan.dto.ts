@@ -117,3 +117,106 @@ export class UpdateWorkoutPlanDto {
   @ArrayMaxSize(100)
   exercises?: WorkoutPlanExerciseInputDto[];
 }
+
+// 🔁 Workout Program DTOs
+
+export class CreateWorkoutProgramDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(3, 100)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 1000)
+  notes?: string;
+}
+
+export class UpdateWorkoutProgramDto {
+  @IsOptional()
+  @IsString()
+  @Length(3, 100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 1000)
+  notes?: string;
+}
+
+export class CreateWorkoutProgramDayDto {
+  @IsInt()
+  programId!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  dayOfWeek!: number;
+
+  @IsInt()
+  workoutPlanId!: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  notes?: string;
+}
+
+export class UpdateWorkoutProgramDayDto {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  dayOfWeek?: number;
+
+  @IsOptional()
+  @IsInt()
+  workoutPlanId?: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  notes?: string;
+}
+
+export class CreateWorkoutProgramCooldownDto {
+  @IsInt()
+  programId!: number;
+
+  @IsInt()
+  muscleGroupId!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(30)
+  daysRequired!: number;
+}
+
+export class CreateWorkoutProgramAssignmentDto {
+  @IsInt()
+  userId!: number;
+
+  @IsInt()
+  programDayId!: number;
+
+  @IsString()
+  scheduledDate!: string;
+
+  @IsOptional()
+  @IsString()
+  overrideDate?: string;
+}
+
+export class SetUserWorkoutPreferencesDto {
+  @IsArray()
+  @IsInt({ each: true })
+  preferredWorkoutDays!: number[];
+
+  @IsArray()
+  @IsInt({ each: true })
+  preferredRestDays!: number[];
+
+  @IsOptional()
+  @IsBoolean()
+  autoReschedule?: boolean;
+}

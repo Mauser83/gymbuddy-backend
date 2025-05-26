@@ -6,7 +6,17 @@ import {
 import { PermissionService } from "../core/permission.service";
 import { SharingService } from "./workoutplanSharing.service";
 import { validateInput } from "../../middlewares/validation";
-import { CreateWorkoutPlanDto, UpdateWorkoutPlanDto } from "./workoutplan.dto";
+import {
+  CreateWorkoutPlanDto,
+  UpdateWorkoutPlanDto,
+  CreateWorkoutProgramDto,
+  UpdateWorkoutProgramDto,
+  CreateWorkoutProgramDayDto,
+  UpdateWorkoutProgramDayDto,
+  CreateWorkoutProgramCooldownDto,
+  CreateWorkoutProgramAssignmentDto,
+  SetUserWorkoutPreferencesDto,
+} from "./workoutplan.dto";
 import { verifyRoles } from "../auth/auth.roles";
 
 export class WorkoutPlanService {
@@ -253,94 +263,254 @@ export class WorkoutPlanService {
   }
 
   // 🔒 WorkoutCategory
-async createWorkoutCategory(context: any, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.workoutCategory.create({ data: input });
-}
+  async createWorkoutCategory(context: any, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.workoutCategory.create({ data: input });
+  }
 
-async updateWorkoutCategory(context: any, id: number, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.workoutCategory.update({ where: { id }, data: input });
-}
+  async updateWorkoutCategory(context: any, id: number, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.workoutCategory.update({ where: { id }, data: input });
+  }
 
-async deleteWorkoutCategory(context: any, id: number) {
-  verifyRoles(context, {
-    requireAppRole: "ADMIN",
-  });
-  await this.prisma.workoutCategory.delete({ where: { id } });
-  return true;
-}
+  async deleteWorkoutCategory(context: any, id: number) {
+    verifyRoles(context, {
+      requireAppRole: "ADMIN",
+    });
+    await this.prisma.workoutCategory.delete({ where: { id } });
+    return true;
+  }
 
-// 🔒 WorkoutType
-async createWorkoutType(context: any, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.workoutType.create({ data: input });
-}
+  // 🔒 WorkoutType
+  async createWorkoutType(context: any, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.workoutType.create({ data: input });
+  }
 
-async updateWorkoutType(context: any, id: number, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.workoutType.update({ where: { id }, data: input });
-}
+  async updateWorkoutType(context: any, id: number, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.workoutType.update({ where: { id }, data: input });
+  }
 
-async deleteWorkoutType(context: any, id: number) {
-  verifyRoles(context, {
-    requireAppRole: "ADMIN",
-  });
-  await this.prisma.workoutType.delete({ where: { id } });
-  return true;
-}
+  async deleteWorkoutType(context: any, id: number) {
+    verifyRoles(context, {
+      requireAppRole: "ADMIN",
+    });
+    await this.prisma.workoutType.delete({ where: { id } });
+    return true;
+  }
 
-// 🔒 MuscleGroup
-async createMuscleGroup(context: any, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.muscleGroup.create({ data: input });
-}
+  // 🔒 MuscleGroup
+  async createMuscleGroup(context: any, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.muscleGroup.create({ data: input });
+  }
 
-async updateMuscleGroup(context: any, id: number, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.muscleGroup.update({ where: { id }, data: input });
-}
+  async updateMuscleGroup(context: any, id: number, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.muscleGroup.update({ where: { id }, data: input });
+  }
 
-async deleteMuscleGroup(context: any, id: number) {
-  verifyRoles(context, {
-    requireAppRole: "ADMIN",
-  });
-  await this.prisma.muscleGroup.delete({ where: { id } });
-  return true;
-}
+  async deleteMuscleGroup(context: any, id: number) {
+    verifyRoles(context, {
+      requireAppRole: "ADMIN",
+    });
+    await this.prisma.muscleGroup.delete({ where: { id } });
+    return true;
+  }
 
-// 🔒 TrainingMethod
-async createTrainingMethod(context: any, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.trainingMethod.create({ data: input });
-}
+  // 🔒 TrainingMethod
+  async createTrainingMethod(context: any, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.trainingMethod.create({ data: input });
+  }
 
-async updateTrainingMethod(context: any, id: number, input: any) {
-  verifyRoles(context, {
-    or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
-  });
-  return this.prisma.trainingMethod.update({ where: { id }, data: input });
-}
+  async updateTrainingMethod(context: any, id: number, input: any) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+    return this.prisma.trainingMethod.update({ where: { id }, data: input });
+  }
 
-async deleteTrainingMethod(context: any, id: number) {
-  verifyRoles(context, {
-    requireAppRole: "ADMIN",
+  async deleteTrainingMethod(context: any, id: number) {
+    verifyRoles(context, {
+      requireAppRole: "ADMIN",
+    });
+    await this.prisma.trainingMethod.delete({ where: { id } });
+    return true;
+  }
+
+  // Workout Program CRUD
+
+  async getWorkoutPrograms(userId: number) {
+    return this.prisma.workoutProgram.findMany({
+      where: { userId },
+      include: { days: true, cooldowns: true, assignments: true },
+    });
+  }
+
+  async getWorkoutProgramById(userId: number, id: number) {
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id },
+      include: { days: true, cooldowns: true, assignments: true },
+    });
+    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    return program;
+  }
+
+  async createWorkoutProgram(userId: number, input: any) {
+    await validateInput(input, CreateWorkoutProgramDto);
+    return this.prisma.workoutProgram.create({
+      data: { ...input, userId },
+    });
+  }
+
+  async updateWorkoutProgram(userId: number, id: number, input: any) {
+    await validateInput(input, UpdateWorkoutProgramDto);
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id },
+    });
+    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    return this.prisma.workoutProgram.update({
+      where: { id },
+      data: input,
+    });
+  }
+
+  async deleteWorkoutProgram(userId: number, id: number) {
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id },
+    });
+    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    await this.prisma.workoutProgram.delete({ where: { id } });
+    return true;
+  }
+
+  // Program Day
+
+  async createWorkoutProgramDay(userId: number, input: any) {
+    await validateInput(input, CreateWorkoutProgramDayDto);
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id: input.programId },
+    });
+    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    return this.prisma.workoutProgramDay.create({ data: input });
+  }
+
+  async updateWorkoutProgramDay(userId: number, id: number, input: any) {
+    await validateInput(input, UpdateWorkoutProgramDayDto);
+    const day = await this.prisma.workoutProgramDay.findUnique({
+      where: { id },
+      include: { program: true },
+    });
+    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    return this.prisma.workoutProgramDay.update({ where: { id }, data: input });
+  }
+
+  async deleteWorkoutProgramDay(userId: number, id: number) {
+    const day = await this.prisma.workoutProgramDay.findUnique({
+      where: { id },
+      include: { program: true },
+    });
+    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    await this.prisma.workoutProgramDay.delete({ where: { id } });
+    return true;
+  }
+
+  // Muscle Cooldowns
+
+  async createWorkoutProgramCooldown(userId: number, input: any) {
+    await validateInput(input, CreateWorkoutProgramCooldownDto);
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id: input.programId },
+    });
+    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    return this.prisma.workoutProgramMuscleCooldown.create({ data: input });
+  }
+
+  async deleteWorkoutProgramCooldown(userId: number, id: number) {
+    const cooldown = await this.prisma.workoutProgramMuscleCooldown.findUnique({
+      where: { id },
+      include: { program: true },
+    });
+    if (!cooldown || cooldown.program.userId !== userId)
+      throw new Error("Unauthorized");
+    await this.prisma.workoutProgramMuscleCooldown.delete({ where: { id } });
+    return true;
+  }
+
+  // Assignments
+
+  async createWorkoutProgramAssignment(userId: number, input: any) {
+    await validateInput(input, CreateWorkoutProgramAssignmentDto);
+    const day = await this.prisma.workoutProgramDay.findUnique({
+      where: { id: input.programDayId },
+      include: { program: true },
+    });
+    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    return this.prisma.workoutProgramAssignment.create({ data: input });
+  }
+
+  async deleteWorkoutProgramAssignment(userId: number, id: number) {
+    const assignment = await this.prisma.workoutProgramAssignment.findUnique({
+      where: { id },
+      include: { programDay: { include: { program: true } } },
+    });
+    if (!assignment || assignment.programDay.program.userId !== userId)
+      throw new Error("Unauthorized");
+    await this.prisma.workoutProgramAssignment.delete({ where: { id } });
+    return true;
+  }
+
+  // User Preferences
+
+  async setUserWorkoutPreferences(userId: number, input: any) {
+    await validateInput(input, SetUserWorkoutPreferencesDto);
+    return this.prisma.userWorkoutPreferences.upsert({
+      where: { userId },
+      update: input,
+      create: { ...input, userId },
+    });
+  }
+
+  async getUserWorkoutPreferences(userId: number) {
+    return this.prisma.userWorkoutPreferences.findUnique({
+      where: { userId },
+    });
+  }
+
+  async shareWorkoutProgram(ownerId: number, programId: number, shareWithUserId: number | null) {
+  if (!ownerId) throw new Error("Unauthorized");
+
+  const program = await this.prisma.workoutProgram.findUnique({ where: { id: programId } });
+  if (!program || program.userId !== ownerId) throw new Error("Unauthorized program access");
+
+  if (shareWithUserId) {
+    return this.sharingService.shareWorkoutProgram(
+      ownerId,
+      programId,
+      shareWithUserId,
+      "VIEW"
+    );
+  }
+
+  return this.prisma.workoutProgram.update({
+    where: { id: programId },
+    data: { /* optionally expose isPublic: true if you support it */ },
   });
-  await this.prisma.trainingMethod.delete({ where: { id } });
-  return true;
 }
 }

@@ -114,3 +114,124 @@ export interface WorkoutSession {
   workoutPlanId?: number;
   assignedWorkoutId?: number;
 }
+
+// 🔁 Workout Program Types
+
+export interface WorkoutProgram {
+  id: number;
+  name: string;
+  notes?: string;
+  userId: number;
+  createdAt: Date;
+  updatedAt: Date;
+
+  days?: WorkoutProgramDay[];
+  cooldowns?: WorkoutProgramMuscleCooldown[];
+  assignments?: WorkoutProgramAssignment[];
+}
+
+export interface WorkoutProgramDay {
+  id: number;
+  programId: number;
+  dayOfWeek: number; // 0 = Sunday ... 6 = Saturday
+  workoutPlanId: number;
+  notes?: string;
+
+  program?: WorkoutProgram;
+  workoutPlan?: WorkoutPlan;
+  assignments?: WorkoutProgramAssignment[];
+}
+
+export interface WorkoutProgramMuscleCooldown {
+  id: number;
+  programId: number;
+  muscleGroupId: number;
+  daysRequired: number;
+
+  program?: WorkoutProgram;
+  muscleGroup?: MuscleGroup;
+}
+
+export interface UserMuscleCooldownOverride {
+  id: number;
+  userId: number;
+  muscleGroupId: number;
+  daysRequired: number;
+  notes?: string;
+
+  muscleGroup?: MuscleGroup;
+}
+
+export interface WorkoutProgramAssignment {
+  id: number;
+  userId: number;
+  programDayId: number;
+  scheduledDate: string;
+  status: AssignmentStatus;
+  overrideDate?: string;
+
+  user?: User;
+  programDay?: WorkoutProgramDay;
+}
+
+export interface UserWorkoutPreferences {
+  id: number;
+  userId: number;
+  preferredWorkoutDays: number[];
+  preferredRestDays: number[];
+  autoReschedule: boolean;
+}
+
+// Enums
+export type AssignmentStatus = 'PENDING' | 'COMPLETED' | 'MISSED';
+
+// Inputs
+
+export interface CreateWorkoutProgramInput {
+  name: string;
+  notes?: string;
+}
+
+export interface UpdateWorkoutProgramInput {
+  name?: string;
+  notes?: string;
+}
+
+export interface CreateWorkoutProgramDayInput {
+  programId: number;
+  dayOfWeek: number;
+  workoutPlanId: number;
+  notes?: string;
+}
+
+export interface UpdateWorkoutProgramDayInput {
+  dayOfWeek?: number;
+  workoutPlanId?: number;
+  notes?: string;
+}
+
+export interface CreateWorkoutProgramCooldownInput {
+  programId: number;
+  muscleGroupId: number;
+  daysRequired: number;
+}
+
+export interface CreateWorkoutProgramAssignmentInput {
+  userId: number;
+  programDayId: number;
+  scheduledDate: string;
+  overrideDate?: string;
+}
+
+export interface SetUserWorkoutPreferencesInput {
+  preferredWorkoutDays: number[];
+  preferredRestDays: number[];
+  autoReschedule?: boolean;
+}
+
+// Optional user reference
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+}
