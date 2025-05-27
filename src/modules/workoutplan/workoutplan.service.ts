@@ -276,7 +276,18 @@ export class WorkoutPlanService {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.workoutCategory.update({ where: { id }, data: input });
+    return this.prisma.workoutCategory.update({
+      where: { id },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        workoutTypes: input.workoutTypeIds
+          ? {
+              set: input.workoutTypeIds.map((id: number) => ({ id })),
+            }
+          : undefined,
+      },
+    });
   }
 
   async deleteWorkoutCategory(context: any, id: number) {

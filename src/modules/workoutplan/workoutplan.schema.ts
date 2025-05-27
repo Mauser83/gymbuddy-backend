@@ -182,6 +182,7 @@ export const workoutplanTypeDefs = `#graphql
   input UpdateWorkoutCategoryInput {
     name: String
     slug: String
+    workoutTypeIds: [Int!] # ✅ Add this line
   }
 
   input CreateWorkoutTypeInput {
