@@ -14,7 +14,7 @@ export const WorkoutPlanResolvers = {
     workoutType: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.workoutType.findUnique({
         where: { id: parent.workoutTypeId },
-        include: { category: true },
+        include: { categories: true },
       });
     },
     muscleGroups: (parent: any, _: any, context: AuthContext) => {
@@ -45,6 +45,22 @@ export const WorkoutPlanResolvers = {
             where: { id: parent.trainingMethodId },
           })
         : null;
+    },
+  },
+
+  WorkoutType: {
+    categories: (parent: any, _: any, context:AuthContext) => {
+      return context.prisma.workoutType
+        .findUnique({ where: { id: parent.id } })
+        .categories();
+    },
+  },
+
+  WorkoutCategory: {
+    workoutTypes: (parent: any, _: any, context:AuthContext) => {
+      return context.prisma.workoutCategory
+        .findUnique({ where: { id: parent.id } })
+        .workoutTypes();
     },
   },
 
@@ -92,16 +108,18 @@ export const WorkoutPlanResolvers = {
 
     getWorkoutCategories: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.workoutCategory.findMany({
-        include: { types: true },
+        include: { workoutTypes: true },
       });
     },
     getWorkoutTypes: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.workoutType.findMany({
-        include: { category: true },
+        include: { categories: true },
       });
     },
     getMuscleGroups: (_: unknown, __: unknown, context: AuthContext) => {
-      return context.prisma.muscleGroup.findMany();
+      return context.prisma.muscleGroup.findMany({
+        include: { bodyParts: true }, // ✅ include relation
+      });
     },
     getTrainingMethods: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.trainingMethod.findMany();

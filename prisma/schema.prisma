@@ -177,9 +177,10 @@ model ExerciseEquipmentOption {
 }
 
 model BodyPart {
-  id      Int      @id @default(autoincrement())
-  name    String   @unique
-  muscles Muscle[]
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  muscles      Muscle[]
+  muscleGroups MuscleGroup[] @relation("MuscleGroupBodyParts")
 
   @@index([name])
 }
@@ -468,18 +469,19 @@ model GymEquipmentImage {
 }
 
 model WorkoutCategory {
-  id    Int           @id @default(autoincrement())
-  name  String        @unique
-  slug  String        @unique
-  types WorkoutType[]
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  workoutTypes WorkoutType[] @relation("WorkoutTypeToCategory")
 }
 
 model WorkoutType {
-  id         Int             @id @default(autoincrement())
-  name       String          @unique
-  slug       String          @unique
-  categoryId Int
-  category   WorkoutCategory @relation(fields: [categoryId], references: [id])
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  categories WorkoutCategory[] @relation("WorkoutTypeToCategory")
   plans      WorkoutPlan[]
 }
 
@@ -490,6 +492,7 @@ model MuscleGroup {
   plans                        WorkoutPlan[]                  @relation("PlanMuscleGroups")
   WorkoutProgramMuscleCooldown WorkoutProgramMuscleCooldown[]
   UserMuscleCooldownOverride   UserMuscleCooldownOverride[]
+  bodyParts                    BodyPart[]                     @relation("MuscleGroupBodyParts")
 }
 
 model TrainingMethod {

@@ -37,20 +37,21 @@ export const workoutplanTypeDefs = `#graphql
     id: Int!
     name: String!
     slug: String!
-    types: [WorkoutType!]!
+    workoutTypes: [WorkoutType!]!    # ✅ now a list
   }
 
   type WorkoutType {
     id: Int!
     name: String!
     slug: String!
-    category: WorkoutCategory!
+    categories: [WorkoutCategory!]!  # ✅ now a list
   }
 
   type MuscleGroup {
     id: Int!
     name: String!
     slug: String!
+    bodyParts: [BodyPart!]!  # ✅ New field
   }
 
   type TrainingMethod {
@@ -186,13 +187,13 @@ export const workoutplanTypeDefs = `#graphql
   input CreateWorkoutTypeInput {
     name: String!
     slug: String!
-    categoryId: Int!
+    categoryIds: [Int!]!    # ✅ required list
   }
 
   input UpdateWorkoutTypeInput {
     name: String
     slug: String
-    categoryId: Int
+    categoryIds: [Int!]     # ✅ optional list
   }
 
   input CreateMuscleGroupInput {

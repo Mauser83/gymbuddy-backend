@@ -16,6 +16,8 @@ import {
   CreateWorkoutProgramCooldownDto,
   CreateWorkoutProgramAssignmentDto,
   SetUserWorkoutPreferencesDto,
+  CreateMuscleGroupDto,
+  UpdateMuscleGroupDto,
 } from "./workoutplan.dto";
 import { verifyRoles } from "../auth/auth.roles";
 
@@ -290,14 +292,35 @@ export class WorkoutPlanService {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.workoutType.create({ data: input });
+
+    return this.prisma.workoutType.create({
+      data: {
+        name: input.name,
+        slug: input.slug,
+        categories: {
+          connect: input.categoryIds.map((id: number) => ({ id })),
+        },
+      },
+    });
   }
 
   async updateWorkoutType(context: any, id: number, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.workoutType.update({ where: { id }, data: input });
+
+    return this.prisma.workoutType.update({
+      where: { id },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        categories: input.categoryIds
+          ? {
+              set: input.categoryIds.map((id: number) => ({ id })),
+            }
+          : undefined,
+      },
+    });
   }
 
   async deleteWorkoutType(context: any, id: number) {
@@ -309,18 +332,43 @@ export class WorkoutPlanService {
   }
 
   // 🔒 MuscleGroup
-  async createMuscleGroup(context: any, input: any) {
+  async createMuscleGroup(context: any, input: CreateMuscleGroupDto) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.muscleGroup.create({ data: input });
+    return this.prisma.muscleGroup.create({
+      data: {
+        name: input.name,
+        slug: input.slug,
+        bodyParts: input.bodyPartIds
+          ? {
+              connect: input.bodyPartIds.map((id) => ({ id })),
+            }
+          : undefined,
+      },
+    });
   }
 
-  async updateMuscleGroup(context: any, id: number, input: any) {
+  async updateMuscleGroup(
+    context: any,
+    id: number,
+    input: UpdateMuscleGroupDto
+  ) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.muscleGroup.update({ where: { id }, data: input });
+    return this.prisma.muscleGroup.update({
+      where: { id },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        bodyParts: input.bodyPartIds
+          ? {
+              set: input.bodyPartIds.map((id) => ({ id })),
+            }
+          : undefined,
+      },
+    });
   }
 
   async deleteMuscleGroup(context: any, id: number) {
@@ -493,24 +541,33 @@ export class WorkoutPlanService {
     });
   }
 
-  async shareWorkoutProgram(ownerId: number, programId: number, shareWithUserId: number | null) {
-  if (!ownerId) throw new Error("Unauthorized");
+  async shareWorkoutProgram(
+    ownerId: number,
+    programId: number,
+    shareWithUserId: number | null
+  ) {
+    if (!ownerId) throw new Error("Unauthorized");
 
-  const program = await this.prisma.workoutProgram.findUnique({ where: { id: programId } });
-  if (!program || program.userId !== ownerId) throw new Error("Unauthorized program access");
+    const program = await this.prisma.workoutProgram.findUnique({
+      where: { id: programId },
+    });
+    if (!program || program.userId !== ownerId)
+      throw new Error("Unauthorized program access");
 
-  if (shareWithUserId) {
-    return this.sharingService.shareWorkoutProgram(
-      ownerId,
-      programId,
-      shareWithUserId,
-      "VIEW"
-    );
+    if (shareWithUserId) {
+      return this.sharingService.shareWorkoutProgram(
+        ownerId,
+        programId,
+        shareWithUserId,
+        "VIEW"
+      );
+    }
+
+    return this.prisma.workoutProgram.update({
+      where: { id: programId },
+      data: {
+        /* optionally expose isPublic: true if you support it */
+      },
+    });
   }
-
-  return this.prisma.workoutProgram.update({
-    where: { id: programId },
-    data: { /* optionally expose isPublic: true if you support it */ },
-  });
-}
 }

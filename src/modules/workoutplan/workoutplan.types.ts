@@ -1,3 +1,5 @@
+import { BodyPart } from "../exercise/exercise.types";
+
 export interface WorkoutPlan {
   id: number;
   name: string;
@@ -69,21 +71,22 @@ export interface WorkoutCategory {
   id: number;
   name: string;
   slug: string;
-  types?: WorkoutType[];
+  workoutTypes?: WorkoutType[];
 }
 
 export interface WorkoutType {
   id: number;
   name: string;
   slug: string;
-  categoryId: number;
-  category?: WorkoutCategory;
+  categories?: WorkoutCategory[]; // ✅ now an array
 }
 
 export interface MuscleGroup {
   id: number;
   name: string;
   slug: string;
+
+  bodyParts?: BodyPart[]; // ✅ Add this line
 }
 
 export interface TrainingMethod {
@@ -183,7 +186,7 @@ export interface UserWorkoutPreferences {
 }
 
 // Enums
-export type AssignmentStatus = 'PENDING' | 'COMPLETED' | 'MISSED';
+export type AssignmentStatus = "PENDING" | "COMPLETED" | "MISSED";
 
 // Inputs
 

@@ -220,3 +220,70 @@ export class SetUserWorkoutPreferencesDto {
   @IsBoolean()
   autoReschedule?: boolean;
 }
+
+export class CreateMuscleGroupDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  slug!: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  bodyPartIds?: number[]; // ✅ supports relation to body parts
+}
+
+export class UpdateMuscleGroupDto {
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  slug?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  bodyPartIds?: number[]; // ✅ update body part linkage
+}
+
+export class CreateWorkoutTypeDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  slug!: string;
+
+  @IsArray()
+  @IsInt({ each: true })
+  categoryIds!: number[];
+}
+
+export class UpdateWorkoutTypeDto {
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  slug?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  categoryIds?: number[];
+}
