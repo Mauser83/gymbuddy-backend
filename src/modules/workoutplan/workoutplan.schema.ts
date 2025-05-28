@@ -200,11 +200,13 @@ export const workoutplanTypeDefs = `#graphql
   input CreateMuscleGroupInput {
     name: String!
     slug: String!
+    bodyPartIds: [Int!]! # 👈 Add this line
   }
 
   input UpdateMuscleGroupInput {
     name: String
     slug: String
+    bodyPartIds: [Int!] # 👈 Add this line
   }
 
   input CreateTrainingMethodInput {

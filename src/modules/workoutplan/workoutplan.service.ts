@@ -357,6 +357,9 @@ export class WorkoutPlanService {
             }
           : undefined,
       },
+      include: {
+        bodyParts: true, // 👈 This is critical
+      },
     });
   }
 
@@ -378,6 +381,9 @@ export class WorkoutPlanService {
               set: input.bodyPartIds.map((id) => ({ id })),
             }
           : undefined,
+      },
+      include: {
+        bodyParts: true, // 👈 This is critical
       },
     });
   }
