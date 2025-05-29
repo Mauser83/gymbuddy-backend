@@ -117,8 +117,6 @@ model WorkoutPlanExercise {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@unique([workoutPlanId, exerciseId])
 }
 
 model Exercise {

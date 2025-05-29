@@ -206,7 +206,7 @@ export class WorkoutPlanService {
       await this.createPlanExercises(workoutPlanId, data.exercises);
     }
 
-    return updated;
+    return this.getWorkoutPlanById(workoutPlanId, userId);
   }
 
   async deleteWorkoutPlan(userId: number, workoutPlanId: number) {

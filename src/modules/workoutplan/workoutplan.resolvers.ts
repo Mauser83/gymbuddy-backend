@@ -2,6 +2,7 @@ import type { AuthContext } from "../auth/auth.types";
 import { WorkoutPlanService } from "./workoutplan.service";
 import { SharingService } from "./workoutplanSharing.service";
 import { PermissionService } from "../core/permission.service";
+import { UpdateWorkoutPlanDto } from "./workoutplan.dto";
 
 export const WorkoutPlanResolvers = {
   WorkoutPlan: {
@@ -186,7 +187,7 @@ export const WorkoutPlanResolvers = {
 
     updateWorkoutPlan: async (
       _: unknown,
-      args: { id: number; input: any },
+      args: { id: number; input: UpdateWorkoutPlanDto },
       context: AuthContext
     ) => {
       if (context.userId === null)

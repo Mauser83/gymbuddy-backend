@@ -47,12 +47,12 @@ export interface CreateWorkoutPlanInput {
 }
 
 export interface UpdateWorkoutPlanInput {
-  name?: string;
+  name: string;
   description?: string;
   isPublic?: boolean;
-  workoutTypeId?: number;
-  muscleGroupIds?: number[];
-  exercises?: WorkoutPlanExerciseInput[];
+  workoutTypeId: number;
+  muscleGroupIds: number[];
+  exercises: WorkoutPlanExerciseInput[];
 }
 
 export interface WorkoutPlanExerciseInput {

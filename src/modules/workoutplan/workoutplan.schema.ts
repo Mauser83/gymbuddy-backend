@@ -148,11 +148,11 @@ export const workoutplanTypeDefs = `#graphql
 
   input WorkoutPlanExerciseInput {
     exerciseId: Int!
-    order: Int
-    targetSets: Int
-    targetReps: Int
+    order: Int!
+    targetSets: Int!
+    targetReps: Int!
     targetWeight: Float
-    targetRpe: Float
+    targetRpe: Float!
     trainingMethodId: Int
     isWarmup: Boolean
   }
@@ -169,9 +169,9 @@ export const workoutplanTypeDefs = `#graphql
   input UpdateWorkoutPlanInput {
     name: String
     description: String
-    workoutTypeId: Int
-    muscleGroupIds: [Int!]
-    exercises: [WorkoutPlanExerciseInput!]
+    workoutTypeId: Int!
+    muscleGroupIds: [Int!]!
+    exercises: [WorkoutPlanExerciseInput!]!
   }
 
   input CreateWorkoutCategoryInput {
@@ -281,7 +281,7 @@ export const workoutplanTypeDefs = `#graphql
 
   extend type Mutation {
     createWorkoutPlan(input: CreateWorkoutPlanInput!): WorkoutPlan
-    updateWorkoutPlan(id: Int!, input: UpdateWorkoutPlanInput!): WorkoutPlan
+    updateWorkoutPlan(id: Int!, input: UpdateWorkoutPlanInput!): WorkoutPlan!
     deleteWorkoutPlan(id: Int!): String
 
     shareWorkoutPlan(workoutPlanId: Int!, shareWithUserId: Int): WorkoutPlan
