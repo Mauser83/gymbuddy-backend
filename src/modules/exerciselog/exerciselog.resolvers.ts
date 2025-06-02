@@ -17,6 +17,11 @@ export const ExerciseLogResolvers = {
       });
       return records.map((r) => r.gymEquipmentId);
     },
+    exercise: async (parent: any, _args: any, context: AuthContext) => {
+      return context.prisma.exercise.findUnique({
+        where: { id: parent.exerciseId },
+      });
+    },
   },
   WorkoutSession: {
     exerciseLogs: async (parent: any, _args: any, context: AuthContext) => {
@@ -57,7 +62,13 @@ export const ExerciseLogResolvers = {
       { userId }: { userId: number },
       context: AuthContext
     ) => {
-      return context.prisma.workoutSession.findMany({ where: { userId } });
+      return context.prisma.workoutSession.findMany({
+        where: { userId },
+        include: {
+          gym: true,
+          workoutPlan: true,
+        },
+      });
     },
     activeWorkoutSession: async (
       _: any,
@@ -103,10 +114,7 @@ export const ExerciseLogResolvers = {
         new PermissionService(context.prisma)
       );
 
-      return service.updateExerciseLog(
-        args.id,
-        args.input,
-      );
+      return service.updateExerciseLog(args.id, args.input);
     },
 
     deleteExerciseLog: async (

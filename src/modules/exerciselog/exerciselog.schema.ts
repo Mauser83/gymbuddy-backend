@@ -13,6 +13,7 @@ export const exerciselogTypeDefs = `
     createdAt: String!
     updatedAt: String!
     workoutSession: WorkoutSession
+    exercise: Exercise
   }
 
   type WorkoutSession {
