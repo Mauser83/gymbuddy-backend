@@ -21,3 +21,20 @@ export class UpdateUserRolesDto {
   @IsEnum(AppRole)
   appRole?: AppRole;
 }
+
+export enum ExperienceLevel {
+  BEGINNER = "BEGINNER",
+  INTERMEDIATE = "INTERMEDIATE",
+  ADVANCED = "ADVANCED",
+}
+
+export class UpdateUserTrainingPreferencesDto {
+  @IsOptional()
+  trainingGoalId?: number;
+
+  @IsOptional()
+  @IsEnum(ExperienceLevel, {
+    message: "experienceLevel must be BEGINNER, INTERMEDIATE, or ADVANCED",
+  })
+  experienceLevel?: ExperienceLevel;
+}

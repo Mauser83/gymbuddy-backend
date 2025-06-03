@@ -9,7 +9,7 @@ export const workoutplanTypeDefs = `#graphql
     createdAt: String!
     updatedAt: String!
 
-    workoutType: WorkoutType
+    trainingGoal: TrainingGoal
     muscleGroups: [MuscleGroup!]
 
     exercises: [WorkoutPlanExercise!]!
@@ -33,18 +33,28 @@ export const workoutplanTypeDefs = `#graphql
     exercise: Exercise!
   }
 
-  type WorkoutCategory {
+  type TrainingGoal {
     id: Int!
     name: String!
     slug: String!
-    workoutTypes: [WorkoutType!]!    # ✅ now a list
+    presets: [IntensityPreset!]!
   }
 
-  type WorkoutType {
+  enum ExperienceLevel {
+    BEGINNER
+    INTERMEDIATE
+    ADVANCED
+  }
+
+  type IntensityPreset {
     id: Int!
-    name: String!
-    slug: String!
-    categories: [WorkoutCategory!]!  # ✅ now a list
+    trainingGoalId: Int!
+    trainingGoal: TrainingGoal!
+    experienceLevel: ExperienceLevel!
+    defaultSets: Int!
+    defaultReps: Int!
+    defaultRestSec: Int!
+    defaultRpe: Float!
   }
 
   type MuscleGroup {
@@ -161,7 +171,7 @@ export const workoutplanTypeDefs = `#graphql
     name: String!
     description: String
     isPublic: Boolean
-    workoutTypeId: Int
+    trainingGoalId: Int!
     muscleGroupIds: [Int!]
     exercises: [WorkoutPlanExerciseInput!]
   }
@@ -169,32 +179,9 @@ export const workoutplanTypeDefs = `#graphql
   input UpdateWorkoutPlanInput {
     name: String
     description: String
-    workoutTypeId: Int!
+    trainingGoalId: Int!
     muscleGroupIds: [Int!]!
     exercises: [WorkoutPlanExerciseInput!]!
-  }
-
-  input CreateWorkoutCategoryInput {
-    name: String!
-    slug: String!
-  }
-
-  input UpdateWorkoutCategoryInput {
-    name: String
-    slug: String
-    workoutTypeIds: [Int!] # ✅ Add this line
-  }
-
-  input CreateWorkoutTypeInput {
-    name: String!
-    slug: String!
-    categoryIds: [Int!]!    # ✅ required list
-  }
-
-  input UpdateWorkoutTypeInput {
-    name: String
-    slug: String
-    categoryIds: [Int!]     # ✅ optional list
   }
 
   input CreateMuscleGroupInput {
@@ -219,6 +206,20 @@ export const workoutplanTypeDefs = `#graphql
     name: String
     slug: String
     description: String
+  }
+
+  input TrainingGoalInput {
+    name: String!
+    slug: String!
+  }
+
+  input IntensityPresetInput {
+    trainingGoalId: Int!
+    experienceLevel: ExperienceLevel!
+    defaultSets: Int!
+    defaultReps: Int!
+    defaultRestSec: Int!
+    defaultRpe: Float!
   }
 
     input CreateWorkoutProgramInput {
@@ -269,14 +270,15 @@ export const workoutplanTypeDefs = `#graphql
     sharedWorkoutPlans: [WorkoutPlan]
 
     # ➕ NEW: Root queries
-    getWorkoutCategories: [WorkoutCategory!]!
-    getWorkoutTypes: [WorkoutType!]!
     getMuscleGroups: [MuscleGroup!]!
     getTrainingMethods: [TrainingMethod!]!
 
     getWorkoutPrograms: [WorkoutProgram!]!
     getWorkoutProgramById(id: Int!): WorkoutProgram
     getUserWorkoutPreferences: UserWorkoutPreferences
+
+    getTrainingGoals: [TrainingGoal!]!
+    getIntensityPresets(trainingGoalId: Int): [IntensityPreset!]!
   }
 
   extend type Mutation {
@@ -287,16 +289,6 @@ export const workoutplanTypeDefs = `#graphql
     shareWorkoutPlan(workoutPlanId: Int!, shareWithUserId: Int): WorkoutPlan
     shareWorkoutProgram(programId: Int!, shareWithUserId: Int): WorkoutProgram
 
-    # WorkoutCategory
-    createWorkoutCategory(input: CreateWorkoutCategoryInput!): WorkoutCategory!
-    updateWorkoutCategory(id: Int!, input: UpdateWorkoutCategoryInput!): WorkoutCategory!
-    deleteWorkoutCategory(id: Int!): Boolean!
-
-    # WorkoutType
-    createWorkoutType(input: CreateWorkoutTypeInput!): WorkoutType!
-    updateWorkoutType(id: Int!, input: UpdateWorkoutTypeInput!): WorkoutType!
-    deleteWorkoutType(id: Int!): Boolean!
-
     # MuscleGroup
     createMuscleGroup(input: CreateMuscleGroupInput!): MuscleGroup!
     updateMuscleGroup(id: Int!, input: UpdateMuscleGroupInput!): MuscleGroup!
@@ -306,6 +298,14 @@ export const workoutplanTypeDefs = `#graphql
     createTrainingMethod(input: CreateTrainingMethodInput!): TrainingMethod!
     updateTrainingMethod(id: Int!, input: UpdateTrainingMethodInput!): TrainingMethod!
     deleteTrainingMethod(id: Int!): Boolean!
+
+    createTrainingGoal(input: TrainingGoalInput!): TrainingGoal!
+    updateTrainingGoal(id: Int!, input: TrainingGoalInput!): TrainingGoal!
+    deleteTrainingGoal(id: Int!): Boolean!
+
+    createIntensityPreset(input: IntensityPresetInput!): IntensityPreset!
+    updateIntensityPreset(id: Int!, input: IntensityPresetInput!): IntensityPreset!
+    deleteIntensityPreset(id: Int!): Boolean!
 
     createWorkoutPlanVersion(parentPlanId: Int!, input: CreateWorkoutPlanInput!): WorkoutPlan
 

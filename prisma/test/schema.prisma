@@ -64,6 +64,10 @@ model User {
   UserMuscleCooldownOverride UserMuscleCooldownOverride[]
   WorkoutProgramAssignment   WorkoutProgramAssignment[]
   UserWorkoutPreferences     UserWorkoutPreferences?
+
+  experienceLevel  ExperienceLevel?
+  trainingGoalId   Int?
+  trainingGoal     TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
 }
 
 model WorkoutPlan {
@@ -83,8 +87,8 @@ model WorkoutPlan {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
 
-  workoutTypeId Int?
-  workoutType   WorkoutType? @relation(fields: [workoutTypeId], references: [id])
+  trainingGoalId Int?
+  trainingGoal   TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
 
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
@@ -466,21 +470,30 @@ model GymEquipmentImage {
   @@index([gymEquipmentId])
 }
 
-model WorkoutCategory {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
-
-  workoutTypes WorkoutType[] @relation("WorkoutTypeToCategory")
+model TrainingGoal {
+  id        Int               @id @default(autoincrement())
+  name      String
+  slug      String            @unique
+  presets   IntensityPreset[]
+  users     User[]
+  workoutPlans WorkoutPlan[]
 }
 
-model WorkoutType {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
+model IntensityPreset {
+  id                Int           @id @default(autoincrement())
+  trainingGoal      TrainingGoal @relation(fields: [trainingGoalId], references: [id])
+  trainingGoalId    Int
+  experienceLevel   ExperienceLevel
+  defaultSets       Int
+  defaultReps       Int
+  defaultRestSec    Int
+  defaultRpe        Int
+}
 
-  categories WorkoutCategory[] @relation("WorkoutTypeToCategory")
-  plans      WorkoutPlan[]
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
 }
 
 model MuscleGroup {

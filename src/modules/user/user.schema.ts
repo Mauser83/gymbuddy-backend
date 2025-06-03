@@ -10,10 +10,19 @@ export const userTypeDefs = `
     updatedAt: String!
     gymManagementRoles: [GymManagementRole]
 
+    trainingGoal: TrainingGoal
+    experienceLevel: ExperienceLevel
+
     # ➕ NEW FIELDS
     assignedWorkouts: [AssignedWorkout!]      # Plans assigned TO this user
     assignedByWorkouts: [AssignedWorkout!]    # Plans assigned BY this user (as trainer)
     workoutSessions: [WorkoutSession!]        # Grouped logs per session
+  }
+
+  enum ExperienceLevel {
+    BEGINNER
+    INTERMEDIATE
+    ADVANCED
   }
 
   type GymManagementRole {
@@ -44,6 +53,11 @@ export const userTypeDefs = `
     userRole: UserRole!
   }
 
+  input UpdateUserTrainingPreferencesInput {
+    trainingGoalId: Int
+    experienceLevel: ExperienceLevel
+  }
+
   extend type Query {
     users(search: String): [User]
     userById(id: Int!): User
@@ -52,6 +66,7 @@ export const userTypeDefs = `
   extend type Mutation {
     deleteUser(id: Int!): String
     updateUserRoles(userId: Int!, input: UpdateUserRolesInput!): User!
+    updateUserTrainingPreferences(input: UpdateUserTrainingPreferencesInput!): User!
   }
 
   extend type Subscription {

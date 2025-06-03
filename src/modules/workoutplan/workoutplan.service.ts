@@ -94,7 +94,7 @@ export class WorkoutPlanService {
         description: data.description,
         userId,
         isPublic: data.isPublic ?? false,
-        workoutTypeId: data.workoutTypeId ?? null,
+        trainingGoalId: data.trainingGoalId ?? null,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -136,7 +136,7 @@ export class WorkoutPlanService {
         parentPlanId,
         version: versionCount + 2,
         userId,
-        workoutTypeId: data.workoutTypeId ?? null,
+        trainingGoalId: data.trainingGoalId ?? null,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -190,7 +190,7 @@ export class WorkoutPlanService {
         name: data.name,
         description: data.description,
         isPublic: data.isPublic,
-        workoutTypeId: data.workoutTypeId ?? undefined,
+        trainingGoalId: data.trainingGoalId ?? undefined,
         muscleGroups: data.muscleGroupIds
           ? {
               set: data.muscleGroupIds.map((id) => ({ id })),
@@ -264,81 +264,49 @@ export class WorkoutPlanService {
     });
   }
 
-  // 🔒 WorkoutCategory
-  async createWorkoutCategory(context: any, input: any) {
+  async createTrainingGoal(context: any, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.workoutCategory.create({ data: input });
+    return this.prisma.trainingGoal.create({ data: input });
   }
 
-  async updateWorkoutCategory(context: any, id: number, input: any) {
+  async updateTrainingGoal(context: any, id: number, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.workoutCategory.update({
+    return this.prisma.trainingGoal.update({
       where: { id },
-      data: {
-        name: input.name,
-        slug: input.slug,
-        workoutTypes: input.workoutTypeIds
-          ? {
-              set: input.workoutTypeIds.map((id: number) => ({ id })),
-            }
-          : undefined,
-      },
+      data: input,
     });
   }
 
-  async deleteWorkoutCategory(context: any, id: number) {
-    verifyRoles(context, {
-      requireAppRole: "ADMIN",
-    });
-    await this.prisma.workoutCategory.delete({ where: { id } });
+  async deleteTrainingGoal(context: any, id: number) {
+    verifyRoles(context, { requireAppRole: "ADMIN" });
+    await this.prisma.trainingGoal.delete({ where: { id } });
     return true;
   }
 
-  // 🔒 WorkoutType
-  async createWorkoutType(context: any, input: any) {
+  async createIntensityPreset(context: any, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-
-    return this.prisma.workoutType.create({
-      data: {
-        name: input.name,
-        slug: input.slug,
-        categories: {
-          connect: input.categoryIds.map((id: number) => ({ id })),
-        },
-      },
-    });
+    return this.prisma.intensityPreset.create({ data: input });
   }
 
-  async updateWorkoutType(context: any, id: number, input: any) {
+  async updateIntensityPreset(context: any, id: number, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-
-    return this.prisma.workoutType.update({
+    return this.prisma.intensityPreset.update({
       where: { id },
-      data: {
-        name: input.name,
-        slug: input.slug,
-        categories: input.categoryIds
-          ? {
-              set: input.categoryIds.map((id: number) => ({ id })),
-            }
-          : undefined,
-      },
+      data: input,
     });
   }
 
-  async deleteWorkoutType(context: any, id: number) {
-    verifyRoles(context, {
-      requireAppRole: "ADMIN",
-    });
-    await this.prisma.workoutType.delete({ where: { id } });
+  async deleteIntensityPreset(context: any, id: number) {
+    verifyRoles(context, { requireAppRole: "ADMIN" });
+    await this.prisma.intensityPreset.delete({ where: { id } });
     return true;
   }
 

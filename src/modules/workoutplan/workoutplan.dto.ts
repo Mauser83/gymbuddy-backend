@@ -72,8 +72,8 @@ export class CreateWorkoutPlanDto {
   isPublic?: boolean;
 
   @IsOptional()
-  @IsInt({ message: "workoutTypeId must be an integer" })
-  workoutTypeId?: number;
+  @IsInt({ message: "trainingGoalId must be an integer" })
+  trainingGoalId?: number;
 
   @IsOptional()
   @IsArray()
@@ -102,8 +102,8 @@ export class UpdateWorkoutPlanDto {
   @IsBoolean({ message: "isPublic must be a boolean" })
   isPublic?: boolean;
 
-  @IsInt({ message: "workoutTypeId must be an integer" })
-  workoutTypeId!: number;
+  @IsInt({ message: "trainingGoalId must be an integer" })
+  trainingGoalId!: number;
 
   @IsArray()
   @IsInt({ each: true, message: "Each muscleGroupId must be an integer" })
@@ -252,7 +252,7 @@ export class UpdateMuscleGroupDto {
   bodyPartIds?: number[]; // ✅ update body part linkage
 }
 
-export class CreateWorkoutTypeDto {
+export class CreateTrainingGoalDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 100)
@@ -262,13 +262,9 @@ export class CreateWorkoutTypeDto {
   @IsNotEmpty()
   @Length(2, 100)
   slug!: string;
-
-  @IsArray()
-  @IsInt({ each: true })
-  categoryIds!: number[];
 }
 
-export class UpdateWorkoutTypeDto {
+export class UpdateTrainingGoalDto {
   @IsOptional()
   @IsString()
   @Length(2, 100)
@@ -278,9 +274,66 @@ export class UpdateWorkoutTypeDto {
   @IsString()
   @Length(2, 100)
   slug?: string;
+}
+
+export class CreateIntensityPresetDto {
+  @IsInt()
+  trainingGoalId!: number;
+
+  @IsString()
+  experienceLevel!: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultSets!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultReps!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  defaultRestSec!: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  defaultRpe!: number;
+}
+
+export class UpdateIntensityPresetDto {
+  @IsOptional()
+  @IsInt()
+  trainingGoalId?: number;
 
   @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  categoryIds?: number[];
+  @IsString()
+  experienceLevel?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultSets?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultReps?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  defaultRestSec?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  defaultRpe?: number;
 }

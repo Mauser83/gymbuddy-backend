@@ -12,10 +12,9 @@ export const WorkoutPlanResolvers = {
         include: { exercise: true, trainingMethod: true },
       });
     },
-    workoutType: (parent: any, _: any, context: AuthContext) => {
-      return context.prisma.workoutType.findUnique({
-        where: { id: parent.workoutTypeId },
-        include: { categories: true },
+    trainingGoal: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.trainingGoal.findUnique({
+        where: { id: parent.trainingGoalId },
       });
     },
     muscleGroups: (parent: any, _: any, context: AuthContext) => {
@@ -46,22 +45,6 @@ export const WorkoutPlanResolvers = {
             where: { id: parent.trainingMethodId },
           })
         : null;
-    },
-  },
-
-  WorkoutType: {
-    categories: (parent: any, _: any, context:AuthContext) => {
-      return context.prisma.workoutType
-        .findUnique({ where: { id: parent.id } })
-        .categories();
-    },
-  },
-
-  WorkoutCategory: {
-    workoutTypes: (parent: any, _: any, context:AuthContext) => {
-      return context.prisma.workoutCategory
-        .findUnique({ where: { id: parent.id } })
-        .workoutTypes();
     },
   },
 
@@ -107,14 +90,21 @@ export const WorkoutPlanResolvers = {
       return workoutPlanService.getSharedWorkoutPlans(context.userId);
     },
 
-    getWorkoutCategories: (_: unknown, __: unknown, context: AuthContext) => {
-      return context.prisma.workoutCategory.findMany({
-        include: { workoutTypes: true },
+    getTrainingGoals: (_: unknown, __: unknown, context: AuthContext) => {
+      return context.prisma.trainingGoal.findMany({
+        include: { presets: true },
       });
     },
-    getWorkoutTypes: (_: unknown, __: unknown, context: AuthContext) => {
-      return context.prisma.workoutType.findMany({
-        include: { categories: true },
+
+    getIntensityPresets: (
+      _: unknown,
+      args: { trainingGoalId?: number },
+      context: AuthContext
+    ) => {
+      return context.prisma.intensityPreset.findMany({
+        where: args.trainingGoalId
+          ? { trainingGoalId: args.trainingGoalId }
+          : {},
       });
     },
     getMuscleGroups: (_: unknown, __: unknown, context: AuthContext) => {
@@ -257,8 +247,38 @@ export const WorkoutPlanResolvers = {
       );
     },
 
-    // 🔒 WorkoutCategory
-    createWorkoutCategory: (
+    createTrainingGoal: (_: unknown, { input }: any, context: AuthContext) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createTrainingGoal(context, input);
+    },
+
+    updateTrainingGoal: (
+      _: unknown,
+      { id, input }: any,
+      context: AuthContext
+    ) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.updateTrainingGoal(context, id, input);
+    },
+
+    deleteTrainingGoal: (_: unknown, { id }: any, context: AuthContext) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteTrainingGoal(context, id);
+    },
+
+    createIntensityPreset: (
       _: unknown,
       { input }: any,
       context: AuthContext
@@ -268,10 +288,10 @@ export const WorkoutPlanResolvers = {
         context.permissionService,
         new SharingService(context.prisma, context.permissionService)
       );
-      return service.createWorkoutCategory(context, input);
+      return service.createIntensityPreset(context, input);
     },
 
-    updateWorkoutCategory: (
+    updateIntensityPreset: (
       _: unknown,
       { id, input }: any,
       context: AuthContext
@@ -281,48 +301,16 @@ export const WorkoutPlanResolvers = {
         context.permissionService,
         new SharingService(context.prisma, context.permissionService)
       );
-      return service.updateWorkoutCategory(context, id, input);
+      return service.updateIntensityPreset(context, id, input);
     },
 
-    deleteWorkoutCategory: (_: unknown, { id }: any, context: AuthContext) => {
+    deleteIntensityPreset: (_: unknown, { id }: any, context: AuthContext) => {
       const service = new WorkoutPlanService(
         context.prisma,
         context.permissionService,
         new SharingService(context.prisma, context.permissionService)
       );
-      return service.deleteWorkoutCategory(context, id);
-    },
-
-    // 🔒 WorkoutType
-    createWorkoutType: (_: unknown, { input }: any, context: AuthContext) => {
-      const service = new WorkoutPlanService(
-        context.prisma,
-        context.permissionService,
-        new SharingService(context.prisma, context.permissionService)
-      );
-      return service.createWorkoutType(context, input);
-    },
-
-    updateWorkoutType: (
-      _: unknown,
-      { id, input }: any,
-      context: AuthContext
-    ) => {
-      const service = new WorkoutPlanService(
-        context.prisma,
-        context.permissionService,
-        new SharingService(context.prisma, context.permissionService)
-      );
-      return service.updateWorkoutType(context, id, input);
-    },
-
-    deleteWorkoutType: (_: unknown, { id }: any, context: AuthContext) => {
-      const service = new WorkoutPlanService(
-        context.prisma,
-        context.permissionService,
-        new SharingService(context.prisma, context.permissionService)
-      );
-      return service.deleteWorkoutType(context, id);
+      return service.deleteIntensityPreset(context, id);
     },
 
     // 🔒 MuscleGroup

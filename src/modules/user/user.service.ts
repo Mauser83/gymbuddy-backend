@@ -1,10 +1,13 @@
 import { PrismaClient } from "../../lib/prisma";
 import { PermissionService } from "../core/permission.service";
-import { AuthContext } from '../auth/auth.types';
-import { verifyRoles } from '../auth/auth.roles';
+import { AuthContext } from "../auth/auth.types";
+import { verifyRoles } from "../auth/auth.roles";
 import { AppRole, UserRole } from "../../lib/prisma";
 import { validateInput } from "../../middlewares/validation";
-import { UpdateUserRolesDto } from "./user.dto";
+import {
+  UpdateUserRolesDto,
+  UpdateUserTrainingPreferencesDto,
+} from "./user.dto";
 
 export class UserService {
   private prisma: PrismaClient;
@@ -74,7 +77,9 @@ export class UserService {
 
     if (context.appRole === "ADMIN") {
       dataToUpdate.appRole =
-        args.appRole && args.appRole !== "NONE" ? (args.appRole as AppRole) : null;
+        args.appRole && args.appRole !== "NONE"
+          ? (args.appRole as AppRole)
+          : null;
     }
 
     return this.prisma.user.update({
@@ -86,6 +91,24 @@ export class UserService {
         username: true,
         appRole: true,
         userRole: true,
+      },
+    });
+  }
+
+  async updateTrainingPreferences(
+    userId: number,
+    input: UpdateUserTrainingPreferencesDto
+  ) {
+    await validateInput(input, UpdateUserTrainingPreferencesDto);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        trainingGoalId: input.trainingGoalId ?? undefined,
+        experienceLevel: input.experienceLevel ?? undefined,
+      },
+      include: {
+        trainingGoal: true,
       },
     });
   }

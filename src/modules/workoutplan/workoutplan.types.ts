@@ -11,15 +11,34 @@ export interface WorkoutPlan {
   updatedAt: Date;
   userId: number;
 
-  workoutType?: WorkoutType;
-  workoutTypeId?: number;
+  trainingGoal?: TrainingGoal;
+  trainingGoalId?: number;
 
   muscleGroups?: MuscleGroup[];
-
   exercises?: WorkoutPlanExercise[];
   assignedWorkouts?: AssignedWorkout[];
   sessions?: WorkoutSession[];
 }
+
+export interface TrainingGoal {
+  id: number;
+  name: string;
+  slug: string;
+  presets?: IntensityPreset[]; // optional if needed for admin UI
+}
+
+export interface IntensityPreset {
+  id: number;
+  trainingGoalId: number;
+  trainingGoal?: TrainingGoal;
+  experienceLevel: ExperienceLevel;
+  defaultSets: number;
+  defaultReps: number;
+  defaultRestSec: number;
+  defaultRpe: number;
+}
+
+export type ExperienceLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
 export interface WorkoutPlanExercise {
   id: number;
@@ -41,7 +60,7 @@ export interface CreateWorkoutPlanInput {
   name: string;
   description?: string;
   isPublic?: boolean;
-  workoutTypeId?: number;
+  trainingGoalId?: number;
   muscleGroupIds?: number[];
   exercises?: WorkoutPlanExerciseInput[];
 }
@@ -50,7 +69,7 @@ export interface UpdateWorkoutPlanInput {
   name: string;
   description?: string;
   isPublic?: boolean;
-  workoutTypeId: number;
+  trainingGoalId: number;
   muscleGroupIds: number[];
   exercises: WorkoutPlanExerciseInput[];
 }
@@ -64,21 +83,6 @@ export interface WorkoutPlanExerciseInput {
   targetRpe?: number;
   trainingMethodId?: number;
   isWarmup?: boolean;
-}
-
-// ➕ New Types
-export interface WorkoutCategory {
-  id: number;
-  name: string;
-  slug: string;
-  workoutTypes?: WorkoutType[];
-}
-
-export interface WorkoutType {
-  id: number;
-  name: string;
-  slug: string;
-  categories?: WorkoutCategory[]; // ✅ now an array
 }
 
 export interface MuscleGroup {

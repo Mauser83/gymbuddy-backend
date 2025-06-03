@@ -11,13 +11,18 @@ export interface UpdateUserProfileInput {
   email?: string;
 }
 
+export interface UpdateUserTrainingPreferencesInput {
+  trainingGoalId?: number;
+  experienceLevel?: ExperienceLevel;
+}
+
 // ➕ NEW TYPES
 
 export interface AssignedWorkout {
   id: number;
   date: string;
-  userId: number;         // Assignee
-  trainerId: number;      // Assigned by
+  userId: number; // Assignee
+  trainerId: number; // Assigned by
   workoutPlanId: number;
   completed: boolean;
 }
@@ -41,10 +46,21 @@ export interface User {
   updatedAt: string;
   gymManagementRoles?: GymManagementRole[];
 
-  // ➕ NEW FIELDS
+  trainingGoalId?: number;
+  trainingGoal?: TrainingGoal;
+  experienceLevel?: ExperienceLevel;
+
   assignedWorkouts?: AssignedWorkout[];
   assignedByWorkouts?: AssignedWorkout[];
   workoutSessions?: WorkoutSession[];
+}
+
+export type ExperienceLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+
+export interface TrainingGoal {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export interface GymManagementRole {
