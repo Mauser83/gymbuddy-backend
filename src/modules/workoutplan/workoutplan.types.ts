@@ -14,6 +14,10 @@ export interface WorkoutPlan {
   trainingGoal?: TrainingGoal;
   trainingGoalId?: number;
 
+    // ✅ Add these:
+  intensityPreset?: IntensityPreset;
+  intensityPresetId?: number;
+
   muscleGroups?: MuscleGroup[];
   exercises?: WorkoutPlanExercise[];
   assignedWorkouts?: AssignedWorkout[];
@@ -61,6 +65,7 @@ export interface CreateWorkoutPlanInput {
   description?: string;
   isPublic?: boolean;
   trainingGoalId?: number;
+  intensityPresetId?: number; // ✅ add this
   muscleGroupIds?: number[];
   exercises?: WorkoutPlanExerciseInput[];
 }
@@ -70,6 +75,7 @@ export interface UpdateWorkoutPlanInput {
   description?: string;
   isPublic?: boolean;
   trainingGoalId: number;
+  intensityPresetId?: number; // ✅ add this
   muscleGroupIds: number[];
   exercises: WorkoutPlanExerciseInput[];
 }

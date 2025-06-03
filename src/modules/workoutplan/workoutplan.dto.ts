@@ -76,6 +76,10 @@ export class CreateWorkoutPlanDto {
   trainingGoalId?: number;
 
   @IsOptional()
+  @IsInt({ message: "intensityPresetId must be an integer" })
+  intensityPresetId?: number;
+
+  @IsOptional()
   @IsArray()
   @IsInt({ each: true, message: "Each muscleGroupId must be an integer" })
   muscleGroupIds?: number[];
@@ -104,6 +108,10 @@ export class UpdateWorkoutPlanDto {
 
   @IsInt({ message: "trainingGoalId must be an integer" })
   trainingGoalId!: number;
+
+  @IsOptional()
+  @IsInt({ message: "intensityPresetId must be an integer" })
+  intensityPresetId?: number;
 
   @IsArray()
   @IsInt({ each: true, message: "Each muscleGroupId must be an integer" })

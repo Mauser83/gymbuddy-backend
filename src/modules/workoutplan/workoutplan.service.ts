@@ -95,6 +95,7 @@ export class WorkoutPlanService {
         userId,
         isPublic: data.isPublic ?? false,
         trainingGoalId: data.trainingGoalId ?? null,
+        intensityPresetId: data.intensityPresetId ?? null,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -137,6 +138,7 @@ export class WorkoutPlanService {
         version: versionCount + 2,
         userId,
         trainingGoalId: data.trainingGoalId ?? null,
+        intensityPresetId: data.intensityPresetId ?? null,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -191,6 +193,7 @@ export class WorkoutPlanService {
         description: data.description,
         isPublic: data.isPublic,
         trainingGoalId: data.trainingGoalId ?? undefined,
+        intensityPresetId: data.intensityPresetId ?? undefined,
         muscleGroups: data.muscleGroupIds
           ? {
               set: data.muscleGroupIds.map((id) => ({ id })),

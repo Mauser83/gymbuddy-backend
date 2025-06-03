@@ -89,6 +89,9 @@ model WorkoutPlan {
 
   trainingGoalId Int?
   trainingGoal   TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
+  intensityPresetId Int?                    // ✅ new
+  intensityPreset   IntensityPreset?        @relation(fields: [intensityPresetId], references: [id])
+
 
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
@@ -488,6 +491,8 @@ model IntensityPreset {
   defaultReps       Int
   defaultRestSec    Int
   defaultRpe        Int
+
+  workoutPlans WorkoutPlan[]  // ✅ Add this back-reference
 }
 
 enum ExperienceLevel {

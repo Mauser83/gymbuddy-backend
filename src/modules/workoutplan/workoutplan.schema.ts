@@ -10,6 +10,8 @@ export const workoutplanTypeDefs = `#graphql
     updatedAt: String!
 
     trainingGoal: TrainingGoal
+    intensityPreset: IntensityPreset
+    intensityPresetId: Int
     muscleGroups: [MuscleGroup!]
 
     exercises: [WorkoutPlanExercise!]!
@@ -172,6 +174,7 @@ export const workoutplanTypeDefs = `#graphql
     description: String
     isPublic: Boolean
     trainingGoalId: Int!
+    intensityPresetId: Int
     muscleGroupIds: [Int!]
     exercises: [WorkoutPlanExerciseInput!]
   }
@@ -180,6 +183,7 @@ export const workoutplanTypeDefs = `#graphql
     name: String
     description: String
     trainingGoalId: Int!
+    intensityPresetId: Int
     muscleGroupIds: [Int!]!
     exercises: [WorkoutPlanExerciseInput!]!
   }

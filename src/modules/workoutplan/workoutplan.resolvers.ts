@@ -17,6 +17,13 @@ export const WorkoutPlanResolvers = {
         where: { id: parent.trainingGoalId },
       });
     },
+    intensityPreset: (parent: any, _: any, context: AuthContext) => {
+      return parent.intensityPresetId
+        ? context.prisma.intensityPreset.findUnique({
+            where: { id: parent.intensityPresetId },
+          })
+        : null;
+    },
     muscleGroups: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.muscleGroup.findMany({
         where: {
@@ -45,6 +52,14 @@ export const WorkoutPlanResolvers = {
             where: { id: parent.trainingMethodId },
           })
         : null;
+    },
+  },
+
+  IntensityPreset: {
+    trainingGoal: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.trainingGoal.findUnique({
+        where: { id: parent.trainingGoalId },
+      });
     },
   },
 
