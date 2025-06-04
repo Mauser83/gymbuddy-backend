@@ -31,21 +31,10 @@ export class WorkoutPlanExerciseInputDto {
   @Max(100)
   targetSets?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  targetReps?: number;
-
-  @IsOptional()
-  @IsNumber()
-  targetWeight?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(10)
-  targetRpe?: number;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TargetMetricInputDto)
+  targetMetrics!: TargetMetricInputDto[];
 
   @IsOptional()
   @IsInt()
@@ -54,6 +43,18 @@ export class WorkoutPlanExerciseInputDto {
   @IsOptional()
   @IsBoolean()
   isWarmup?: boolean;
+}
+
+export class TargetMetricInputDto {
+  @IsInt()
+  metricId!: number;
+
+  @IsNumber()
+  min!: number;
+
+  @IsOptional()
+  @IsNumber()
+  max?: number;
 }
 
 export class CreateWorkoutPlanDto {

@@ -9,8 +9,8 @@ export const exerciseTypeDefs = `
     createdAt: String!
     updatedAt: String!
 
-    difficulty: ExerciseDifficulty
-    exerciseType: ExerciseType
+    difficulty: ExerciseDifficulty!
+    exerciseType: ExerciseType!
     primaryMuscles: [Muscle!]!
     secondaryMuscles: [Muscle!]!
     workoutPlanEntries: [WorkoutPlanExercise!]!
@@ -59,6 +59,16 @@ export const exerciseTypeDefs = `
   type ExerciseType {
     id: Int!
     name: String!
+    metricIds: [Int!]!           # Raw IDs
+    metrics: [Metric!]!          # Resolved objects
+  }
+
+  type Metric {
+    id: Int!
+    name: String!
+    slug: String!
+    unit: String!
+    inputType: String!
   }
 
   type ExerciseDifficulty {
@@ -103,10 +113,26 @@ export const exerciseTypeDefs = `
 
   input CreateExerciseTypeInput {
     name: String!
+    metricIds: [Int!]!      # ✅ Required on creation
   }
 
   input UpdateExerciseTypeInput {
     name: String!
+    metricIds: [Int!]!      # ✅ Required on update
+  }
+
+  input CreateMetricInput {
+    name: String!
+    slug: String!
+    unit: String!
+    inputType: String!  # e.g. "number", "time", "text"
+  }
+
+  input UpdateMetricInput {
+    name: String
+    slug: String
+    unit: String
+    inputType: String
   }
 
   input CreateExerciseDifficultyInput {
@@ -153,6 +179,8 @@ export const exerciseTypeDefs = `
 
     exercisesAvailableAtGym(gymId: Int!, search: String): [Exercise!]!
 
+    allMetrics: [Metric!]!
+    metricById(id: Int!): Metric
   }
 
   extend type Mutation {
@@ -175,5 +203,9 @@ export const exerciseTypeDefs = `
     createMuscle(input: CreateMuscleInput!): Muscle!
     updateMuscle(id: Int!, input: UpdateMuscleInput!): Muscle!
     deleteMuscle(id: Int!): Boolean!
+
+    createMetric(input: CreateMetricInput!): Metric!
+    updateMetric(id: Int!, input: UpdateMetricInput!): Metric!
+    deleteMetric(id: Int!): Boolean!
   }
 `;

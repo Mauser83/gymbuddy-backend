@@ -7,10 +7,12 @@ import { ExerciseResolvers } from "../modules/exercise/exercise.resolvers";
 import { ExerciseLogResolvers } from "../modules/exerciselog/exerciselog.resolvers";
 import { AuthResolvers } from "../modules/auth/auth.resolvers";
 import { SubscriptionResolvers } from "./subscription.resolvers";
+import { GraphQLJSON } from "graphql-type-json";
 
 export const pubsub = new PubSub();
 
 const resolvers = {
+  JSON: GraphQLJSON,
   ...EquipmentResolvers,
   ...GymResolvers,
   ...UserResolvers,
@@ -38,8 +40,8 @@ const resolvers = {
     ...AuthResolvers.Mutation,
   },
   Subscription: {
-    ...SubscriptionResolvers.Subscription
-  }
+    ...SubscriptionResolvers.Subscription,
+  },
 };
 
 export default resolvers;

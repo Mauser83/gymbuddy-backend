@@ -1,4 +1,5 @@
 import { BodyPart } from "../exercise/exercise.types";
+import { MetricTarget } from "../exercise/exercise.types";
 
 export interface WorkoutPlan {
   id: number;
@@ -14,7 +15,7 @@ export interface WorkoutPlan {
   trainingGoal?: TrainingGoal;
   trainingGoalId?: number;
 
-    // ✅ Add these:
+  // ✅ Add these:
   intensityPreset?: IntensityPreset;
   intensityPresetId?: number;
 
@@ -50,9 +51,7 @@ export interface WorkoutPlanExercise {
   exerciseId: number;
   order?: number;
   targetSets?: number;
-  targetReps?: number;
-  targetWeight?: number;
-  targetRpe?: number;
+  targetMetrics: MetricTarget[]; // ✅
   isWarmup: boolean;
   trainingMethod?: TrainingMethod;
   trainingMethodId?: number;
@@ -84,11 +83,15 @@ export interface WorkoutPlanExerciseInput {
   exerciseId: number;
   order?: number;
   targetSets?: number;
-  targetReps?: number;
-  targetWeight?: number;
-  targetRpe?: number;
+  targetMetrics: TargetMetricInput[]; // ✅
   trainingMethodId?: number;
   isWarmup?: boolean;
+}
+
+export interface TargetMetricInput {
+  metricId: number;
+  min: number;
+  max?: number;
 }
 
 export interface MuscleGroup {

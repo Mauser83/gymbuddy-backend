@@ -11,8 +11,8 @@ export interface Exercise {
   updatedAt: string;
   userId: number;
 
-  difficulty?: ExerciseDifficulty;
-  exerciseType?: ExerciseType;
+  difficulty: ExerciseDifficulty;
+  exerciseType: ExerciseType;
   primaryMuscles?: Muscle[];
   secondaryMuscles?: Muscle[];
   equipmentSlots?: ExerciseEquipmentSlot[];
@@ -48,6 +48,22 @@ export interface EquipmentCategory {
 export interface ExerciseType {
   id: number;
   name: string;
+  metricIds: number[];
+  metrics: Metric[]; // resolved metric objects
+}
+
+export interface Metric {
+  id: number;
+  name: string;
+  slug: string;
+  unit: string;
+  inputType: string; // e.g. "number", "time", "text"
+}
+
+export interface MetricTarget {
+  metricId: number;
+  min: number;
+  max?: number;
 }
 
 export interface ExerciseDifficulty {
@@ -73,10 +89,12 @@ export interface BodyPart {
 
 export interface CreateExerciseTypeInput {
   name: string;
+  metricIds: number[];
 }
 
 export interface UpdateExerciseTypeInput {
   name: string;
+  metricIds: number[];
 }
 
 export interface CreateExerciseDifficultyInput {
@@ -164,10 +182,23 @@ export interface WorkoutPlanExercise {
   targetRpe?: number;
 }
 
-
 export interface ExerciseQueryFilters {
   exerciseType?: string[];
   difficulty?: string[];
   bodyPart?: string[];
   muscle?: string[];
+}
+
+export interface CreateMetricInput {
+  name: string;
+  slug: string;
+  unit: string;
+  inputType: string;
+}
+
+export interface UpdateMetricInput {
+  name?: string;
+  slug?: string;
+  unit?: string;
+  inputType?: string;
 }

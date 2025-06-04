@@ -8,8 +8,8 @@ import {
   IsUrl,
   ValidateNested,
   IsBoolean,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+} from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateExerciseDto {
   @IsString()
@@ -23,13 +23,11 @@ export class CreateExerciseDto {
   @IsUrl()
   videoUrl?: string;
 
-  @IsOptional()
   @IsInt()
-  difficultyId?: number;
+  difficultyId!: number;
 
-  @IsOptional()
   @IsInt()
-  exerciseTypeId?: number;
+  exerciseTypeId!: number;
 
   @IsArray()
   @ArrayNotEmpty()
@@ -122,11 +120,21 @@ export class CreateExerciseSlotOptionDto {
 export class CreateExerciseTypeDto {
   @IsString()
   name!: string;
+
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  metricIds!: number[];
 }
 
 export class UpdateExerciseTypeDto {
   @IsString()
   name!: string;
+
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  metricIds!: number[];
 }
 
 export class CreateExerciseDifficultyDto {
@@ -163,4 +171,36 @@ export class UpdateMuscleDto {
 
   @IsInt()
   bodyPartId!: number;
+}
+
+export class CreateMetricDto {
+  @IsString()
+  name!: string;
+
+  @IsString()
+  slug!: string;
+
+  @IsString()
+  unit!: string;
+
+  @IsString()
+  inputType!: string; // e.g., "number", "time", "text"
+}
+
+export class UpdateMetricDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsString()
+  inputType?: string;
 }

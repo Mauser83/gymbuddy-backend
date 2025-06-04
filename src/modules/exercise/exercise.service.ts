@@ -14,6 +14,8 @@ import {
   UpdateBodyPartInput,
   CreateMuscleInput,
   UpdateMuscleInput,
+  CreateMetricInput,
+  UpdateMetricInput,
 } from "./exercise.types";
 
 import {
@@ -27,6 +29,8 @@ import {
   UpdateBodyPartDto,
   CreateMuscleDto,
   UpdateMuscleDto,
+  CreateMetricDto,
+  UpdateMetricDto,
 } from "./exercise.dto";
 
 export class ExerciseService {
@@ -79,8 +83,8 @@ export class ExerciseService {
       data: {
         ...exerciseData,
         userId,
-        difficultyId,
-        exerciseTypeId,
+        difficultyId: difficultyId as number,
+        exerciseTypeId: exerciseTypeId as number,
         primaryMuscles: {
           connect: primaryMuscleIds.map((id) => ({ id })),
         },
@@ -496,6 +500,26 @@ export class ExerciseService {
 
   async deleteMuscle(id: number) {
     await this.prisma.muscle.delete({ where: { id } });
+    return true;
+  }
+
+  // ---------- METRIC ----------
+
+  async createMetric(input: CreateMetricInput) {
+    await validateInput(input, CreateMetricDto);
+    return this.prisma.metric.create({ data: input });
+  }
+
+  async updateMetric(id: number, input: UpdateMetricInput) {
+    await validateInput(input, UpdateMetricDto);
+    return this.prisma.metric.update({
+      where: { id },
+      data: input,
+    });
+  }
+
+  async deleteMetric(id: number) {
+    await this.prisma.metric.delete({ where: { id } });
     return true;
   }
 }

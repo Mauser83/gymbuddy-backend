@@ -53,6 +53,7 @@ export const WorkoutPlanResolvers = {
           })
         : null;
     },
+    targetMetrics: (parent: any) => parent.targetMetrics ?? [], // ✅ optional clarity
   },
 
   IntensityPreset: {

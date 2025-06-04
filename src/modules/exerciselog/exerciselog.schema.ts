@@ -6,9 +6,7 @@ export const exerciselogTypeDefs = `
     equipmentIds: [Int!]!
     workoutSessionId: Int!
     setNumber: Int!
-    reps: Int!
-    weight: Float!
-    rpe: Float
+    metrics: JSON!
     notes: String
     createdAt: String!
     updatedAt: String!
@@ -35,18 +33,14 @@ export const exerciselogTypeDefs = `
     equipmentIds: [Int!]!
     workoutSessionId: Int!
     setNumber: Int!
-    reps: Int!
-    weight: Float!
-    rpe: Float
+    metrics: JSON!
     notes: String
   }
 
   input UpdateExerciseLogInput {
     equipmentIds: [Int!]
     setNumber: Int
-    reps: Int
-    weight: Float
-    rpe: Float
+    metrics: JSON
     notes: String
   }
 

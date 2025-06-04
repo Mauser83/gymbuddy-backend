@@ -47,11 +47,12 @@ export class ExerciseLogService {
   async createExerciseLog(data: CreateExerciseLogInput, userId: number) {
     await validateInput(data, CreateExerciseLogDto);
 
-    const { equipmentIds, ...logData } = data;
+    const { equipmentIds, metrics, ...logData } = data;
 
     const newLog = await this.prisma.exerciseLog.create({
       data: {
         ...logData,
+        metrics, // ✅ Store dynamic metrics JSON
       },
     });
 
@@ -65,35 +66,34 @@ export class ExerciseLogService {
     return newLog;
   }
 
-  async updateExerciseLog(
-  id: number,
-  data: UpdateExerciseLogInput,
-) {
-  await validateInput(data, UpdateExerciseLogDto);
+  async updateExerciseLog(id: number, data: UpdateExerciseLogInput) {
+    await validateInput(data, UpdateExerciseLogDto);
 
-  const { equipmentIds, ...updateData } = data;
+    const { equipmentIds, metrics, ...updateData } = data;
 
-  const updatedLog = await this.prisma.exerciseLog.update({
-    where: { id },
-    data: updateData,
-  });
-
-  if (equipmentIds) {
-    await this.prisma.exerciseLogEquipment.deleteMany({
-      where: { exerciseLogId: id },
+    const updatedLog = await this.prisma.exerciseLog.update({
+      where: { id },
+      data: {
+        ...updateData,
+        ...(metrics && { metrics }), // ✅ Only if present
+      },
     });
 
-    await this.prisma.exerciseLogEquipment.createMany({
-      data: equipmentIds.map((eid) => ({
-        exerciseLogId: id,
-        gymEquipmentId: eid,
-      })),
-    });
+    if (equipmentIds) {
+      await this.prisma.exerciseLogEquipment.deleteMany({
+        where: { exerciseLogId: id },
+      });
+
+      await this.prisma.exerciseLogEquipment.createMany({
+        data: equipmentIds.map((eid) => ({
+          exerciseLogId: id,
+          gymEquipmentId: eid,
+        })),
+      });
+    }
+
+    return updatedLog;
   }
-
-  return updatedLog;
-}
-
 
   async deleteExerciseLog(id: number, userId: number) {
     // Optional: Add ownership validation if necessary

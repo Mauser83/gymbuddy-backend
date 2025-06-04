@@ -4,9 +4,7 @@ export interface ExerciseLog {
   workoutSessionId: number;
 
   setNumber: number;
-  reps: number;
-  weight: number;
-  rpe?: number;
+  metrics: Record<number, number | string>; // { [metricId]: value }
   notes?: string;
 
   equipmentIds: number[]; // ✅ new field
@@ -20,22 +18,18 @@ export interface CreateExerciseLogInput {
   workoutSessionId: number;
 
   setNumber: number;
-  reps: number;
-  weight: number;
-  rpe?: number;
-  notes?: string;
+  metrics: Record<number, number | string>; // ✅
 
-  equipmentIds: number[]; // ✅ new field
+  notes?: string;
+  equipmentIds: number[];
 }
 
 export interface UpdateExerciseLogInput {
   setNumber?: number;
-  reps?: number;
-  weight?: number;
-  rpe?: number;
+  metrics?: Record<number, number | string>; // ✅
   notes?: string;
 
-  equipmentIds?: number[]; // ✅ new optional field
+  equipmentIds?: number[];
 }
 
 export interface WorkoutSession {

@@ -22,6 +22,7 @@ export const ExerciseLogResolvers = {
         where: { id: parent.exerciseId },
       });
     },
+    metrics: (parent: any) => parent.metrics,
   },
   WorkoutSession: {
     exerciseLogs: async (parent: any, _args: any, context: AuthContext) => {

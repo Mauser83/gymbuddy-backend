@@ -55,6 +55,14 @@ export const ExerciseResolvers = {
     },
   },
 
+  ExerciseType: {
+    metrics: async (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.metric.findMany({
+        where: { id: { in: parent.metricIds ?? [] } },
+      });
+    },
+  },
+
   Query: {
     getExercises: async (
       _: unknown,
@@ -118,6 +126,14 @@ export const ExerciseResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getExercisesAvailableAtGym(args.gymId);
+    },
+
+    allMetrics: (_: any, __: any, context: AuthContext) => {
+      return context.prisma.metric.findMany();
+    },
+
+    metricById: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.metric.findUnique({ where: { id: args.id } });
     },
   },
 
@@ -257,6 +273,27 @@ export const ExerciseResolvers = {
     },
     deleteMuscle: (_: any, args: { id: number }, context: AuthContext) => {
       return context.prisma.muscle
+        .delete({ where: { id: args.id } })
+        .then(() => true);
+    },
+
+    createMetric: (_: any, args: { input: any }, context: AuthContext) => {
+      return context.prisma.metric.create({ data: args.input });
+    },
+
+    updateMetric: (
+      _: any,
+      args: { id: number; input: any },
+      context: AuthContext
+    ) => {
+      return context.prisma.metric.update({
+        where: { id: args.id },
+        data: args.input,
+      });
+    },
+
+    deleteMetric: (_: any, args: { id: number }, context: AuthContext) => {
+      return context.prisma.metric
         .delete({ where: { id: args.id } })
         .then(() => true);
     },

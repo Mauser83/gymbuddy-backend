@@ -66,9 +66,7 @@ export class WorkoutPlanService {
         exerciseId: ex.exerciseId,
         order: ex.order ?? idx,
         targetSets: ex.targetSets ?? null,
-        targetReps: ex.targetReps ?? null,
-        targetWeight: ex.targetWeight ?? null,
-        targetRpe: ex.targetRpe ?? null,
+        targetMetrics: ex.targetMetrics ?? [], // ✅ new dynamic metrics field
         trainingMethodId: ex.trainingMethodId ?? null,
         isWarmup: ex.isWarmup ?? false,
       })),

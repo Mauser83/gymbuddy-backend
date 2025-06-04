@@ -25,14 +25,18 @@ export const workoutplanTypeDefs = `#graphql
     exerciseId: Int!
     order: Int
     targetSets: Int
-    targetReps: Int
-    targetWeight: Float
-    targetRpe: Float
+    targetMetrics: [MetricTarget!]! # ✅ Dynamic target values
     createdAt: String!
     updatedAt: String!
     isWarmup: Boolean
     trainingMethod: TrainingMethod
     exercise: Exercise!
+  }
+
+  type MetricTarget {
+    metricId: Int!
+    min: Float!
+    max: Float
   }
 
   type TrainingGoal {
@@ -162,11 +166,15 @@ export const workoutplanTypeDefs = `#graphql
     exerciseId: Int!
     order: Int!
     targetSets: Int!
-    targetReps: Int!
-    targetWeight: Float
-    targetRpe: Float!
+    targetMetrics: [TargetMetricInput!]!
     trainingMethodId: Int
     isWarmup: Boolean
+  }
+
+  input TargetMetricInput {
+    metricId: Int!
+    min: Float!
+    max: Float
   }
 
   input CreateWorkoutPlanInput {

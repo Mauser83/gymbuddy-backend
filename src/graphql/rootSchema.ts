@@ -8,6 +8,7 @@ import { userTypeDefs } from "../modules/user/user.schema";
 import { authTypeDefs } from "../modules/auth/auth.schema";
 
 const baseTypeDefs = `
+  scalar JSON       # ✅ Add this line
   type Query
   type Mutation
   type Subscription

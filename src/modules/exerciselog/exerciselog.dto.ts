@@ -23,19 +23,8 @@ export class CreateExerciseLogDto {
   @IsNotEmpty()
   setNumber!: number;
 
-  @IsInt()
   @IsNotEmpty()
-  reps!: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  weight!: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(10)
-  rpe?: number;
+  metrics!: Record<number, number | string>; // ✅
 
   @IsOptional()
   @IsString()
@@ -53,18 +42,7 @@ export class UpdateExerciseLogDto {
   setNumber?: number;
 
   @IsOptional()
-  @IsInt()
-  reps?: number;
-
-  @IsOptional()
-  @IsNumber()
-  weight?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(10)
-  rpe?: number;
+  metrics?: Record<number, number | string>; // ✅
 
   @IsOptional()
   @IsString()

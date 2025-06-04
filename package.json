@@ -39,6 +39,7 @@
     "graphql": "^16.10.0",
     "graphql-subscriptions": "^3.0.0",
     "graphql-tag": "^2.12.6",
+    "graphql-type-json": "^0.3.2",
     "graphql-ws": "^6.0.4",
     "helmet": "^7.1.0",
     "ip": "^2.0.1",

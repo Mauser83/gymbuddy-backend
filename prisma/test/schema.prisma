@@ -89,6 +89,9 @@ model WorkoutPlan {
 
   trainingGoalId Int?
   trainingGoal   TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
+  intensityPresetId Int?                    // ✅ new
+  intensityPreset   IntensityPreset?        @relation(fields: [intensityPresetId], references: [id])
+
 
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
@@ -110,9 +113,7 @@ model WorkoutPlanExercise {
 
   order        Int?
   targetSets   Int?
-  targetReps   Int?
-  targetWeight Decimal? @db.Decimal(5, 2)
-  targetRpe    Decimal? @db.Decimal(3, 1)
+  targetMetrics Json // ✅ [{ metricId: number, min: number, max?: number }]
 
   trainingMethodId Int?
   trainingMethod   TrainingMethod? @relation(fields: [trainingMethodId], references: [id])
@@ -132,8 +133,8 @@ model Exercise {
   difficulty   ExerciseDifficulty? @relation(fields: [difficultyId], references: [id])
   difficultyId Int?
 
-  exerciseType   ExerciseType? @relation(fields: [exerciseTypeId], references: [id])
-  exerciseTypeId Int?
+  exerciseType   ExerciseType  @relation(fields: [exerciseTypeId], references: [id])
+  exerciseTypeId Int
 
   primaryMuscles   Muscle[] @relation("PrimaryMuscles")
   secondaryMuscles Muscle[] @relation("SecondaryMuscles")
@@ -201,6 +202,7 @@ model ExerciseType {
   id        Int        @id @default(autoincrement())
   name      String     @unique
   exercises Exercise[]
+  metricIds Int[]      // ✅ Metric IDs used for this type
 
   @@index([name])
 }
@@ -219,9 +221,8 @@ model ExerciseLog {
   workoutSessionId Int
 
   setNumber Int
-  reps      Int
-  weight    Float
-  rpe       Decimal? @db.Decimal(3, 1)
+  metrics Json // ✅ stores { [metricId]: number | string }
+
   notes     String?  @db.VarChar(1000)
 
   createdAt DateTime @default(now())
@@ -488,6 +489,8 @@ model IntensityPreset {
   defaultReps       Int
   defaultRestSec    Int
   defaultRpe        Int
+
+  workoutPlans WorkoutPlan[]  // ✅ Add this back-reference
 }
 
 enum ExperienceLevel {
@@ -583,4 +586,12 @@ model UserWorkoutPreferences {
   preferredWorkoutDays Int[] // e.g. [1, 2, 3, 4, 5]
   preferredRestDays    Int[] // e.g. [0, 6]
   autoReschedule       Boolean @default(true)
+}
+
+model Metric {
+  id        Int    @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  unit      String
+  inputType String   // e.g., 'number', 'time', 'text'
 }
