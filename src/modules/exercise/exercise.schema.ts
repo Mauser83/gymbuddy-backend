@@ -59,8 +59,12 @@ export const exerciseTypeDefs = `
   type ExerciseType {
     id: Int!
     name: String!
-    metricIds: [Int!]!           # Raw IDs
-    metrics: [Metric!]!          # Resolved objects
+    orderedMetrics: [ExerciseTypeMetric!]!
+  }
+
+  type ExerciseTypeMetric {
+    metric: Metric!
+    order: Int!
   }
 
   type Metric {
@@ -111,14 +115,19 @@ export const exerciseTypeDefs = `
     equipmentSlots: [CreateExerciseSlotInput!]
   }
 
+  input ExerciseTypeMetricInput {
+    metricId: Int!
+    order: Int!
+  }
+
   input CreateExerciseTypeInput {
     name: String!
-    metricIds: [Int!]!      # ✅ Required on creation
+    metrics: [ExerciseTypeMetricInput!]!
   }
 
   input UpdateExerciseTypeInput {
     name: String!
-    metricIds: [Int!]!      # ✅ Required on update
+    metrics: [ExerciseTypeMetricInput!]!
   }
 
   input CreateMetricInput {

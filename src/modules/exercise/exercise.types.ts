@@ -48,8 +48,12 @@ export interface EquipmentCategory {
 export interface ExerciseType {
   id: number;
   name: string;
-  metricIds: number[];
-  metrics: Metric[]; // resolved metric objects
+  orderedMetrics: ExerciseTypeMetric[];
+}
+
+export interface ExerciseTypeMetric {
+  metric: Metric;
+  order: number;
 }
 
 export interface Metric {
@@ -87,14 +91,19 @@ export interface BodyPart {
 // 🧩 Reference Inputs
 // ---------------------
 
+export interface ExerciseTypeMetricInput {
+  metricId: number;
+  order: number;
+}
+
 export interface CreateExerciseTypeInput {
   name: string;
-  metricIds: number[];
+  metrics: ExerciseTypeMetricInput[];
 }
 
 export interface UpdateExerciseTypeInput {
   name: string;
-  metricIds: number[];
+  metrics: ExerciseTypeMetricInput[];
 }
 
 export interface CreateExerciseDifficultyInput {

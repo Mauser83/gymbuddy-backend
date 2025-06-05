@@ -2,6 +2,8 @@ import type { AuthContext } from "../auth/auth.types";
 import { ExerciseService } from "./exercise.service";
 import { PermissionService } from "../core/permission.service";
 import { ExerciseQueryFilters } from "./exercise.types";
+import { CreateExerciseTypeDto } from "./exercise.dto";
+import { UpdateExerciseTypeDto } from "./exercise.dto";
 
 export const ExerciseResolvers = {
   Exercise: {
@@ -56,10 +58,19 @@ export const ExerciseResolvers = {
   },
 
   ExerciseType: {
-    metrics: async (parent: any, _: any, context: AuthContext) => {
-      return context.prisma.metric.findMany({
-        where: { id: { in: parent.metricIds ?? [] } },
+    orderedMetrics: async (parent: any, _: any, context: AuthContext) => {
+      const joinRows = await context.prisma.exerciseTypeMetric.findMany({
+        where: { exerciseTypeId: parent.id },
+        include: {
+          metric: true,
+        },
+        orderBy: { order: "asc" },
       });
+
+      return joinRows.map((row) => ({
+        metric: row.metric,
+        order: row.order,
+      }));
     },
   },
 
@@ -182,22 +193,28 @@ export const ExerciseResolvers = {
     },
 
     // --- ExerciseType ---
-    createExerciseType: (
-      _: any,
-      args: { input: any },
+    createExerciseType: async (
+      _: unknown,
+      { input }: { input: CreateExerciseTypeDto },
       context: AuthContext
     ) => {
-      return context.prisma.exerciseType.create({ data: args.input });
+      const service = new ExerciseService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.createExerciseType(input);
     },
-    updateExerciseType: (
-      _: any,
-      args: { id: number; input: any },
+
+    updateExerciseType: async (
+      _: unknown,
+      { id, input }: { id: number; input: UpdateExerciseTypeDto },
       context: AuthContext
     ) => {
-      return context.prisma.exerciseType.update({
-        where: { id: args.id },
-        data: args.input,
-      });
+      const service = new ExerciseService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.updateExerciseType(id, input);
     },
     deleteExerciseType: (
       _: any,

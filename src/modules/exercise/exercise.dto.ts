@@ -117,14 +117,22 @@ export class CreateExerciseSlotOptionDto {
 // ✨ Reference DTOs
 // ----------------------
 
+export class CreateExerciseTypeMetricDto {
+  @IsInt()
+  metricId!: number;
+
+  @IsInt()
+  order!: number;
+}
+
 export class CreateExerciseTypeDto {
   @IsString()
   name!: string;
 
   @IsArray()
-  @ArrayUnique()
-  @IsInt({ each: true })
-  metricIds!: number[];
+  @ValidateNested({ each: true })
+  @Type(() => CreateExerciseTypeMetricDto)
+  metrics!: CreateExerciseTypeMetricDto[];
 }
 
 export class UpdateExerciseTypeDto {
@@ -132,9 +140,9 @@ export class UpdateExerciseTypeDto {
   name!: string;
 
   @IsArray()
-  @ArrayUnique()
-  @IsInt({ each: true })
-  metricIds!: number[];
+  @ValidateNested({ each: true })
+  @Type(() => CreateExerciseTypeMetricDto)
+  metrics!: CreateExerciseTypeMetricDto[];
 }
 
 export class CreateExerciseDifficultyDto {

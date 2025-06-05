@@ -202,7 +202,7 @@ model ExerciseType {
   id        Int        @id @default(autoincrement())
   name      String     @unique
   exercises Exercise[]
-  metricIds Int[]      // ✅ Metric IDs used for this type
+  metrics ExerciseTypeMetric[]
 
   @@index([name])
 }
@@ -594,4 +594,15 @@ model Metric {
   slug      String   @unique
   unit      String
   inputType String   // e.g., 'number', 'time', 'text'
+  exerciseTypes ExerciseTypeMetric[]
+}
+
+model ExerciseTypeMetric {
+  exerciseType     ExerciseType @relation(fields: [exerciseTypeId], references: [id])
+  exerciseTypeId   Int
+  metric           Metric       @relation(fields: [metricId], references: [id])
+  metricId         Int
+  order            Int
+
+  @@id([exerciseTypeId, metricId]) // composite key
 }

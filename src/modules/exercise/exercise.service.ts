@@ -436,12 +436,53 @@ export class ExerciseService {
   // Exercise Type
   async createExerciseType(input: CreateExerciseTypeInput) {
     await validateInput(input, CreateExerciseTypeDto);
-    return this.prisma.exerciseType.create({ data: input });
+
+    const { name, metrics } = input;
+
+    const created = await this.prisma.exerciseType.create({
+      data: {
+        name,
+      },
+    });
+
+    // Insert ordered metric relations
+    await this.prisma.exerciseTypeMetric.createMany({
+      data: metrics.map((m) => ({
+        exerciseTypeId: created.id,
+        metricId: m.metricId,
+        order: m.order,
+      })),
+    });
+
+    return created;
   }
 
   async updateExerciseType(id: number, input: UpdateExerciseTypeInput) {
     await validateInput(input, UpdateExerciseTypeDto);
-    return this.prisma.exerciseType.update({ where: { id }, data: input });
+
+    const { name, metrics } = input;
+
+    // Update the base type name
+    const updated = await this.prisma.exerciseType.update({
+      where: { id },
+      data: { name },
+    });
+
+    // Clear old metrics
+    await this.prisma.exerciseTypeMetric.deleteMany({
+      where: { exerciseTypeId: id },
+    });
+
+    // Insert new metrics
+    await this.prisma.exerciseTypeMetric.createMany({
+      data: metrics.map((m) => ({
+        exerciseTypeId: id,
+        metricId: m.metricId,
+        order: m.order,
+      })),
+    });
+
+    return updated;
   }
 
   async deleteExerciseType(id: number) {
