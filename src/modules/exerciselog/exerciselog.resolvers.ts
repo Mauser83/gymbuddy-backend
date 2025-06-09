@@ -30,6 +30,9 @@ export const ExerciseLogResolvers = {
         where: {
           workoutSessionId: parent.id,
         },
+        orderBy: [
+          { id: "asc" }, // Fallback to ID if setNumber is missing or tied
+        ],
       });
     },
   },
