@@ -65,9 +65,9 @@ model User {
   WorkoutProgramAssignment   WorkoutProgramAssignment[]
   UserWorkoutPreferences     UserWorkoutPreferences?
 
-  experienceLevel  ExperienceLevel?
-  trainingGoalId   Int?
-  trainingGoal     TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
+  experienceLevel ExperienceLevel?
+  trainingGoalId  Int?
+  trainingGoal    TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
 }
 
 model WorkoutPlan {
@@ -87,11 +87,10 @@ model WorkoutPlan {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
 
-  trainingGoalId Int?
-  trainingGoal   TrainingGoal? @relation(fields: [trainingGoalId], references: [id])
-  intensityPresetId Int?                    // ✅ new
-  intensityPreset   IntensityPreset?        @relation(fields: [intensityPresetId], references: [id])
-
+  trainingGoalId    Int?
+  trainingGoal      TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
+  intensityPresetId Int? // ✅ new
+  intensityPreset   IntensityPreset? @relation(fields: [intensityPresetId], references: [id])
 
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
@@ -111,12 +110,13 @@ model WorkoutPlanExercise {
   exercise      Exercise    @relation(fields: [exerciseId], references: [id])
   exerciseId    Int
 
-  order        Int?
-  targetSets   Int?
+  order         Int?
+  targetSets    Int?
   targetMetrics Json // ✅ [{ metricId: number, min: number, max?: number }]
 
   trainingMethodId Int?
   trainingMethod   TrainingMethod? @relation(fields: [trainingMethodId], references: [id])
+  groupId          String?
 
   isWarmup Boolean @default(false)
 
@@ -133,7 +133,7 @@ model Exercise {
   difficulty   ExerciseDifficulty? @relation(fields: [difficultyId], references: [id])
   difficultyId Int?
 
-  exerciseType   ExerciseType  @relation(fields: [exerciseTypeId], references: [id])
+  exerciseType   ExerciseType @relation(fields: [exerciseTypeId], references: [id])
   exerciseTypeId Int
 
   primaryMuscles   Muscle[] @relation("PrimaryMuscles")
@@ -199,10 +199,10 @@ model Muscle {
 }
 
 model ExerciseType {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
+  id        Int                  @id @default(autoincrement())
+  name      String               @unique
   exercises Exercise[]
-  metrics ExerciseTypeMetric[]
+  metrics   ExerciseTypeMetric[]
 
   @@index([name])
 }
@@ -221,9 +221,9 @@ model ExerciseLog {
   workoutSessionId Int
 
   setNumber Int
-  metrics Json // ✅ stores { [metricId]: number | string }
+  metrics   Json // ✅ stores { [metricId]: number | string }
 
-  notes     String?  @db.VarChar(1000)
+  notes String? @db.VarChar(1000)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -472,25 +472,27 @@ model GymEquipmentImage {
 }
 
 model TrainingGoal {
-  id        Int               @id @default(autoincrement())
-  name      String
-  slug      String            @unique
-  presets   IntensityPreset[]
-  users     User[]
+  id           Int               @id @default(autoincrement())
+  name         String
+  slug         String            @unique
+  presets      IntensityPreset[]
+  users        User[]
   workoutPlans WorkoutPlan[]
+
+  trainingMethods TrainingMethod[] @relation("TrainingMethodToGoal")
 }
 
 model IntensityPreset {
-  id                Int           @id @default(autoincrement())
-  trainingGoal      TrainingGoal @relation(fields: [trainingGoalId], references: [id])
-  trainingGoalId    Int
-  experienceLevel   ExperienceLevel
-  defaultSets       Int
-  defaultReps       Int
-  defaultRestSec    Int
-  defaultRpe        Int
+  id              Int             @id @default(autoincrement())
+  trainingGoal    TrainingGoal    @relation(fields: [trainingGoalId], references: [id])
+  trainingGoalId  Int
+  experienceLevel ExperienceLevel
+  defaultSets     Int
+  defaultReps     Int
+  defaultRestSec  Int
+  defaultRpe      Int
 
-  workoutPlans WorkoutPlan[]  // ✅ Add this back-reference
+  workoutPlans WorkoutPlan[] // ✅ Add this back-reference
 }
 
 enum ExperienceLevel {
@@ -515,6 +517,8 @@ model TrainingMethod {
   slug          String                @unique
   description   String?
   planExercises WorkoutPlanExercise[]
+
+  trainingGoals TrainingGoal[] @relation("TrainingMethodToGoal")
 }
 
 model WorkoutProgram {
@@ -589,20 +593,20 @@ model UserWorkoutPreferences {
 }
 
 model Metric {
-  id        Int    @id @default(autoincrement())
-  name      String
-  slug      String   @unique
-  unit      String
-  inputType String   // e.g., 'number', 'time', 'text'
+  id            Int                  @id @default(autoincrement())
+  name          String
+  slug          String               @unique
+  unit          String
+  inputType     String // e.g., 'number', 'time', 'text'
   exerciseTypes ExerciseTypeMetric[]
 }
 
 model ExerciseTypeMetric {
-  exerciseType     ExerciseType @relation(fields: [exerciseTypeId], references: [id])
-  exerciseTypeId   Int
-  metric           Metric       @relation(fields: [metricId], references: [id])
-  metricId         Int
-  order            Int
+  exerciseType   ExerciseType @relation(fields: [exerciseTypeId], references: [id])
+  exerciseTypeId Int
+  metric         Metric       @relation(fields: [metricId], references: [id])
+  metricId       Int
+  order          Int
 
   @@id([exerciseTypeId, metricId]) // composite key
 }

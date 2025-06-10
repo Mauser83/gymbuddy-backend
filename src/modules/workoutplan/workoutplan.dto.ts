@@ -43,6 +43,10 @@ export class WorkoutPlanExerciseInputDto {
   @IsOptional()
   @IsBoolean()
   isWarmup?: boolean;
+
+  @IsOptional()
+  @IsString()
+  groupId?: string; // ✅ NEW
 }
 
 export class TargetMetricInputDto {
@@ -345,4 +349,13 @@ export class UpdateIntensityPresetDto {
   @Min(0)
   @Max(10)
   defaultRpe?: number;
+}
+
+export class UpdateTrainingMethodGoalsDto {
+  @IsInt()
+  methodId!: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  goalIds!: number[];
 }

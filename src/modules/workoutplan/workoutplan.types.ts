@@ -30,6 +30,7 @@ export interface TrainingGoal {
   name: string;
   slug: string;
   presets?: IntensityPreset[]; // optional if needed for admin UI
+  trainingMethods?: TrainingMethod[]; // ✅ NEW
 }
 
 export interface IntensityPreset {
@@ -53,6 +54,7 @@ export interface WorkoutPlanExercise {
   targetSets?: number;
   targetMetrics: MetricTarget[]; // ✅
   isWarmup: boolean;
+  groupId?: string; // ✅ NEW
   trainingMethod?: TrainingMethod;
   trainingMethodId?: number;
   createdAt: Date;
@@ -107,6 +109,7 @@ export interface TrainingMethod {
   name: string;
   slug: string;
   description?: string;
+  trainingGoals?: TrainingGoal[]; // ✅ NEW
 }
 
 // Optional supporting types if needed in services/resolvers

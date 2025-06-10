@@ -18,6 +18,7 @@ import {
   SetUserWorkoutPreferencesDto,
   CreateMuscleGroupDto,
   UpdateMuscleGroupDto,
+  UpdateTrainingMethodGoalsDto
 } from "./workoutplan.dto";
 import { verifyRoles } from "../auth/auth.roles";
 
@@ -66,8 +67,9 @@ export class WorkoutPlanService {
         exerciseId: ex.exerciseId,
         order: ex.order ?? idx,
         targetSets: ex.targetSets ?? null,
-        targetMetrics: ex.targetMetrics ?? [], // ✅ new dynamic metrics field
+        targetMetrics: ex.targetMetrics ?? [],
         trainingMethodId: ex.trainingMethodId ?? null,
+        groupId: ex.groupId ?? null, // ✅ NEW
         isWarmup: ex.isWarmup ?? false,
       })),
     });
@@ -555,5 +557,30 @@ export class WorkoutPlanService {
         /* optionally expose isPublic: true if you support it */
       },
     });
+  }
+
+  async updateTrainingMethodGoals(
+    context: any,
+    input: UpdateTrainingMethodGoalsDto
+  ) {
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+    });
+
+    await validateInput(input, UpdateTrainingMethodGoalsDto);
+
+    const updated = await this.prisma.trainingMethod.update({
+      where: { id: input.methodId },
+      data: {
+        trainingGoals: {
+          set: input.goalIds.map((id) => ({ id })),
+        },
+      },
+      include: {
+        trainingGoals: true,
+      },
+    });
+
+    return updated;
   }
 }

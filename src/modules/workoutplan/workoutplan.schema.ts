@@ -25,10 +25,11 @@ export const workoutplanTypeDefs = `#graphql
     exerciseId: Int!
     order: Int
     targetSets: Int
-    targetMetrics: [MetricTarget!]! # ✅ Dynamic target values
+    targetMetrics: [MetricTarget!]! 
     createdAt: String!
     updatedAt: String!
     isWarmup: Boolean
+    groupId: String
     trainingMethod: TrainingMethod
     exercise: Exercise!
   }
@@ -44,6 +45,7 @@ export const workoutplanTypeDefs = `#graphql
     name: String!
     slug: String!
     presets: [IntensityPreset!]!
+    trainingMethods: [TrainingMethod!]!  # ✅ New — inverse link
   }
 
   enum ExperienceLevel {
@@ -75,6 +77,7 @@ export const workoutplanTypeDefs = `#graphql
     name: String!
     slug: String!
     description: String
+    trainingGoals: [TrainingGoal!]!  # ✅ New — linked goals
   }
 
   type AssignedWorkout {
@@ -276,6 +279,11 @@ export const workoutplanTypeDefs = `#graphql
     autoReschedule: Boolean
   }
 
+input UpdateTrainingMethodGoalsInput {
+  methodId: Int!
+  goalIds: [Int!]!
+}
+
   extend type Query {
     workoutPlans: [WorkoutPlan]
     workoutPlanById(id: Int!): WorkoutPlan
@@ -284,6 +292,7 @@ export const workoutplanTypeDefs = `#graphql
     # ➕ NEW: Root queries
     getMuscleGroups: [MuscleGroup!]!
     getTrainingMethods: [TrainingMethod!]!
+    getTrainingMethodsByGoal(goalId: Int!): [TrainingMethod!]!
 
     getWorkoutPrograms: [WorkoutProgram!]!
     getWorkoutProgramById(id: Int!): WorkoutProgram
@@ -336,5 +345,7 @@ export const workoutplanTypeDefs = `#graphql
     deleteWorkoutProgramAssignment(id: Int!): Boolean!
 
     setUserWorkoutPreferences(input: SetUserWorkoutPreferencesInput!): UserWorkoutPreferences!
+
+    updateTrainingMethodGoals(input: LinkTrainingMethodToGoalsInput!): TrainingMethod!
   }
 `;

@@ -2,7 +2,7 @@ import type { AuthContext } from "../auth/auth.types";
 import { WorkoutPlanService } from "./workoutplan.service";
 import { SharingService } from "./workoutplanSharing.service";
 import { PermissionService } from "../core/permission.service";
-import { UpdateWorkoutPlanDto } from "./workoutplan.dto";
+import { UpdateWorkoutPlanDto, UpdateTrainingMethodGoalsDto } from "./workoutplan.dto";
 
 export const WorkoutPlanResolvers = {
   WorkoutPlan: {
@@ -53,13 +53,38 @@ export const WorkoutPlanResolvers = {
           })
         : null;
     },
-    targetMetrics: (parent: any) => parent.targetMetrics ?? [], // ✅ optional clarity
+    targetMetrics: (parent: any) => parent.targetMetrics ?? [],
+    groupId: (parent: any) => parent.groupId ?? null, // ✅ NEW
   },
 
   IntensityPreset: {
     trainingGoal: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.trainingGoal.findUnique({
         where: { id: parent.trainingGoalId },
+      });
+    },
+  },
+
+  TrainingGoal: {
+    trainingMethods: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.trainingMethod.findMany({
+        where: {
+          trainingGoals: {
+            some: { id: parent.id },
+          },
+        },
+      });
+    },
+  },
+
+  TrainingMethod: {
+    trainingGoals: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.trainingGoal.findMany({
+        where: {
+          trainingMethods: {
+            some: { id: parent.id },
+          },
+        },
       });
     },
   },
@@ -130,6 +155,22 @@ export const WorkoutPlanResolvers = {
     },
     getTrainingMethods: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.trainingMethod.findMany();
+    },
+
+    getTrainingMethodsByGoal: async (
+      _: unknown,
+      args: { goalId: number },
+      context: AuthContext
+    ) => {
+      return context.prisma.trainingMethod.findMany({
+        where: {
+          trainingGoals: {
+            some: {
+              id: args.goalId,
+            },
+          },
+        },
+      });
     },
 
     getWorkoutPrograms: async (
@@ -571,6 +612,19 @@ export const WorkoutPlanResolvers = {
         args.programId,
         args.shareWithUserId ?? null
       );
+    },
+
+    updateTrainingMethodGoals: async (
+      _: unknown,
+      args: { input: UpdateTrainingMethodGoalsDto },
+      context: AuthContext
+    ) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.updateTrainingMethodGoals(context, args.input);
     },
   },
 };
