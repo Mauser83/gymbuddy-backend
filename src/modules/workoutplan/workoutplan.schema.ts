@@ -346,6 +346,6 @@ input UpdateTrainingMethodGoalsInput {
 
     setUserWorkoutPreferences(input: SetUserWorkoutPreferencesInput!): UserWorkoutPreferences!
 
-    updateTrainingMethodGoals(input: LinkTrainingMethodToGoalsInput!): TrainingMethod!
+    updateTrainingMethodGoals(input: UpdateTrainingMethodGoalsInput!): TrainingMethod!
   }
 `;
