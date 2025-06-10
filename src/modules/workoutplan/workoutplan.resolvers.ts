@@ -2,7 +2,10 @@ import type { AuthContext } from "../auth/auth.types";
 import { WorkoutPlanService } from "./workoutplan.service";
 import { SharingService } from "./workoutplanSharing.service";
 import { PermissionService } from "../core/permission.service";
-import { UpdateWorkoutPlanDto, UpdateTrainingMethodGoalsDto } from "./workoutplan.dto";
+import {
+  UpdateWorkoutPlanDto,
+  UpdateTrainingMethodGoalsDto,
+} from "./workoutplan.dto";
 
 export const WorkoutPlanResolvers = {
   WorkoutPlan: {
@@ -133,7 +136,7 @@ export const WorkoutPlanResolvers = {
 
     getTrainingGoals: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.trainingGoal.findMany({
-        include: { presets: true },
+        include: { presets: true, trainingMethods: true },
       });
     },
 
