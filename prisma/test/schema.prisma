@@ -519,6 +519,9 @@ model TrainingMethod {
   planExercises WorkoutPlanExercise[]
 
   trainingGoals TrainingGoal[] @relation("TrainingMethodToGoal")
+
+  minGroupSize Int? 
+  maxGroupSize Int? 
 }
 
 model WorkoutProgram {

@@ -359,3 +359,59 @@ export class UpdateTrainingMethodGoalsDto {
   @IsInt({ each: true })
   goalIds!: number[];
 }
+
+export class CreateTrainingMethodDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  slug!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  description?: string;
+
+  // ✅ NEW FIELDS
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  minGroupSize?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxGroupSize?: number;
+}
+
+export class UpdateTrainingMethodDto {
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  slug?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  description?: string;
+
+  // ✅ NEW FIELDS
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  minGroupSize?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxGroupSize?: number;
+}

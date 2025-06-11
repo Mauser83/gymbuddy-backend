@@ -110,6 +110,9 @@ export interface TrainingMethod {
   slug: string;
   description?: string;
   trainingGoals?: TrainingGoal[]; // ✅ NEW
+
+  minGroupSize?: number;
+  maxGroupSize?: number;
 }
 
 // Optional supporting types if needed in services/resolvers

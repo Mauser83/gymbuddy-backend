@@ -78,6 +78,9 @@ export const workoutplanTypeDefs = `#graphql
     slug: String!
     description: String
     trainingGoals: [TrainingGoal!]!  # ✅ New — linked goals
+
+    minGroupSize: Int
+    maxGroupSize: Int
   }
 
   type AssignedWorkout {
@@ -215,12 +218,18 @@ export const workoutplanTypeDefs = `#graphql
     name: String!
     slug: String!
     description: String
+
+    minGroupSize: Int
+    maxGroupSize: Int
   }
 
   input UpdateTrainingMethodInput {
     name: String
     slug: String
     description: String
+
+    minGroupSize: Int
+    maxGroupSize: Int
   }
 
   input TrainingGoalInput {

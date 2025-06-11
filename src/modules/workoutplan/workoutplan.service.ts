@@ -18,7 +18,9 @@ import {
   SetUserWorkoutPreferencesDto,
   CreateMuscleGroupDto,
   UpdateMuscleGroupDto,
-  UpdateTrainingMethodGoalsDto
+  UpdateTrainingMethodGoalsDto,
+  CreateTrainingMethodDto,
+  UpdateTrainingMethodDto,
 } from "./workoutplan.dto";
 import { verifyRoles } from "../auth/auth.roles";
 
@@ -372,14 +374,37 @@ export class WorkoutPlanService {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.trainingMethod.create({ data: input });
+
+    await validateInput(input, CreateTrainingMethodDto);
+
+    return this.prisma.trainingMethod.create({
+      data: {
+        name: input.name,
+        slug: input.slug,
+        description: input.description ?? null,
+        minGroupSize: input.minGroupSize ?? null,
+        maxGroupSize: input.maxGroupSize ?? null,
+      },
+    });
   }
 
   async updateTrainingMethod(context: any, id: number, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.trainingMethod.update({ where: { id }, data: input });
+
+    await validateInput(input, UpdateTrainingMethodDto);
+
+    return this.prisma.trainingMethod.update({
+      where: { id },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        description: input.description,
+        minGroupSize: input.minGroupSize,
+        maxGroupSize: input.maxGroupSize,
+      },
+    });
   }
 
   async deleteTrainingMethod(context: any, id: number) {
