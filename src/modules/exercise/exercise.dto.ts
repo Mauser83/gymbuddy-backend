@@ -10,6 +10,7 @@ import {
   IsBoolean,
 } from "class-validator";
 import { Type } from "class-transformer";
+import "reflect-metadata";
 
 export class CreateExerciseDto {
   @IsString()
