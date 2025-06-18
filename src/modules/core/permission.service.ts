@@ -30,7 +30,7 @@ export class PermissionService {
     }
 
     const gymRoles = new Map<number, GymRole[]>();
-    user.gymManagementRoles.forEach(role => {
+    user.gymManagementRoles.forEach((role) => {
       const roles = gymRoles.get(role.gymId) || [];
       roles.push(role.role);
       gymRoles.set(role.gymId, roles);

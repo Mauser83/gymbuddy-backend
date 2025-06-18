@@ -29,7 +29,7 @@ export const workoutplanTypeDefs = `#graphql
     createdAt: String!
     updatedAt: String!
     isWarmup: Boolean
-    groupId: String
+    groupId: Int
     trainingMethod: TrainingMethod
     exercise: Exercise!
   }
@@ -175,6 +175,7 @@ export const workoutplanTypeDefs = `#graphql
     targetMetrics: [TargetMetricInput!]!
     trainingMethodId: Int
     isWarmup: Boolean
+    groupId: Int  # ✅ Add this line
   }
 
   input TargetMetricInput {

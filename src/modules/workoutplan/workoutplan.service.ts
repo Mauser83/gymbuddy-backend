@@ -55,6 +55,15 @@ export class WorkoutPlanService {
     const isOwner = workoutPlan.userId === userId;
     const isShared = workoutPlan.sharedWith.some((user) => user.id === userId);
 
+    console.log({
+      workoutPlan,
+      userId,
+      roles: userRoles,
+      isAdmin,
+      isOwner,
+      isShared,
+    });
+
     if (!isAdmin && !isOwner && !isShared) {
       throw new Error("Unauthorized workout access");
     }
@@ -105,6 +114,8 @@ export class WorkoutPlanService {
           : undefined,
       },
     });
+
+    console.log("createWorkoutPlan → userId:", userId);
 
     await this.createPlanExercises(workoutPlan.id, data.exercises || []);
     return workoutPlan;
@@ -211,7 +222,7 @@ export class WorkoutPlanService {
       await this.createPlanExercises(workoutPlanId, data.exercises);
     }
 
-    return this.getWorkoutPlanById(workoutPlanId, userId);
+    return this.getWorkoutPlanById(userId, workoutPlanId); // ✅ correct order
   }
 
   async deleteWorkoutPlan(userId: number, workoutPlanId: number) {

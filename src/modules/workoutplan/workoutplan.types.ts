@@ -54,7 +54,7 @@ export interface WorkoutPlanExercise {
   targetSets?: number;
   targetMetrics: MetricTarget[]; // ✅
   isWarmup: boolean;
-  groupId?: string; // ✅ NEW
+  groupId?: number; // ✅ NEW
   trainingMethod?: TrainingMethod;
   trainingMethodId?: number;
   createdAt: Date;
@@ -88,6 +88,7 @@ export interface WorkoutPlanExerciseInput {
   targetMetrics: TargetMetricInput[]; // ✅
   trainingMethodId?: number;
   isWarmup?: boolean;
+  groupId?: number; // ✅ NEW — matches schema.prisma and GraphQL
 }
 
 export interface TargetMetricInput {

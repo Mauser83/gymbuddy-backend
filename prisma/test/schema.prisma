@@ -116,7 +116,7 @@ model WorkoutPlanExercise {
 
   trainingMethodId Int?
   trainingMethod   TrainingMethod? @relation(fields: [trainingMethodId], references: [id])
-  groupId          String?
+  groupId          Int?
 
   isWarmup Boolean @default(false)
 

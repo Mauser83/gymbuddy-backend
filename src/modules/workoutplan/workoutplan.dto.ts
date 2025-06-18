@@ -45,8 +45,8 @@ export class WorkoutPlanExerciseInputDto {
   isWarmup?: boolean;
 
   @IsOptional()
-  @IsString()
-  groupId?: string; // ✅ NEW
+  @IsInt()
+  groupId?: number; // ✅ NEW
 }
 
 export class TargetMetricInputDto {
