@@ -87,6 +87,8 @@ model WorkoutPlan {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
 
+  groups WorkoutPlanGroup[] // 👈 Add this
+
   trainingGoalId    Int?
   trainingGoal      TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
   intensityPresetId Int? // ✅ new
@@ -117,11 +119,28 @@ model WorkoutPlanExercise {
   trainingMethodId Int?
   trainingMethod   TrainingMethod? @relation(fields: [trainingMethodId], references: [id])
   groupId          Int?
+  group   WorkoutPlanGroup? @relation("GroupExercises", fields: [groupId], references: [id])
+
 
   isWarmup Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model WorkoutPlanGroup {
+  id              Int              @id @default(autoincrement())
+  workoutPlan     WorkoutPlan      @relation(fields: [workoutPlanId], references: [id])
+  workoutPlanId   Int
+
+  trainingMethod  TrainingMethod   @relation(fields: [trainingMethodId], references: [id])
+  trainingMethodId Int
+
+  order           Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  exercises       WorkoutPlanExercise[] @relation("GroupExercises")
 }
 
 model Exercise {
@@ -521,7 +540,10 @@ model TrainingMethod {
   trainingGoals TrainingGoal[] @relation("TrainingMethodToGoal")
 
   minGroupSize Int? 
-  maxGroupSize Int? 
+  maxGroupSize Int?
+
+    workoutPlanGroups WorkoutPlanGroup[] // 👈 Add this
+
 }
 
 model WorkoutProgram {

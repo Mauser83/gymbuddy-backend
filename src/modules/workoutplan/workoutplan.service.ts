@@ -86,6 +86,18 @@ export class WorkoutPlanService {
     });
   }
 
+  private async createPlanGroups(workoutPlanId: number, groups: any[]) {
+    if (!groups?.length) return;
+
+    await this.prisma.workoutPlanGroup.createMany({
+      data: groups.map((group, idx) => ({
+        workoutPlanId,
+        trainingMethodId: group.trainingMethodId,
+        order: group.order ?? idx,
+      })),
+    });
+  }
+
   async createWorkoutPlan(userId: number, data: CreateWorkoutPlanInput) {
     if (!userId) throw new Error("Unauthorized");
 
@@ -117,6 +129,7 @@ export class WorkoutPlanService {
 
     console.log("createWorkoutPlan → userId:", userId);
 
+    await this.createPlanGroups(workoutPlan.id, data.groups || []);
     await this.createPlanExercises(workoutPlan.id, data.exercises || []);
     return workoutPlan;
   }
@@ -160,6 +173,7 @@ export class WorkoutPlanService {
       },
     });
 
+    await this.createPlanGroups(newVersion.id, data.groups || []);
     await this.createPlanExercises(newVersion.id, data.exercises || []);
     return newVersion;
   }
@@ -220,6 +234,13 @@ export class WorkoutPlanService {
         where: { workoutPlanId: workoutPlanId },
       });
       await this.createPlanExercises(workoutPlanId, data.exercises);
+    }
+
+    if (data.groups) {
+      await this.prisma.workoutPlanGroup.deleteMany({
+        where: { workoutPlanId: workoutPlanId },
+      });
+      await this.createPlanGroups(workoutPlanId, data.groups);
     }
 
     return this.getWorkoutPlanById(userId, workoutPlanId); // ✅ correct order

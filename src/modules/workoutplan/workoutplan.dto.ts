@@ -49,6 +49,15 @@ export class WorkoutPlanExerciseInputDto {
   groupId?: number; // ✅ NEW
 }
 
+export class WorkoutPlanGroupInputDto {
+  @IsInt()
+  @Min(1)
+  trainingMethodId!: number;
+
+  @IsInt()
+  order!: number;
+}
+
 export class TargetMetricInputDto {
   @IsInt()
   metricId!: number;
@@ -94,6 +103,12 @@ export class CreateWorkoutPlanDto {
   @Type(() => WorkoutPlanExerciseInputDto)
   @ArrayMaxSize(100)
   exercises?: WorkoutPlanExerciseInputDto[];
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => WorkoutPlanGroupInputDto)
+  @ArrayMaxSize(100)
+  groups?: WorkoutPlanGroupInputDto[]; // ✅ Add this
 }
 
 export class UpdateWorkoutPlanDto {
@@ -126,6 +141,11 @@ export class UpdateWorkoutPlanDto {
   @Type(() => WorkoutPlanExerciseInputDto)
   @ArrayMaxSize(100)
   exercises!: WorkoutPlanExerciseInputDto[];
+
+  @ValidateNested({ each: true })
+  @Type(() => WorkoutPlanGroupInputDto)
+  @ArrayMaxSize(100)
+  groups!: WorkoutPlanGroupInputDto[]; // ✅ Add this
 }
 
 // 🔁 Workout Program DTOs

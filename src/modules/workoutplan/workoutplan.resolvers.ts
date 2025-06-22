@@ -46,6 +46,12 @@ export const WorkoutPlanResolvers = {
         where: { workoutPlanId: parent.id },
       });
     },
+    groups: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.workoutPlanGroup.findMany({
+        where: { workoutPlanId: parent.id },
+        include: { trainingMethod: true, exercises: true },
+      });
+    },
   },
 
   WorkoutPlanExercise: {

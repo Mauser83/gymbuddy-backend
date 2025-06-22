@@ -15,6 +15,7 @@ export const workoutplanTypeDefs = `#graphql
     muscleGroups: [MuscleGroup!]
 
     exercises: [WorkoutPlanExercise!]!
+    groups: [WorkoutPlanGroup!]!        # ✅ Add this line
     assignedWorkouts: [AssignedWorkout!]!
     sessions: [WorkoutSession!]!
   }
@@ -33,6 +34,17 @@ export const workoutplanTypeDefs = `#graphql
     trainingMethod: TrainingMethod
     exercise: Exercise!
   }
+
+  type WorkoutPlanGroup {
+  id: Int!
+  workoutPlanId: Int!
+  trainingMethodId: Int!
+  trainingMethod: TrainingMethod!
+  order: Int!
+  createdAt: String!
+  updatedAt: String!
+  exercises: [WorkoutPlanExercise!]!
+}
 
   type MetricTarget {
     metricId: Int!
@@ -178,6 +190,11 @@ export const workoutplanTypeDefs = `#graphql
     groupId: Int  # ✅ Add this line
   }
 
+  input WorkoutPlanGroupInput {
+    trainingMethodId: Int!
+    order: Int!
+  }
+
   input TargetMetricInput {
     metricId: Int!
     min: Float!
@@ -192,6 +209,7 @@ export const workoutplanTypeDefs = `#graphql
     intensityPresetId: Int
     muscleGroupIds: [Int!]
     exercises: [WorkoutPlanExerciseInput!]
+    groups: [WorkoutPlanGroupInput!]  # ✅ Add this
   }
 
   input UpdateWorkoutPlanInput {
@@ -201,6 +219,7 @@ export const workoutplanTypeDefs = `#graphql
     intensityPresetId: Int
     muscleGroupIds: [Int!]!
     exercises: [WorkoutPlanExerciseInput!]!
+    groups: [WorkoutPlanGroupInput!]! # ✅ Add this
   }
 
   input CreateMuscleGroupInput {

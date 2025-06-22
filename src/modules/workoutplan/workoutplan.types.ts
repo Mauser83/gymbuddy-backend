@@ -21,6 +21,7 @@ export interface WorkoutPlan {
 
   muscleGroups?: MuscleGroup[];
   exercises?: WorkoutPlanExercise[];
+  groups?: WorkoutPlanGroup[]; // ✅ Add this line
   assignedWorkouts?: AssignedWorkout[];
   sessions?: WorkoutSession[];
 }
@@ -61,6 +62,17 @@ export interface WorkoutPlanExercise {
   updatedAt: Date;
 }
 
+export interface WorkoutPlanGroup {
+  id: number;
+  workoutPlanId: number;
+  trainingMethodId: number;
+  trainingMethod?: TrainingMethod;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+  exercises?: WorkoutPlanExercise[]; // Optional nested group display
+}
+
 export interface CreateWorkoutPlanInput {
   name: string;
   description?: string;
@@ -69,6 +81,7 @@ export interface CreateWorkoutPlanInput {
   intensityPresetId?: number; // ✅ add this
   muscleGroupIds?: number[];
   exercises?: WorkoutPlanExerciseInput[];
+  groups?: WorkoutPlanGroupInput[]; // ✅ Add this
 }
 
 export interface UpdateWorkoutPlanInput {
@@ -79,6 +92,7 @@ export interface UpdateWorkoutPlanInput {
   intensityPresetId?: number; // ✅ add this
   muscleGroupIds: number[];
   exercises: WorkoutPlanExerciseInput[];
+  groups: WorkoutPlanGroupInput[]; // ✅ Add this
 }
 
 export interface WorkoutPlanExerciseInput {
@@ -89,6 +103,11 @@ export interface WorkoutPlanExerciseInput {
   trainingMethodId?: number;
   isWarmup?: boolean;
   groupId?: number; // ✅ NEW — matches schema.prisma and GraphQL
+}
+
+export interface WorkoutPlanGroupInput {
+  trainingMethodId: number;
+  order: number;
 }
 
 export interface TargetMetricInput {
