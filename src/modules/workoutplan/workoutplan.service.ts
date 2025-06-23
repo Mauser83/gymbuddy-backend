@@ -229,13 +229,6 @@ export class WorkoutPlanService {
       },
     });
 
-    if (data.exercises) {
-      await this.prisma.workoutPlanExercise.deleteMany({
-        where: { workoutPlanId: workoutPlanId },
-      });
-      await this.createPlanExercises(workoutPlanId, data.exercises);
-    }
-
     if (data.groups) {
       await this.prisma.workoutPlanGroup.deleteMany({
         where: { workoutPlanId: workoutPlanId },
@@ -243,7 +236,15 @@ export class WorkoutPlanService {
       await this.createPlanGroups(workoutPlanId, data.groups);
     }
 
-    return this.getWorkoutPlanById(userId, workoutPlanId); // ✅ correct order
+    if (data.exercises) {
+      await this.prisma.workoutPlanExercise.deleteMany({
+        where: { workoutPlanId: workoutPlanId },
+      });
+      await this.createPlanExercises(workoutPlanId, data.exercises);
+    }
+
+    // Fetch the updated plan after recreating groups and exercises
+    return this.getWorkoutPlanById(userId, workoutPlanId);
   }
 
   async deleteWorkoutPlan(userId: number, workoutPlanId: number) {
