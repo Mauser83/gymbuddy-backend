@@ -69,8 +69,11 @@ export class WorkoutPlanService {
     }
   }
 
-  private async createPlanExercises(workoutPlanId: number, exercises: any[]) {
-    if (!exercises?.length) return;
+  private async createPlanExercises(
+    workoutPlanId: number,
+    exercises: any[],
+    groupMap: Record<number, number> = {}
+  ) {    if (!exercises?.length) return;
 
     await this.prisma.workoutPlanExercise.createMany({
       data: exercises.map((ex, idx) => ({
@@ -80,22 +83,34 @@ export class WorkoutPlanService {
         targetSets: ex.targetSets ?? null,
         targetMetrics: ex.targetMetrics ?? [],
         trainingMethodId: ex.trainingMethodId ?? null,
-        groupId: ex.groupId ?? null, // ✅ NEW
-        isWarmup: ex.isWarmup ?? false,
+        groupId:
+          ex.groupId !== undefined && ex.groupId !== null
+            ? groupMap[ex.groupId] ?? null
+            : null,        isWarmup: ex.isWarmup ?? false,
       })),
     });
   }
 
-  private async createPlanGroups(workoutPlanId: number, groups: any[]) {
-    if (!groups?.length) return;
+  private async createPlanGroups(
+    workoutPlanId: number,
+    groups: any[]
+  ): Promise<Record<number, number>> {
+    if (!groups?.length) return {};
 
-    await this.prisma.workoutPlanGroup.createMany({
-      data: groups.map((group, idx) => ({
-        workoutPlanId,
-        trainingMethodId: group.trainingMethodId,
-        order: group.order ?? idx,
-      })),
-    });
+    const map: Record<number, number> = {};
+
+    for (const [idx, group] of groups.entries()) {
+      const created = await this.prisma.workoutPlanGroup.create({
+        data: {
+          workoutPlanId,
+          trainingMethodId: group.trainingMethodId,
+          order: group.order ?? idx,
+        },
+      });
+      map[idx] = created.id;
+    }
+
+    return map;
   }
 
   async createWorkoutPlan(userId: number, data: CreateWorkoutPlanInput) {
@@ -129,8 +144,15 @@ export class WorkoutPlanService {
 
     console.log("createWorkoutPlan → userId:", userId);
 
-    await this.createPlanGroups(workoutPlan.id, data.groups || []);
-    await this.createPlanExercises(workoutPlan.id, data.exercises || []);
+    const groupMap = await this.createPlanGroups(
+      workoutPlan.id,
+      data.groups || []
+    );
+    await this.createPlanExercises(
+      workoutPlan.id,
+      data.exercises || [],
+      groupMap
+    );
     return workoutPlan;
   }
 
@@ -173,8 +195,15 @@ export class WorkoutPlanService {
       },
     });
 
-    await this.createPlanGroups(newVersion.id, data.groups || []);
-    await this.createPlanExercises(newVersion.id, data.exercises || []);
+    const groupMap = await this.createPlanGroups(
+      newVersion.id,
+      data.groups || []
+    );
+    await this.createPlanExercises(
+      newVersion.id,
+      data.exercises || [],
+      groupMap
+    );
     return newVersion;
   }
 
@@ -229,18 +258,20 @@ export class WorkoutPlanService {
       },
     });
 
+    let groupMap: Record<number, number> = {};
+
     if (data.groups) {
       await this.prisma.workoutPlanGroup.deleteMany({
         where: { workoutPlanId: workoutPlanId },
       });
-      await this.createPlanGroups(workoutPlanId, data.groups);
+      groupMap = await this.createPlanGroups(workoutPlanId, data.groups);
     }
 
     if (data.exercises) {
       await this.prisma.workoutPlanExercise.deleteMany({
         where: { workoutPlanId: workoutPlanId },
       });
-      await this.createPlanExercises(workoutPlanId, data.exercises);
+      await this.createPlanExercises(workoutPlanId, data.exercises, groupMap);
     }
 
     // Fetch the updated plan after recreating groups and exercises

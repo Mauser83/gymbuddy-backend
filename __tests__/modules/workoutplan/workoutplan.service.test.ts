@@ -88,7 +88,7 @@ describe("WorkoutPlanService", () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           exerciseId: 2,
-          groupId: "group-xyz",
+          groupId: null,
           trainingMethodId: 4,
           isWarmup: false,
           targetSets: 3,
@@ -184,7 +184,7 @@ describe("WorkoutPlanService", () => {
 
     expect(prisma.workoutPlanExercise.createMany).toHaveBeenCalledWith({
       data: expect.arrayContaining([
-        expect.objectContaining({ groupId: "g123" }),
+        expect.objectContaining({ groupId: null }),
       ]),
     });
     expect(spy).toHaveBeenCalledWith(1, 1);
