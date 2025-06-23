@@ -159,7 +159,7 @@ export const ExerciseResolvers = {
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.createExercise(args.input, Number(context.userId));
+      return service.createExercise(context, args.input, Number(context.userId));
     },
 
     updateExercise: async (

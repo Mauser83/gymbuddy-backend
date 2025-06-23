@@ -2,6 +2,8 @@ import { PrismaClient } from "../../lib/prisma";
 import { PermissionService } from "../core/permission.service";
 import { validateInput } from "../../middlewares/validation";
 import { ExerciseQueryFilters } from "./exercise.types";
+import { verifyRoles } from "../auth/auth.roles";
+import { AuthContext } from "../auth/auth.types";
 
 import {
   CreateExerciseInput,
@@ -55,20 +57,16 @@ export class ExerciseService {
     }
   }
 
-  async createExercise(input: CreateExerciseInput, userId: number) {
+  async createExercise(
+    context: AuthContext,
+    input: CreateExerciseInput,
+    userId: number
+  ) {
     await validateInput(input, CreateExerciseDto);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { userRole: true },
+    verifyRoles(context, {
+      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-
-    if (
-      !user ||
-      !["PREMIUM_USER", "PERSONAL_TRAINER", "ADMIN"].includes(user.userRole)
-    ) {
-      throw new Error("Upgrade to premium to create exercises");
-    }
 
     const {
       primaryMuscleIds,
