@@ -52,6 +52,10 @@ export class WorkoutPlanExerciseInputDto {
 export class WorkoutPlanGroupInputDto {
   @IsInt()
   @Min(1)
+  id!: number;
+
+  @IsInt()
+  @Min(1)
   trainingMethodId!: number;
 
   @IsInt()

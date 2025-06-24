@@ -73,7 +73,8 @@ export class WorkoutPlanService {
     workoutPlanId: number,
     exercises: any[],
     groupMap: Record<number, number> = {}
-  ) {    if (!exercises?.length) return;
+  ) {
+    if (!exercises?.length) return;
 
     await this.prisma.workoutPlanExercise.createMany({
       data: exercises.map((ex, idx) => ({
@@ -86,7 +87,8 @@ export class WorkoutPlanService {
         groupId:
           ex.groupId !== undefined && ex.groupId !== null
             ? groupMap[ex.groupId] ?? null
-            : null,        isWarmup: ex.isWarmup ?? false,
+            : null,
+        isWarmup: ex.isWarmup ?? false,
       })),
     });
   }
@@ -107,7 +109,7 @@ export class WorkoutPlanService {
           order: group.order ?? idx,
         },
       });
-      map[idx] = created.id;
+      map[group.id] = created.id;
     }
 
     return map;
@@ -229,7 +231,22 @@ export class WorkoutPlanService {
 
   async getWorkoutPlanById(userId: number, workoutPlanId: number) {
     await this.verifyWorkoutPlanAccess(userId, workoutPlanId);
-    return this.prisma.workoutPlan.findUnique({ where: { id: workoutPlanId } });
+    const plan = await this.prisma.workoutPlan.findUnique({
+      where: { id: workoutPlanId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        version: true,
+        isPublic: true,
+        trainingGoalId: true,
+        intensityPresetId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!plan) throw new Error("Plan not found");
+    return plan;
   }
 
   async updateWorkoutPlan(

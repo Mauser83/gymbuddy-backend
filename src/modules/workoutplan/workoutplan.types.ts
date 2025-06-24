@@ -106,6 +106,7 @@ export interface WorkoutPlanExerciseInput {
 }
 
 export interface WorkoutPlanGroupInput {
+  id: number;
   trainingMethodId: number;
   order: number;
 }

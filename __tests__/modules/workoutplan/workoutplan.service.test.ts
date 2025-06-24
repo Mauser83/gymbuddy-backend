@@ -135,7 +135,7 @@ describe("WorkoutPlanService", () => {
     expect(res).toEqual([{ id: 1 }]);
   });
 
-  test("updateWorkoutPlan calls getWorkoutPlanById with reversed args", async () => {
+  test("updateWorkoutPlan calls getWorkoutPlanById", async () => {
     permission.getUserRoles.mockResolvedValue({ appRoles: [] } as any);
     permission.verifyAppRoles.mockReturnValue(true);
     prisma.workoutPlan.findUnique.mockResolvedValue({
@@ -152,7 +152,7 @@ describe("WorkoutPlanService", () => {
       trainingGoalId: 1,
       exercises: [],
     } as any);
-    expect(spy).toHaveBeenCalledWith(2, 1); // reversed
+    expect(spy).toHaveBeenCalledWith(1, 2);
   });
 
   test("updateWorkoutPlan replaces exercises with groupId", async () => {

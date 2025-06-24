@@ -191,6 +191,7 @@ export const workoutplanTypeDefs = `#graphql
   }
 
   input WorkoutPlanGroupInput {
+    id: Int!
     trainingMethodId: Int!
     order: Int!
   }
