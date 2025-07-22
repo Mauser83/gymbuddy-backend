@@ -81,7 +81,7 @@ describe('ExerciseLogResolvers', () => {
       await ExerciseLogResolvers.WorkoutSession.exerciseLogs({ id: 2 }, {}, ctx);
       expect(ctx.prisma.exerciseLog.findMany).toHaveBeenCalledWith({
         where: { workoutSessionId: 2 },
-        orderBy: [{ id: 'asc' }],
+        orderBy: [{ carouselOrder: 'asc' }, { id: 'asc' }],
       });
     });
   });

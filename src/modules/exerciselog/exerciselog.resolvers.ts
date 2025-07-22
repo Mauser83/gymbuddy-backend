@@ -31,7 +31,8 @@ export const ExerciseLogResolvers = {
           workoutSessionId: parent.id,
         },
         orderBy: [
-          { id: "asc" }, // Fallback to ID if setNumber is missing or tied
+          { carouselOrder: "asc" },
+          { id: "asc" }, // Fallback to ID if order missing
         ],
       });
     },

@@ -6,6 +6,11 @@ export const exerciselogTypeDefs = `
     equipmentIds: [Int!]!
     workoutSessionId: Int!
     setNumber: Int!
+    carouselOrder: Int
+    groupKey: String
+    instanceKey: String
+    completedAt: String
+    isAutoFilled: Boolean
     metrics: JSON!
     notes: String
     createdAt: String!
@@ -35,6 +40,11 @@ export const exerciselogTypeDefs = `
     setNumber: Int!
     metrics: JSON!
     notes: String
+    carouselOrder: Int
+    groupKey: String
+    instanceKey: String
+    completedAt: String
+    isAutoFilled: Boolean
   }
 
   input UpdateExerciseLogInput {
@@ -42,6 +52,11 @@ export const exerciselogTypeDefs = `
     setNumber: Int
     metrics: JSON
     notes: String
+    carouselOrder: Int
+    groupKey: String
+    instanceKey: String
+    completedAt: String
+    isAutoFilled: Boolean
   }
 
 input CreateWorkoutSessionInput {

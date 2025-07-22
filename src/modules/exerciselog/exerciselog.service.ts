@@ -47,11 +47,12 @@ export class ExerciseLogService {
   async createExerciseLog(data: CreateExerciseLogInput, userId: number) {
     await validateInput(data, CreateExerciseLogDto);
 
-    const { equipmentIds, metrics, ...logData } = data;
+    const { equipmentIds, metrics, completedAt, ...logData } = data;
 
     const newLog = await this.prisma.exerciseLog.create({
       data: {
         ...logData,
+        ...(completedAt ? { completedAt: new Date(completedAt) } : {}),
         metrics, // ✅ Store dynamic metrics JSON
       },
     });
@@ -69,13 +70,16 @@ export class ExerciseLogService {
   async updateExerciseLog(id: number, data: UpdateExerciseLogInput) {
     await validateInput(data, UpdateExerciseLogDto);
 
-    const { equipmentIds, metrics, ...updateData } = data;
+    const { equipmentIds, metrics, completedAt, ...updateData } = data;
 
     const updatedLog = await this.prisma.exerciseLog.update({
       where: { id },
       data: {
         ...updateData,
         ...(metrics && { metrics }), // ✅ Only if present
+        ...(completedAt !== undefined
+          ? { completedAt: completedAt ? new Date(completedAt) : null }
+          : {}),
       },
     });
 

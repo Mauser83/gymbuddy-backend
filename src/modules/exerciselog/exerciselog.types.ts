@@ -6,6 +6,11 @@ export interface ExerciseLog {
   setNumber: number;
   metrics: Record<number, number | string>; // { [metricId]: value }
   notes?: string;
+  carouselOrder?: number;
+  groupKey?: string;
+  instanceKey?: string;
+  completedAt?: string;
+  isAutoFilled?: boolean;
 
   equipmentIds: number[]; // ✅ new field
 
@@ -21,6 +26,11 @@ export interface CreateExerciseLogInput {
   metrics: Record<number, number | string>; // ✅
 
   notes?: string;
+  carouselOrder?: number;
+  groupKey?: string;
+  instanceKey?: string;
+  completedAt?: string;
+  isAutoFilled?: boolean;
   equipmentIds: number[];
 }
 
@@ -28,6 +38,12 @@ export interface UpdateExerciseLogInput {
   setNumber?: number;
   metrics?: Record<number, number | string>; // ✅
   notes?: string;
+
+  carouselOrder?: number;
+  groupKey?: string;
+  instanceKey?: string;
+  completedAt?: string;
+  isAutoFilled?: boolean;
 
   equipmentIds?: number[];
 }

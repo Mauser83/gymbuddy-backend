@@ -244,6 +244,12 @@ model ExerciseLog {
 
   notes String? @db.VarChar(1000)
 
+  carouselOrder Int?
+  groupKey      String?
+  instanceKey   String?
+  completedAt   DateTime?
+  isAutoFilled  Boolean? @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

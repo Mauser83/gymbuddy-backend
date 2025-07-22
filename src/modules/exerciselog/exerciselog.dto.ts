@@ -8,6 +8,7 @@ import {
   MaxLength,
   IsInt,
   IsDateString,
+  IsBoolean,
 } from "class-validator";
 
 export class CreateExerciseLogDto {
@@ -31,6 +32,26 @@ export class CreateExerciseLogDto {
   @MaxLength(1000)
   notes?: string;
 
+  @IsOptional()
+  @IsInt()
+  carouselOrder?: number;
+
+  @IsOptional()
+  @IsString()
+  groupKey?: string;
+
+  @IsOptional()
+  @IsString()
+  instanceKey?: string;
+
+  @IsOptional()
+  @IsDateString()
+  completedAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isAutoFilled?: boolean;
+
   @IsNotEmpty()
   @IsInt({ each: true })
   equipmentIds!: number[];
@@ -48,6 +69,26 @@ export class UpdateExerciseLogDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  carouselOrder?: number;
+
+  @IsOptional()
+  @IsString()
+  groupKey?: string;
+
+  @IsOptional()
+  @IsString()
+  instanceKey?: string;
+
+  @IsOptional()
+  @IsDateString()
+  completedAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isAutoFilled?: boolean;
 
   @IsOptional()
   @IsInt({ each: true })
