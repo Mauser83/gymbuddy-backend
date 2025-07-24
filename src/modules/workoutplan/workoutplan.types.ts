@@ -134,6 +134,7 @@ export interface TrainingMethod {
 
   minGroupSize?: number;
   maxGroupSize?: number;
+  shouldAlternate?: boolean;
 }
 
 // Optional supporting types if needed in services/resolvers

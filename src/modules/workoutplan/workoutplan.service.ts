@@ -465,6 +465,7 @@ export class WorkoutPlanService {
         description: input.description ?? null,
         minGroupSize: input.minGroupSize ?? null,
         maxGroupSize: input.maxGroupSize ?? null,
+        shouldAlternate: input.shouldAlternate ?? false,
       },
     });
   }
@@ -484,6 +485,7 @@ export class WorkoutPlanService {
         description: input.description,
         minGroupSize: input.minGroupSize,
         maxGroupSize: input.maxGroupSize,
+        shouldAlternate: input.shouldAlternate,
       },
     });
   }

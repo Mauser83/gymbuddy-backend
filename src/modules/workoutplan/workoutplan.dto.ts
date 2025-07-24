@@ -410,6 +410,10 @@ export class CreateTrainingMethodDto {
   @IsInt()
   @Min(1)
   maxGroupSize?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  shouldAlternate?: boolean;
 }
 
 export class UpdateTrainingMethodDto {
@@ -438,4 +442,8 @@ export class UpdateTrainingMethodDto {
   @IsInt()
   @Min(1)
   maxGroupSize?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  shouldAlternate?: boolean;
 }

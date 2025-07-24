@@ -99,6 +99,7 @@ export const WorkoutPlanResolvers = {
     // ✅ Add these two lines to explicitly expose new fields (optional if passthrough works)
     minGroupSize: (parent: any) => parent.minGroupSize ?? null,
     maxGroupSize: (parent: any) => parent.maxGroupSize ?? null,
+    shouldAlternate: (parent: any) => parent.shouldAlternate ?? null,
   },
 
   Query: {

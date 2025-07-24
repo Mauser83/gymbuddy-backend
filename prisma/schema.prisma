@@ -547,8 +547,10 @@ model TrainingMethod {
 
   minGroupSize Int? 
   maxGroupSize Int?
+  
+  shouldAlternate Boolean? @default(false)
 
-    workoutPlanGroups WorkoutPlanGroup[] // 👈 Add this
+  workoutPlanGroups WorkoutPlanGroup[] // 👈 Add this
 
 }
 

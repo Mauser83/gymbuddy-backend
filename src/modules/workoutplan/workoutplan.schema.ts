@@ -93,6 +93,7 @@ export const workoutplanTypeDefs = `#graphql
 
     minGroupSize: Int
     maxGroupSize: Int
+    shouldAlternate: Boolean
   }
 
   type AssignedWorkout {
@@ -242,6 +243,7 @@ export const workoutplanTypeDefs = `#graphql
 
     minGroupSize: Int
     maxGroupSize: Int
+    shouldAlternate: Boolean
   }
 
   input UpdateTrainingMethodInput {
@@ -251,6 +253,7 @@ export const workoutplanTypeDefs = `#graphql
 
     minGroupSize: Int
     maxGroupSize: Int
+    shouldAlternate: Boolean
   }
 
   input TrainingGoalInput {
