@@ -105,7 +105,7 @@ export class UserService {
       where: { id: userId },
       data: {
         trainingGoalId: input.trainingGoalId ?? undefined,
-        experienceLevel: input.experienceLevel ?? undefined,
+        experienceLevelId: input.experienceLevelId ?? undefined,
       },
       include: {
         trainingGoal: true,

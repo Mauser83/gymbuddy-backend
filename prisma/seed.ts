@@ -37,6 +37,27 @@ async function main() {
   } else {
     console.log(`User with username ${username} already exists`);
   }
+  
+  await prisma.experienceLevel.createMany({
+    data: [
+      {
+        name: 'Beginner',
+        key: 'beginner',
+        isDefault: true,
+      },
+      {
+        name: 'Intermediate',
+        key: 'intermediate',
+        isDefault: false,
+      },
+      {
+        name: 'Advanced',
+        key: 'advanced',
+        isDefault: false,
+      },
+    ],
+    skipDuplicates: true,
+  });
 }
 
 main()

@@ -65,9 +65,10 @@ model User {
   WorkoutProgramAssignment   WorkoutProgramAssignment[]
   UserWorkoutPreferences     UserWorkoutPreferences?
 
-  experienceLevel ExperienceLevel?
-  trainingGoalId  Int?
-  trainingGoal    TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
+  experienceLevelId Int?
+  experienceLevel   ExperienceLevel? @relation(fields: [experienceLevelId], references: [id])
+  trainingGoalId    Int?
+  trainingGoal      TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
 }
 
 model WorkoutPlan {
@@ -94,6 +95,9 @@ model WorkoutPlan {
   intensityPresetId Int? // ✅ new
   intensityPreset   IntensityPreset? @relation(fields: [intensityPresetId], references: [id])
 
+  experienceLevelId Int
+  experienceLevel   ExperienceLevel @relation(fields: [experienceLevelId], references: [id])
+
   muscleGroups MuscleGroup[] @relation("PlanMuscleGroups")
 
   exercises         WorkoutPlanExercise[]
@@ -117,10 +121,9 @@ model WorkoutPlanExercise {
   targetMetrics Json // ✅ [{ metricId: number, min: number, max?: number }]
 
   trainingMethodId Int?
-  trainingMethod   TrainingMethod? @relation(fields: [trainingMethodId], references: [id])
+  trainingMethod   TrainingMethod?   @relation(fields: [trainingMethodId], references: [id])
   groupId          Int?
-  group   WorkoutPlanGroup? @relation("GroupExercises", fields: [groupId], references: [id])
-
+  group            WorkoutPlanGroup? @relation("GroupExercises", fields: [groupId], references: [id])
 
   isWarmup Boolean @default(false)
 
@@ -129,18 +132,18 @@ model WorkoutPlanExercise {
 }
 
 model WorkoutPlanGroup {
-  id              Int              @id @default(autoincrement())
-  workoutPlan     WorkoutPlan      @relation(fields: [workoutPlanId], references: [id])
-  workoutPlanId   Int
+  id            Int         @id @default(autoincrement())
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+  workoutPlanId Int
 
-  trainingMethod  TrainingMethod   @relation(fields: [trainingMethodId], references: [id])
+  trainingMethod   TrainingMethod @relation(fields: [trainingMethodId], references: [id])
   trainingMethodId Int
 
-  order           Int
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  exercises       WorkoutPlanExercise[] @relation("GroupExercises")
+  exercises WorkoutPlanExercise[] @relation("GroupExercises")
 }
 
 model Exercise {
@@ -248,7 +251,7 @@ model ExerciseLog {
   groupKey      String?
   instanceKey   String?
   completedAt   DateTime?
-  isAutoFilled  Boolean? @default(false)
+  isAutoFilled  Boolean?  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -508,22 +511,30 @@ model TrainingGoal {
 }
 
 model IntensityPreset {
-  id              Int             @id @default(autoincrement())
-  trainingGoal    TrainingGoal    @relation(fields: [trainingGoalId], references: [id])
-  trainingGoalId  Int
-  experienceLevel ExperienceLevel
-  defaultSets     Int
-  defaultReps     Int
-  defaultRestSec  Int
-  defaultRpe      Int
+  id                Int             @id @default(autoincrement())
+  trainingGoal      TrainingGoal    @relation(fields: [trainingGoalId], references: [id])
+  trainingGoalId    Int
+  experienceLevel   ExperienceLevel @relation(fields: [experienceLevelId], references: [id])
+  experienceLevelId Int
+  defaultSets       Int
+  defaultReps       Int
+  defaultRestSec    Int
+  defaultRpe        Int
 
   workoutPlans WorkoutPlan[] // ✅ Add this back-reference
 }
 
-enum ExperienceLevel {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
+model ExperienceLevel {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  key       String   @unique
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  WorkoutPlans     WorkoutPlan[]
+  users            User[]
+  intensityPresets IntensityPreset[]
 }
 
 model MuscleGroup {
@@ -545,11 +556,12 @@ model TrainingMethod {
 
   trainingGoals TrainingGoal[] @relation("TrainingMethodToGoal")
 
-  minGroupSize Int? 
+  minGroupSize Int?
   maxGroupSize Int?
 
-    workoutPlanGroups WorkoutPlanGroup[] // 👈 Add this
+  shouldAlternate Boolean? @default(false)
 
+  workoutPlanGroups WorkoutPlanGroup[] // 👈 Add this
 }
 
 model WorkoutProgram {

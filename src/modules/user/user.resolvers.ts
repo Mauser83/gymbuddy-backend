@@ -1,7 +1,6 @@
 import type { AuthContext } from "../auth/auth.types";
 import { pubsub } from "../../graphql/rootResolvers";
 import { UserService } from "./user.service";
-import { ExperienceLevel } from "./user.dto";
 
 export const UserResolvers = {
   User: {
@@ -97,7 +96,7 @@ export const UserResolvers = {
 
     updateUserTrainingPreferences: async (
       _: unknown,
-      args: { input: { trainingGoalId?: number; experienceLevel?: string } },
+      args: { input: { trainingGoalId?: number; experienceLevelId?: number } },
       context: AuthContext
     ) => {
       if (!context.userId) throw new Error("Unauthorized");
@@ -107,7 +106,7 @@ export const UserResolvers = {
         context.userId,
         {
           trainingGoalId: args.input.trainingGoalId,
-          experienceLevel: args.input.experienceLevel as ExperienceLevel,
+          experienceLevelId: args.input.experienceLevelId,
         }
       );
 

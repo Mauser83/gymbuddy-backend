@@ -72,6 +72,11 @@ export const WorkoutPlanResolvers = {
         where: { id: parent.trainingGoalId },
       });
     },
+    experienceLevel: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.experienceLevel.findUnique({
+        where: { id: parent.experienceLevelId },
+      });
+    },
   },
 
   TrainingGoal: {
@@ -160,6 +165,17 @@ export const WorkoutPlanResolvers = {
           ? { trainingGoalId: args.trainingGoalId }
           : {},
       });
+    },
+    experienceLevels: (_: unknown, __: unknown, context: AuthContext) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.getExperienceLevels();
+    },
+    experienceLevel: (_: unknown, args: { id: number }, context: AuthContext) => {
+      return context.prisma.experienceLevel.findUnique({ where: { id: args.id } });
     },
     getMuscleGroups: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.muscleGroup.findMany({
@@ -381,6 +397,37 @@ export const WorkoutPlanResolvers = {
         new SharingService(context.prisma, context.permissionService)
       );
       return service.deleteIntensityPreset(context, id);
+    },
+
+    createExperienceLevel: (_: unknown, { input }: any, context: AuthContext) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.createExperienceLevel(context, input);
+    },
+
+    updateExperienceLevel: (
+      _: unknown,
+      { id, input }: any,
+      context: AuthContext
+    ) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.updateExperienceLevel(context, id, input);
+    },
+
+    deleteExperienceLevel: (_: unknown, { id }: any, context: AuthContext) => {
+      const service = new WorkoutPlanService(
+        context.prisma,
+        context.permissionService,
+        new SharingService(context.prisma, context.permissionService)
+      );
+      return service.deleteExperienceLevel(context, id);
     },
 
     // 🔒 MuscleGroup

@@ -21,6 +21,8 @@ import {
   UpdateTrainingMethodGoalsDto,
   CreateTrainingMethodDto,
   UpdateTrainingMethodDto,
+  CreateExperienceLevelDto,
+  UpdateExperienceLevelDto,
 } from "./workoutplan.dto";
 import { verifyRoles } from "../auth/auth.roles";
 
@@ -128,6 +130,21 @@ export class WorkoutPlanService {
 
     await validateInput(data, CreateWorkoutPlanDto);
 
+    let experienceLevelId: number | null = null;
+    if (data.intensityPresetId) {
+      const preset = await this.prisma.intensityPreset.findUnique({
+        where: { id: data.intensityPresetId },
+        select: { experienceLevelId: true },
+      });
+      experienceLevelId = preset?.experienceLevelId || null;
+    } else {
+      const def = await this.prisma.experienceLevel.findFirst({
+        where: { isDefault: true },
+        select: { id: true },
+      });
+      experienceLevelId = def?.id || null;
+    }
+
     const workoutPlan = await this.prisma.workoutPlan.create({
       data: {
         name: data.name,
@@ -136,6 +153,7 @@ export class WorkoutPlanService {
         isPublic: data.isPublic ?? false,
         trainingGoalId: data.trainingGoalId ?? null,
         intensityPresetId: data.intensityPresetId ?? null,
+        experienceLevelId: experienceLevelId!,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -179,6 +197,21 @@ export class WorkoutPlanService {
       where: { parentPlanId },
     });
 
+    let experienceLevelId: number | null = null;
+    if (data.intensityPresetId) {
+      const preset = await this.prisma.intensityPreset.findUnique({
+        where: { id: data.intensityPresetId },
+        select: { experienceLevelId: true },
+      });
+      experienceLevelId = preset?.experienceLevelId || null;
+    } else {
+      const def = await this.prisma.experienceLevel.findFirst({
+        where: { isDefault: true },
+        select: { id: true },
+      });
+      experienceLevelId = def?.id || null;
+    }
+
     const newVersion = await this.prisma.workoutPlan.create({
       data: {
         name: data.name,
@@ -189,6 +222,7 @@ export class WorkoutPlanService {
         userId,
         trainingGoalId: data.trainingGoalId ?? null,
         intensityPresetId: data.intensityPresetId ?? null,
+        experienceLevelId: experienceLevelId!,
         muscleGroups: data.muscleGroupIds
           ? {
               connect: data.muscleGroupIds.map((id) => ({ id })),
@@ -267,6 +301,14 @@ export class WorkoutPlanService {
         isPublic: data.isPublic,
         trainingGoalId: data.trainingGoalId ?? undefined,
         intensityPresetId: data.intensityPresetId ?? undefined,
+        experienceLevelId: data.intensityPresetId
+          ? (
+              await this.prisma.intensityPreset.findUnique({
+                where: { id: data.intensityPresetId },
+                select: { experienceLevelId: true },
+              })
+            )?.experienceLevelId ?? undefined
+          : undefined,
         muscleGroups: data.muscleGroupIds
           ? {
               set: data.muscleGroupIds.map((id) => ({ id })),
@@ -393,6 +435,34 @@ export class WorkoutPlanService {
   async deleteIntensityPreset(context: any, id: number) {
     verifyRoles(context, { requireAppRole: "ADMIN" });
     await this.prisma.intensityPreset.delete({ where: { id } });
+    return true;
+  }
+
+  async getExperienceLevels() {
+    return this.prisma.experienceLevel.findMany({
+      orderBy: { id: "asc" },
+    });
+  }
+
+  async createExperienceLevel(context: any, input: CreateExperienceLevelDto) {
+    verifyRoles(context, { requireAppRole: "ADMIN" });
+    await validateInput(input, CreateExperienceLevelDto);
+    return this.prisma.experienceLevel.create({ data: input });
+  }
+
+  async updateExperienceLevel(
+    context: any,
+    id: number,
+    input: UpdateExperienceLevelDto
+  ) {
+    verifyRoles(context, { requireAppRole: "ADMIN" });
+    await validateInput(input, UpdateExperienceLevelDto);
+    return this.prisma.experienceLevel.update({ where: { id }, data: input });
+  }
+
+  async deleteExperienceLevel(context: any, id: number) {
+    verifyRoles(context, { requireAppRole: "ADMIN" });
+    await this.prisma.experienceLevel.delete({ where: { id } });
     return true;
   }
 

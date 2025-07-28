@@ -13,7 +13,7 @@ export interface UpdateUserProfileInput {
 
 export interface UpdateUserTrainingPreferencesInput {
   trainingGoalId?: number;
-  experienceLevel?: ExperienceLevel;
+  experienceLevelId?: number;
 }
 
 // ➕ NEW TYPES
@@ -48,14 +48,21 @@ export interface User {
 
   trainingGoalId?: number;
   trainingGoal?: TrainingGoal;
-  experienceLevel?: ExperienceLevel;
+  experienceLevelId?: number;
 
   assignedWorkouts?: AssignedWorkout[];
   assignedByWorkouts?: AssignedWorkout[];
   workoutSessions?: WorkoutSession[];
 }
 
-export type ExperienceLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export interface ExperienceLevel {
+  id: number;
+  name: string;
+  key: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface TrainingGoal {
   id: number;

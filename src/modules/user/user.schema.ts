@@ -19,12 +19,6 @@ export const userTypeDefs = `
     workoutSessions: [WorkoutSession!]        # Grouped logs per session
   }
 
-  enum ExperienceLevel {
-    BEGINNER
-    INTERMEDIATE
-    ADVANCED
-  }
-
   type GymManagementRole {
     id: Int!
     role: GymRole!
@@ -55,7 +49,7 @@ export const userTypeDefs = `
 
   input UpdateUserTrainingPreferencesInput {
     trainingGoalId: Int
-    experienceLevel: ExperienceLevel
+    experienceLevelId: Int
   }
 
   extend type Query {

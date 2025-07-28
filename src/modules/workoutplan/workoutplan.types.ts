@@ -19,6 +19,9 @@ export interface WorkoutPlan {
   intensityPreset?: IntensityPreset;
   intensityPresetId?: number;
 
+  experienceLevel: ExperienceLevel;
+  experienceLevelId: number;
+
   muscleGroups?: MuscleGroup[];
   exercises?: WorkoutPlanExercise[];
   groups?: WorkoutPlanGroup[]; // ✅ Add this line
@@ -39,13 +42,21 @@ export interface IntensityPreset {
   trainingGoalId: number;
   trainingGoal?: TrainingGoal;
   experienceLevel: ExperienceLevel;
+  experienceLevelId: number;
   defaultSets: number;
   defaultReps: number;
   defaultRestSec: number;
   defaultRpe: number;
 }
 
-export type ExperienceLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export interface ExperienceLevel {
+  id: number;
+  name: string;
+  key: string;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface WorkoutPlanExercise {
   id: number;

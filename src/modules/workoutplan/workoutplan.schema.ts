@@ -60,10 +60,13 @@ export const workoutplanTypeDefs = `#graphql
     trainingMethods: [TrainingMethod!]!  # ✅ New — inverse link
   }
 
-  enum ExperienceLevel {
-    BEGINNER
-    INTERMEDIATE
-    ADVANCED
+  type ExperienceLevel {
+    id: Int!
+    name: String!
+    key: String!
+    isDefault: Boolean!
+    createdAt: String!
+    updatedAt: String!
   }
 
   type IntensityPreset {
@@ -263,14 +266,26 @@ export const workoutplanTypeDefs = `#graphql
 
   input IntensityPresetInput {
     trainingGoalId: Int!
-    experienceLevel: ExperienceLevel!
+    experienceLevelId: ID!
     defaultSets: Int!
     defaultReps: Int!
     defaultRestSec: Int!
     defaultRpe: Float!
   }
 
-    input CreateWorkoutProgramInput {
+  input CreateExperienceLevelInput {
+    name: String!
+    key: String!
+    isDefault: Boolean
+  }
+
+  input UpdateExperienceLevelInput {
+    name: String
+    key: String
+    isDefault: Boolean
+  }
+
+  input CreateWorkoutProgramInput {
     name: String!
     notes: String
   }
@@ -333,6 +348,8 @@ input UpdateTrainingMethodGoalsInput {
 
     getTrainingGoals: [TrainingGoal!]!
     getIntensityPresets(trainingGoalId: Int): [IntensityPreset!]!
+    experienceLevels: [ExperienceLevel!]!
+    experienceLevel(id: Int!): ExperienceLevel
   }
 
   extend type Mutation {
@@ -361,7 +378,11 @@ input UpdateTrainingMethodGoalsInput {
     updateIntensityPreset(id: Int!, input: IntensityPresetInput!): IntensityPreset!
     deleteIntensityPreset(id: Int!): Boolean!
 
-    createWorkoutPlanVersion(parentPlanId: Int!, input: CreateWorkoutPlanInput!): WorkoutPlan
+    createExperienceLevel(input: CreateExperienceLevelInput!): ExperienceLevel!
+    updateExperienceLevel(id: Int!, input: UpdateExperienceLevelInput!): ExperienceLevel!
+    deleteExperienceLevel(id: Int!): Boolean!
+
+   createWorkoutPlanVersion(parentPlanId: Int!, input: CreateWorkoutPlanInput!): WorkoutPlan
 
     createWorkoutProgram(input: CreateWorkoutProgramInput!): WorkoutProgram!
     updateWorkoutProgram(id: Int!, input: UpdateWorkoutProgramInput!): WorkoutProgram!

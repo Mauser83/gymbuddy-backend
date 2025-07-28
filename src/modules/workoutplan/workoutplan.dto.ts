@@ -317,8 +317,8 @@ export class CreateIntensityPresetDto {
   @IsInt()
   trainingGoalId!: number;
 
-  @IsString()
-  experienceLevel!: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  @IsInt()
+  experienceLevelId!: number;
 
   @IsInt()
   @Min(1)
@@ -347,8 +347,8 @@ export class UpdateIntensityPresetDto {
   trainingGoalId?: number;
 
   @IsOptional()
-  @IsString()
-  experienceLevel?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  @IsInt()
+  experienceLevelId?: number;
 
   @IsOptional()
   @IsInt()
@@ -446,4 +446,30 @@ export class UpdateTrainingMethodDto {
   @IsOptional()
   @IsBoolean()
   shouldAlternate?: boolean;
+}
+
+export class CreateExperienceLevelDto {
+  @IsString()
+  name!: string;
+
+  @IsString()
+  key!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+}
+
+export class UpdateExperienceLevelDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  key?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
 }

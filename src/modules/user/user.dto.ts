@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength, IsEnum } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, IsEnum, IsInt } from 'class-validator';
 import { AppRole, UserRole } from '../../lib/prisma'; // Adjust path if needed
 
 export class UpdateUserProfileDto {
@@ -22,19 +22,11 @@ export class UpdateUserRolesDto {
   appRole?: AppRole;
 }
 
-export enum ExperienceLevel {
-  BEGINNER = "BEGINNER",
-  INTERMEDIATE = "INTERMEDIATE",
-  ADVANCED = "ADVANCED",
-}
-
 export class UpdateUserTrainingPreferencesDto {
   @IsOptional()
   trainingGoalId?: number;
 
   @IsOptional()
-  @IsEnum(ExperienceLevel, {
-    message: "experienceLevel must be BEGINNER, INTERMEDIATE, or ADVANCED",
-  })
-  experienceLevel?: ExperienceLevel;
+  @IsInt()
+  experienceLevelId?: number;
 }

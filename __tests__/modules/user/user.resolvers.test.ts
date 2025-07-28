@@ -1,7 +1,6 @@
 import { UserResolvers } from '../../../src/modules/user/user.resolvers';
 import { UserService } from '../../../src/modules/user/user.service';
 import { pubsub } from '../../../src/graphql/rootResolvers';
-import { ExperienceLevel } from '../../../src/modules/user/user.dto';
 import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/user/user.service');
@@ -143,12 +142,12 @@ describe('UserResolvers', () => {
       const ctx = createContext();
       const res = await UserResolvers.Mutation.updateUserTrainingPreferences(
         null as any,
-        { input: { trainingGoalId: 1, experienceLevel: ExperienceLevel.BEGINNER } },
+        { input: { trainingGoalId: 1, experienceLevelId: 2 } },
         ctx
       );
       expect(instance.updateTrainingPreferences).toHaveBeenCalledWith(1, {
         trainingGoalId: 1,
-        experienceLevel: ExperienceLevel.BEGINNER,
+        experienceLevelId: 2,
       });
       expect(mockedPublish).toHaveBeenCalledWith('USER_UPDATED', { userUpdated: { id: 2 } });
       expect(res).toEqual({ id: 2 });
