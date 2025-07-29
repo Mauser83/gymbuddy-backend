@@ -78,6 +78,7 @@ export const workoutplanTypeDefs = `#graphql
     type IntensityPreset {
     id: Int!
     trainingGoalId: Int!
+    experienceLevelId: Int!
     trainingGoal: TrainingGoal!
     experienceLevel: ExperienceLevel!
     metricDefaults: [IntensityMetricDefault!]!
