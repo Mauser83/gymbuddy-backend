@@ -313,6 +313,18 @@ export class UpdateTrainingGoalDto {
   slug?: string;
 }
 
+class IntensityMetricDefaultInput {
+  @IsNumber()
+  metricId!: number;
+
+  @IsNumber()
+  defaultMin!: number;
+
+  @IsOptional()
+  @IsNumber()
+  defaultMax?: number;
+}
+
 export class CreateIntensityPresetDto {
   @IsInt()
   trainingGoalId!: number;
@@ -320,25 +332,9 @@ export class CreateIntensityPresetDto {
   @IsInt()
   experienceLevelId!: number;
 
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  defaultSets!: number;
-
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  defaultReps!: number;
-
-  @IsInt()
-  @Min(0)
-  @Max(600)
-  defaultRestSec!: number;
-
-  @IsNumber()
-  @Min(0)
-  @Max(10)
-  defaultRpe!: number;
+  @ValidateNested({ each: true })
+  @Type(() => IntensityMetricDefaultInput)
+  metricDefaults!: IntensityMetricDefaultInput[];
 }
 
 export class UpdateIntensityPresetDto {
@@ -351,28 +347,9 @@ export class UpdateIntensityPresetDto {
   experienceLevelId?: number;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  defaultSets?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  defaultReps?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(600)
-  defaultRestSec?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(10)
-  defaultRpe?: number;
+  @ValidateNested({ each: true })
+  @Type(() => IntensityMetricDefaultInput)
+  metricDefaults?: IntensityMetricDefaultInput[];
 }
 
 export class UpdateTrainingMethodGoalsDto {

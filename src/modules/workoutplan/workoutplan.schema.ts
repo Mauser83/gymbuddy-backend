@@ -69,15 +69,18 @@ export const workoutplanTypeDefs = `#graphql
     updatedAt: String!
   }
 
-  type IntensityPreset {
+    type IntensityMetricDefault {
+      metricId: Int!
+      defaultMin: Float!
+      defaultMax: Float
+    }
+
+    type IntensityPreset {
     id: Int!
     trainingGoalId: Int!
     trainingGoal: TrainingGoal!
     experienceLevel: ExperienceLevel!
-    defaultSets: Int!
-    defaultReps: Int!
-    defaultRestSec: Int!
-    defaultRpe: Float!
+    metricDefaults: [IntensityMetricDefault!]!
   }
 
   type MuscleGroup {
@@ -267,10 +270,13 @@ export const workoutplanTypeDefs = `#graphql
   input IntensityPresetInput {
     trainingGoalId: Int!
     experienceLevelId: ID!
-    defaultSets: Int!
-    defaultReps: Int!
-    defaultRestSec: Int!
-    defaultRpe: Float!
+    metricDefaults: [IntensityMetricDefaultInput!]!
+  }
+
+  input IntensityMetricDefaultInput {
+    metricId: Int!
+    defaultMin: Float!
+    defaultMax: Float
   }
 
   input CreateExperienceLevelInput {

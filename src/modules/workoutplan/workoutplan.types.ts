@@ -43,10 +43,13 @@ export interface IntensityPreset {
   trainingGoal?: TrainingGoal;
   experienceLevel: ExperienceLevel;
   experienceLevelId: number;
-  defaultSets: number;
-  defaultReps: number;
-  defaultRestSec: number;
-  defaultRpe: number;
+  metricDefaults: IntensityMetricDefault[];
+}
+
+export interface IntensityMetricDefault {
+  metricId: number;
+  defaultMin: number;
+  defaultMax?: number;
 }
 
 export interface ExperienceLevel {

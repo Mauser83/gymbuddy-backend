@@ -516,12 +516,18 @@ model IntensityPreset {
   trainingGoalId    Int
   experienceLevel   ExperienceLevel @relation(fields: [experienceLevelId], references: [id])
   experienceLevelId Int
-  defaultSets       Int
-  defaultReps       Int
-  defaultRestSec    Int
-  defaultRpe        Int
+  metricDefaults    IntensityMetricDefault[]
 
   workoutPlans WorkoutPlan[] // ✅ Add this back-reference
+}
+
+model IntensityMetricDefault {
+  id         Int             @id @default(autoincrement())
+  metricId   Int
+  defaultMin Float
+  defaultMax Float?
+  preset     IntensityPreset @relation(fields: [presetId], references: [id])
+  presetId   Int
 }
 
 model ExperienceLevel {

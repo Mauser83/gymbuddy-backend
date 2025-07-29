@@ -77,6 +77,11 @@ export const WorkoutPlanResolvers = {
         where: { id: parent.experienceLevelId },
       });
     },
+    metricDefaults: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.intensityMetricDefault.findMany({
+        where: { presetId: parent.id },
+      });
+    },
   },
 
   TrainingGoal: {
@@ -151,7 +156,10 @@ export const WorkoutPlanResolvers = {
 
     getTrainingGoals: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.trainingGoal.findMany({
-        include: { presets: true, trainingMethods: true },
+        include: {
+          presets: { include: { metricDefaults: true } },
+          trainingMethods: true,
+        },
       });
     },
 
@@ -164,6 +172,7 @@ export const WorkoutPlanResolvers = {
         where: args.trainingGoalId
           ? { trainingGoalId: args.trainingGoalId }
           : {},
+        include: { metricDefaults: true },
       });
     },
     experienceLevels: (_: unknown, __: unknown, context: AuthContext) => {
@@ -174,8 +183,14 @@ export const WorkoutPlanResolvers = {
       );
       return service.getExperienceLevels();
     },
-    experienceLevel: (_: unknown, args: { id: number }, context: AuthContext) => {
-      return context.prisma.experienceLevel.findUnique({ where: { id: args.id } });
+    experienceLevel: (
+      _: unknown,
+      args: { id: number },
+      context: AuthContext
+    ) => {
+      return context.prisma.experienceLevel.findUnique({
+        where: { id: args.id },
+      });
     },
     getMuscleGroups: (_: unknown, __: unknown, context: AuthContext) => {
       return context.prisma.muscleGroup.findMany({
@@ -399,7 +414,11 @@ export const WorkoutPlanResolvers = {
       return service.deleteIntensityPreset(context, id);
     },
 
-    createExperienceLevel: (_: unknown, { input }: any, context: AuthContext) => {
+    createExperienceLevel: (
+      _: unknown,
+      { input }: any,
+      context: AuthContext
+    ) => {
       const service = new WorkoutPlanService(
         context.prisma,
         context.permissionService,

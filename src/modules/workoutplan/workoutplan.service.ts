@@ -419,16 +419,44 @@ export class WorkoutPlanService {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.intensityPreset.create({ data: input });
+    const { metricDefaults, ...presetData } = input;
+    return this.prisma.intensityPreset.create({
+      data: {
+        ...presetData,
+        metricDefaults: {
+          create: metricDefaults.map((m: any) => ({
+            metricId: m.metricId,
+            defaultMin: m.defaultMin,
+            defaultMax: m.defaultMax ?? null,
+          })),
+        },
+      },
+      include: { metricDefaults: true },
+    });
   }
 
   async updateIntensityPreset(context: any, id: number, input: any) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
-    return this.prisma.intensityPreset.update({
-      where: { id },
-      data: input,
+    const { metricDefaults, ...data } = input;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.intensityMetricDefault.deleteMany({ where: { presetId: id } });
+      if (metricDefaults?.length) {
+        await tx.intensityMetricDefault.createMany({
+          data: metricDefaults.map((m: any) => ({
+            metricId: m.metricId,
+            defaultMin: m.defaultMin,
+            defaultMax: m.defaultMax ?? null,
+            presetId: id,
+          })),
+        });
+      }
+      await tx.intensityPreset.update({ where: { id }, data });
+      return tx.intensityPreset.findUnique({
+        where: { id },
+        include: { metricDefaults: true },
+      });
     });
   }
 
