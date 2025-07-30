@@ -270,7 +270,7 @@ export const workoutplanTypeDefs = `#graphql
 
   input IntensityPresetInput {
     trainingGoalId: Int!
-    experienceLevelId: ID!
+    experienceLevelId: Int!
     metricDefaults: [IntensityMetricDefaultInput!]!
   }
 
