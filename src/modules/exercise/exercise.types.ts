@@ -205,6 +205,8 @@ export interface CreateMetricInput {
   slug: string;
   unit: string;
   inputType: string;
+  useInPlanning?: boolean;
+  minOnly?: boolean;
 }
 
 export interface UpdateMetricInput {

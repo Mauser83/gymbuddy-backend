@@ -137,6 +137,8 @@ export const exerciseTypeDefs = `
     slug: String!
     unit: String!
     inputType: String!  # e.g. "number", "time", "text"
+    useInPlanning: Boolean
+    minOnly: Boolean
   }
 
   input UpdateMetricInput {

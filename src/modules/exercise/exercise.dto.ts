@@ -194,6 +194,14 @@ export class CreateMetricDto {
 
   @IsString()
   inputType!: string; // e.g., "number", "time", "text"
+
+  @IsOptional()
+  @IsBoolean()
+  useInPlanning?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  minOnly?: boolean;
 }
 
 export class UpdateMetricDto {
