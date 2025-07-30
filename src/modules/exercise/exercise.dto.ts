@@ -212,4 +212,12 @@ export class UpdateMetricDto {
   @IsOptional()
   @IsString()
   inputType?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  useInPlanning?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  minOnly?: boolean;
 }

@@ -73,6 +73,8 @@ export const exerciseTypeDefs = `
     slug: String!
     unit: String!
     inputType: String!
+    useInPlanning: Boolean!
+    minOnly: Boolean!
   }
 
   type ExerciseDifficulty {
@@ -142,6 +144,8 @@ export const exerciseTypeDefs = `
     slug: String
     unit: String
     inputType: String
+    useInPlanning: Boolean
+    minOnly: Boolean
   }
 
   input CreateExerciseDifficultyInput {

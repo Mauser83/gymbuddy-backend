@@ -62,6 +62,8 @@ export interface Metric {
   slug: string;
   unit: string;
   inputType: string; // e.g. "number", "time", "text"
+  useInPlanning: boolean;
+  minOnly: boolean;
 }
 
 export interface MetricTarget {
@@ -210,4 +212,6 @@ export interface UpdateMetricInput {
   slug?: string;
   unit?: string;
   inputType?: string;
+  useInPlanning?: boolean;
+  minOnly?: boolean;
 }

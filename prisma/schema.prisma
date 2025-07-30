@@ -647,6 +647,8 @@ model Metric {
   slug          String               @unique
   unit          String
   inputType     String // e.g., 'number', 'time', 'text'
+  useInPlanning Boolean              @default(true)
+  minOnly       Boolean              @default(false)
   exerciseTypes ExerciseTypeMetric[]
 }
 
