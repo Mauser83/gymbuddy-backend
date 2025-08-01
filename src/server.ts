@@ -3,9 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
 import { PrismaClient } from './lib/prisma';
 import { PermissionService } from './modules/core/permission.service';
 import { DIContainer } from './modules/core/di.container';
@@ -41,77 +39,8 @@ app.use(metricsMiddleware);
 app.use(requestLogger);
 
 
-// CORS Config - allow all origins during development/testing
-app.use(
-  cors({
-    origin: '*',
-    credentials: true,
-  })
-);
-
-// Helmet security headers
-// - In production: allow Apollo Playground assets via a strict CSP
-// - In other environments: disable CSP entirely for easier debugging
-if (process.env.NODE_ENV === 'production') {
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: [
-            "'self'",
-            "'unsafe-inline'",
-            'cdn.jsdelivr.net',
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          styleSrc: [
-            "'self'",
-            "'unsafe-inline'",
-            'fonts.googleapis.com',
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          fontSrc: ["'self'", 'fonts.gstatic.com'],
-          connectSrc: [
-            "'self'",
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          imgSrc: [
-            "'self'",
-            'apollo-server-landing-page.cdn.apollographql.com',
-            'data:',
-          ],
-          manifestSrc: [
-            "'self'",
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-        },
-      },
-    })
-  );
-} else {
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-    })
-  );
-}
-
-// === Rate Limits ===
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { trustProxy: false },
-});
-
-const healthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { trustProxy: false },
-});
+// CORS - fully open for debugging purposes
+app.use(cors());
 
 // === DI Container Services ===
 const container = DIContainer.getInstance();
@@ -119,10 +48,10 @@ const prisma = container.resolve<PrismaClient>('PrismaClient');
 const permissionService = container.resolve<PermissionService>('PermissionService');
 
 // === API Routes ===
-app.use('/api', apiLimiter, apiRouter);
+app.use('/api', apiRouter);
 
 // === Health & Metrics ===
-app.get('/health', healthLimiter, (_req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -130,7 +59,7 @@ app.get('/health', healthLimiter, (_req, res) => {
   });
 });
 
-app.get('/metrics', healthLimiter, async (_req, res) => {
+app.get('/metrics', async (_req, res) => {
   try {
     res.set('Content-Type', 'text/plain');
     res.end(await require('prom-client').register.metrics());
