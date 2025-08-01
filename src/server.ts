@@ -21,6 +21,7 @@ import { setupWebSocket } from './graphql/setupWebsocket';
 import apiRouter from './api/apiRouter';
 
 export const app = express();
+app.set('trust proxy', true);
 export const JWT_SECRET = process.env.JWT_SECRET;
 const GRAPHQL_PORT = process.env.GRAPHQL_PORT || 4000;
 
