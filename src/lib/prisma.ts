@@ -1,12 +1,4 @@
 import {
-  PrismaClient as TestPrismaClient,
-  UserRole as TestUserRole,
-  AppRole as TestAppRole,
-  GymRole as TestGymRole,
-  Prisma as TestPrisma,
-} from '../generated/test-prisma';
-
-import {
   PrismaClient as ProdPrismaClient,
   User as ProdUser,
   Gym as ProdGym,
@@ -19,9 +11,21 @@ import {
 
 const isTest = process.env.NODE_ENV === 'test';
 
-const prisma = isTest
-  ? (new TestPrismaClient() as unknown as ProdPrismaClient)
-  : new ProdPrismaClient();
+// Dynamically load the test Prisma client when running tests
+let testPrisma: any | undefined;
+if (isTest) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    testPrisma = require('../generated/test-prisma');
+  } catch {
+    testPrisma = undefined;
+  }
+}
+
+const prisma: ProdPrismaClient =
+  isTest && testPrisma
+    ? (new testPrisma.PrismaClient() as unknown as ProdPrismaClient)
+    : new ProdPrismaClient();
 
 // Static types — always from production
 export type PrismaClient = ProdPrismaClient;
@@ -31,15 +35,12 @@ export type UserRole = ProdUserRole;
 export type AppRole = ProdAppRole;
 export type GymRole = ProdGymRole;
 export type AuditLog = ProdAuditLog;
-export type JsonObject =  ProdPrisma.JsonObject;
+export type JsonObject = ProdPrisma.JsonObject;
 
 // Runtime values — dynamic (test vs prod)
-const UserRole = isTest ? TestUserRole : ProdUserRole;
-const AppRole = isTest ? TestAppRole : ProdAppRole;
-const GymRole = isTest ? TestGymRole : ProdGymRole;
-const Prisma = isTest ? TestPrisma : ProdPrisma;
+const UserRoleEnum = isTest && testPrisma ? testPrisma.UserRole : ProdUserRole;
+const AppRoleEnum = isTest && testPrisma ? testPrisma.AppRole : ProdAppRole;
+const GymRoleEnum = isTest && testPrisma ? testPrisma.GymRole : ProdGymRole;
+const PrismaNamespace = isTest && testPrisma ? testPrisma.Prisma : ProdPrisma;
 
-// ❗ Notice AuditLog is NOT exported as a runtime value (because it's a type only!)
-
-export { prisma, UserRole, AppRole, GymRole, Prisma }; 
-// ✅ correct: AuditLog is exported only as a TYPE, not as a value
+export { prisma, UserRoleEnum as UserRole, AppRoleEnum as AppRole, GymRoleEnum as GymRole, PrismaNamespace as Prisma };

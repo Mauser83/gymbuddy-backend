@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prisma:test:generate": "prisma generate --schema=prisma/test/schema.prisma",
     "build": "npx tsc",
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
