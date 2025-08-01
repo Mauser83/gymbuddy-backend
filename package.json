@@ -6,7 +6,7 @@
   "scripts": {
     "prisma:test:generate": "prisma generate --schema=prisma/test/schema.prisma",
     "build": "npx tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "dev": "nodemon src/server.ts",
     "migrate:deploy": "dotenv -e .env.production npx prisma migrate deploy",
     "seed": "ts-node prisma/seed.ts",
