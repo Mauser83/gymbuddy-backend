@@ -1,17 +1,8 @@
+// tsconfig.test.json
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "allowJs": true,
-    "jsx": "react",
-    "noImplicitAny": false,
-    "typeRoots": [
-      "./node_modules/@types"
-    ]
+    "types": ["jest"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.test.ts"
-  ]
+  "include": ["src", "tests", "**/*.test.ts"]
 }
