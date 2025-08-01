@@ -50,11 +50,26 @@ app.use(
 );
 
 // Helmet security headers - disable CSP for non-production to allow GraphQL playground
-app.use(
-  helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
-  })
-);
+if (process.env.NODE_ENV === 'production') {
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:'],
+        },
+      },
+    })
+  );
+} else {
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    })
+  );
+}
 
 // === Rate Limits ===
 const apiLimiter = rateLimit({
