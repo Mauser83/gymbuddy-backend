@@ -1,6 +1,9 @@
 import { PrismaClient } from '../../lib/prisma';
 import type { AuditLog, JsonObject } from '../../lib/prisma';
 
+// Toggle to enable/disable audit logging
+const AUDIT_LOGGING_ENABLED = false;
+
 function toJsonObject(data: unknown): JsonObject {
   if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
     return data as JsonObject;
@@ -21,8 +24,12 @@ export class AuditService {
     entityId?: number;
     userId?: number;
     metadata?: unknown;
-  }): Promise<AuditLog> {
-    return this.prisma.auditLog.create({
+  }): Promise<void> {
+    if (!AUDIT_LOGGING_ENABLED) {
+      // Logging disabled; exit early
+      return;
+    }
+    await this.prisma.auditLog.create({
       data: {
         action: params.action,
         entity: params.entity,
