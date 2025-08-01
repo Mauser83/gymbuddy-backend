@@ -13,8 +13,9 @@ const csrfProtection = csrf({
 export const conditionalCsrf = (req: Request, res: Response, next: NextFunction) => {
   if (
     req.method === 'GET' ||
+    req.path === '/graphql' ||
     process.env.DISABLE_CSRF === 'true' ||
-    (process.env.NODE_ENV === 'development' && req.path === '/graphql')
+    process.env.NODE_ENV !== 'production'
   ) {
     return next();
   }

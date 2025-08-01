@@ -30,50 +30,30 @@ if (!JWT_SECRET) {
 
 // === Security + Middlewares ===
 app.use(cookieParser(JWT_SECRET));
-// app.use(conditionalCsrf);
-// app.get('/csrf-token', csrfTokenRoute);
+if (process.env.NODE_ENV === 'production') {
+  app.use(conditionalCsrf);
+  app.get('/csrf-token', csrfTokenRoute);
+}
 app.use(sanitizeInput);
 app.use(express.json());
 app.use(metricsMiddleware);
 app.use(requestLogger);
 
-// CORS Config
+
+// CORS Config - allow all origins during development/testing
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || origin.includes('localhost') || origin.includes('192.168.')) {
-        return callback(null, true);
-      }
-      return callback(new Error('Blocked by CORS'), false);
-    },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: '*',
     credentials: true,
   })
 );
 
-// Helmet (only in production)
-if (process.env.NODE_ENV !== 'development') {
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:'],
-          connectSrc: ["'self'"],
-          fontSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-      },
-      hsts: { maxAge: 63072000, includeSubDomains: true, preload: true },
-      frameguard: { action: 'deny' },
-      referrerPolicy: { policy: 'same-origin' },
-    })
-  );
-}
+// Helmet security headers - disable CSP for non-production to allow GraphQL playground
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  })
+);
 
 // === Rate Limits ===
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
