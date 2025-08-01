@@ -57,8 +57,21 @@ app.use(
 );
 
 // === Rate Limits ===
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const healthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false },
+});
+
+const healthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false },
+});
 
 // === DI Container Services ===
 const container = DIContainer.getInstance();
