@@ -246,15 +246,6 @@ export class WorkoutPlanService {
   async getWorkoutPlans(userId: number) {
     if (!userId) throw new Error("Unauthorized");
 
-    const userRoles = await this.permissionService.getUserRoles(userId);
-
-    const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, [
-      "ADMIN",
-    ]);
-    if (isAdmin) {
-      return this.prisma.workoutPlan.findMany();
-    }
-
     return this.prisma.workoutPlan.findMany({
       where: {
         userId,
