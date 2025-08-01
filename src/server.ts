@@ -49,16 +49,41 @@ app.use(
   })
 );
 
-// Helmet security headers - disable CSP for non-production to allow GraphQL playground
+// Helmet security headers
+// - In production: allow Apollo Playground assets via a strict CSP
+// - In other environments: disable CSP entirely for easier debugging
 if (process.env.NODE_ENV === 'production') {
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:'],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'cdn.jsdelivr.net',
+            'apollo-server-landing-page.cdn.apollographql.com',
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'fonts.googleapis.com',
+            'apollo-server-landing-page.cdn.apollographql.com',
+          ],
+          fontSrc: ["'self'", 'fonts.gstatic.com'],
+          connectSrc: [
+            "'self'",
+            'apollo-server-landing-page.cdn.apollographql.com',
+          ],
+          imgSrc: [
+            "'self'",
+            'apollo-server-landing-page.cdn.apollographql.com',
+            'data:',
+          ],
+          manifestSrc: [
+            "'self'",
+            'apollo-server-landing-page.cdn.apollographql.com',
+          ],
         },
       },
     })
