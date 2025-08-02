@@ -32,6 +32,8 @@ export function setupWebSocket(
     {
       schema,
       context: async (ctx) => {
+          console.log('WS connectionParams:', ctx.connectionParams);
+
         const token = (ctx.connectionParams?.authorization as string)?.replace(
           "Bearer ",
           ""
