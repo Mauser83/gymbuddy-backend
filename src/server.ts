@@ -39,8 +39,25 @@ app.use(metricsMiddleware);
 app.use(requestLogger);
 
 
-// CORS - fully open for debugging purposes
-app.use(cors());
+app.use(
+  cors({
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      // Allow web from localhost for Expo web
+      if (
+        origin === 'http://localhost:8081' ||
+        origin === 'http://localhost:19006'
+        // add more as needed
+      ) {
+        return callback(null, true);
+      }
+      // Otherwise, block it
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
 // === DI Container Services ===
 const container = DIContainer.getInstance();
