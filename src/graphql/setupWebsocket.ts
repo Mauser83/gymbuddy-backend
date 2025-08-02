@@ -18,26 +18,24 @@ export function setupWebSocket(
     server,
     path: "/graphql",
     verifyClient: (info, done) => {
-      // For debugging, let's see what origin the client sends
       console.log(`[WebSocket] Verification attempt from origin: ${info.origin}`);
 
       const origin = info.origin;
 
-      // ✅ **THE FIX:** Allow connections that have no origin (like mobile apps)
       if (!origin) {
         return done(true);
       }
 
-      // Keep your existing logic for local development from browsers
-      if (origin.includes("localhost") || origin.includes("192.168.")) {
+      // ✅ **THE FIX:** Add your Render URL to this list.
+      const allowedOrigins = [
+        'https://gymbuddy-backend-i9je.onrender.com', 
+        // You might also want your frontend's URL here for web clients
+        // 'https://your-frontend-app.onrender.com' 
+      ];
+
+      if (allowedOrigins.includes(origin) || origin.includes("localhost") || origin.includes("192.168.")) {
         return done(true);
       }
-      
-      // ❗️ For production, you should add your web app's domain here, e.g.:
-      // const allowedOrigins = ['https://your-frontend.onrender.com'];
-      // if (allowedOrigins.includes(origin)) {
-      //   return done(true);
-      // }
 
       console.warn(`[WebSocket] Connection rejected for invalid origin: ${origin}`);
       return done(false, 401, "Unauthorized origin");
