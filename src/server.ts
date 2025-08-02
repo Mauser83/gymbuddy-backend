@@ -4,6 +4,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import http from 'http';
 import { PrismaClient } from './lib/prisma';
 import { PermissionService } from './modules/core/permission.service';
 import { DIContainer } from './modules/core/di.container';
@@ -42,7 +43,7 @@ app.use(
 
 app.set('trust proxy', true);
 export const JWT_SECRET = process.env.JWT_SECRET;
-const GRAPHQL_PORT = process.env.GRAPHQL_PORT || 4000;
+const PORT = process.env.PORT || 4000;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -92,16 +93,18 @@ async function startApolloServer() {
   await setupApollo(app, prisma, permissionService);
   console.log('Apollo ready.');
 
-  const expressServer = app.listen(GRAPHQL_PORT, () => {
-    console.log(`🚀 GraphQL server ready`);
-  });
+    const httpServer = http.createServer(app);
 
-  setupWebSocket(expressServer, prisma, permissionService);
+  setupWebSocket(httpServer, prisma, permissionService);
+
+  httpServer.listen(PORT, () => {
+    console.log(`Server ready at http://localhost:${PORT}/graphql`);
+  });
 
   // Graceful shutdown
   const shutdown = () => {
     console.log('🔻 Shutting down...');
-    expressServer.close(() => {
+    httpServer.close(() => {
       console.log('✅ Server closed');
       process.exit(0);
     });
