@@ -26,13 +26,21 @@ export function setupWebSocket(
     },
   });
 
+  wsServer.on("connection", () => {
+    console.log("WebSocket connection opened!");
+  });
+
+  wsServer.on("error", (err) => {
+    console.error("WebSocket server error:", err);
+  });
+
   const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   useServer(
     {
       schema,
       context: async (ctx) => {
-          console.log('WS connectionParams:', ctx.connectionParams);
+        console.log("WS connectionParams:", ctx.connectionParams);
 
         const token = (ctx.connectionParams?.authorization as string)?.replace(
           "Bearer ",
