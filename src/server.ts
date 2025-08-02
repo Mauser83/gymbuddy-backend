@@ -19,25 +19,6 @@ import { setupWebSocket } from './graphql/setupWebsocket';
 import apiRouter from './api/apiRouter';
 
 export const app = express();
-app.set('trust proxy', true);
-export const JWT_SECRET = process.env.JWT_SECRET;
-const GRAPHQL_PORT = process.env.GRAPHQL_PORT || 4000;
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
-
-// === Security + Middlewares ===
-app.use(cookieParser(JWT_SECRET));
-if (process.env.NODE_ENV === 'production') {
-  app.use(conditionalCsrf);
-  app.get('/csrf-token', csrfTokenRoute);
-}
-app.use(sanitizeInput);
-app.use(express.json());
-app.use(metricsMiddleware);
-app.use(requestLogger);
-
 
 app.use(
   cors({
@@ -58,6 +39,26 @@ app.use(
     credentials: true,
   })
 );
+
+app.set('trust proxy', true);
+export const JWT_SECRET = process.env.JWT_SECRET;
+const GRAPHQL_PORT = process.env.GRAPHQL_PORT || 4000;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
+// === Security + Middlewares ===
+app.use(cookieParser(JWT_SECRET));
+if (process.env.NODE_ENV === 'production') {
+  app.use(conditionalCsrf);
+  app.get('/csrf-token', csrfTokenRoute);
+}
+app.use(sanitizeInput);
+app.use(express.json());
+app.use(metricsMiddleware);
+app.use(requestLogger);
+
 
 // === DI Container Services ===
 const container = DIContainer.getInstance();
@@ -92,7 +93,7 @@ async function startApolloServer() {
   console.log('Apollo ready.');
 
   const expressServer = app.listen(GRAPHQL_PORT, () => {
-    console.log(`🚀 Server ready at http://localhost:${GRAPHQL_PORT}/graphql`);
+    console.log(`🚀 GraphQL server ready`);
   });
 
   setupWebSocket(expressServer, prisma, permissionService);
