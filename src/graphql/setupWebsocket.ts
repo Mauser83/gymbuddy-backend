@@ -18,7 +18,7 @@ export function setupWebSocket(
     server,
     path: "/graphql",
     verifyClient: (info, done) => {
-      console.log(`[WebSocket] Verification attempt from origin: ${info.origin}`);
+      // console.log(`[WebSocket] Verification attempt from origin: ${info.origin}`);
 
       const origin = info.origin;
 
@@ -43,7 +43,7 @@ export function setupWebSocket(
   });
 
   wsServer.on("connection", () => {
-    console.log("WebSocket connection opened!");
+    // console.log("WebSocket connection opened!");
   });
 
   wsServer.on("error", (err) => {
@@ -56,7 +56,7 @@ export function setupWebSocket(
     {
       schema,
       context: async (ctx) => {
-        console.log("WS connectionParams:", ctx.connectionParams);
+        // console.log("WS connectionParams:", ctx.connectionParams);
 
         const token = (ctx.connectionParams?.authorization as string)?.replace(
           "Bearer ",
