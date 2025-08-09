@@ -2,14 +2,36 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.get('/autocomplete', async (req, res) => {
-  const input = req.query.input as string;
-  if (!input) return res.status(400).json({ error: "Missing 'input' parameter" });
+// Autocomplete endpoint
+router.post('/autocomplete', async (req, res) => {
+  const { input } = req.body;
+  if (!input) {
+    return res.status(400).json({ error: "Missing 'input' in request body" });
+  }
+
+  const apiKey = process.env.Maps_API_KEY;
+  
+  // --- FIX START ---
+  // Check if the API key is defined before using it
+  if (!apiKey) {
+    console.error('SERVER ERROR: Maps_API_KEY is not defined.');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+  // --- FIX END ---
+
+  const url = 'https://places.googleapis.com/v1/places:autocomplete';
 
   try {
-    const googleRes = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=en`
-    );
+    const googleRes = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // TypeScript now knows apiKey is a string here
+        'X-Goog-Api-Key': apiKey,
+      },
+      body: JSON.stringify({ input: input, languageCode: 'en' }),
+    });
+
     const data = await googleRes.json();
     res.status(200).json(data);
   } catch (err) {
@@ -18,14 +40,37 @@ router.get('/autocomplete', async (req, res) => {
   }
 });
 
+// Place Details endpoint
 router.get('/place-details', async (req, res) => {
   const place_id = req.query.place_id as string;
-  if (!place_id) return res.status(400).json({ error: "Missing 'place_id' parameter" });
+  if (!place_id) {
+    return res.status(400).json({ error: "Missing 'place_id' parameter" });
+  }
+
+  const apiKey = process.env.Maps_API_KEY;
+
+  // --- FIX START ---
+  // Perform the same check here
+  if (!apiKey) {
+    console.error('SERVER ERROR: Maps_API_KEY is not defined.');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+  // --- FIX END ---
+
+  const url = `https://places.googleapis.com/v1/places/${place_id}`;
+  const fieldMask = 'places.addressComponents,places.formattedAddress,places.location';
 
   try {
-    const googleRes = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&key=${process.env.GOOGLE_MAPS_API_KEY}`
-    );
+    const googleRes = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // TypeScript now knows apiKey is a string here too
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': fieldMask,
+      },
+    });
+
     const data = await googleRes.json();
     res.status(200).json(data);
   } catch (err) {
