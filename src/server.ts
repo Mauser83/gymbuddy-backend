@@ -49,6 +49,9 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
 
+// === API Routes ===
+app.use('/api', apiRouter);
+
 // === Security + Middlewares ===
 app.use(cookieParser(JWT_SECRET));
 if (process.env.NODE_ENV === 'production') {
@@ -65,9 +68,6 @@ app.use(requestLogger);
 const container = DIContainer.getInstance();
 const prisma = container.resolve<PrismaClient>('PrismaClient');
 const permissionService = container.resolve<PermissionService>('PermissionService');
-
-// === API Routes ===
-app.use('/api', apiRouter);
 
 // === Health & Metrics ===
 app.get('/health', (_req, res) => {

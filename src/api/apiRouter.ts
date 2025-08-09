@@ -1,82 +1,83 @@
 import { Router } from 'express';
 
-const router = Router();
+const apiRouter = Router();
 
-// Autocomplete endpoint
-router.post('/autocomplete', async (req, res) => {
-  const { input } = req.body;
-  if (!input) {
-    return res.status(400).json({ error: "Missing 'input' in request body" });
-  }
+// Ensure Node 18+ (global fetch). If not, uncomment next line:
+// import fetch from 'node-fetch';
 
-  const apiKey = process.env.Maps_API_KEY;
-  
-  // --- FIX START ---
-  // Check if the API key is defined before using it
-  if (!apiKey) {
-    console.error('SERVER ERROR: Maps_API_KEY is not defined.');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-  // --- FIX END ---
+const GOOGLE_PLACES_BASE = 'https://places.googleapis.com/v1';
+const API_KEY = process.env.Maps_API_KEY ?? '';
 
-  const url = 'https://places.googleapis.com/v1/places:autocomplete';
+if (!API_KEY) {
+  // You can keep this, but don't throw here—surface a clear 500 on requests instead.
+  console.warn('[apiRouter] Maps_API_KEY is not set. Google calls will fail.');
+}
 
+apiRouter.post('/autocomplete', async (req, res) => {
   try {
+    const input = (req.body?.input ?? '').toString();
+    if (!input) return res.status(400).json({ error: 'Missing input' });
+    if (!API_KEY) return res.status(500).json({ error: 'Missing Maps_API_KEY' });
+
+    const url = `${GOOGLE_PLACES_BASE}/places:autocomplete`;
     const googleRes = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // TypeScript now knows apiKey is a string here
-        'X-Goog-Api-Key': apiKey,
+        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask':
+          'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
       },
-      body: JSON.stringify({ input: input, languageCode: 'en' }),
+      body: JSON.stringify({
+        input,
+        languageCode: 'en',
+      }),
     });
 
-    const data = await googleRes.json();
-    res.status(200).json(data);
+    const text = await googleRes.text();
+    if (!googleRes.ok) {
+      console.error('Google autocomplete error:', googleRes.status, text);
+      return res.status(googleRes.status).send(text);
+    }
+
+    // Pass-thru JSON so the client mapping stays simple
+    return res.type('application/json').send(text);
   } catch (err) {
-    console.error('Autocomplete proxy error:', err);
-    res.status(500).json({ error: 'Failed to fetch autocomplete data' });
+    console.error('Autocomplete proxy failed:', err);
+    return res.status(500).json({ error: 'Internal error' });
   }
 });
 
-// Place Details endpoint
-router.get('/place-details', async (req, res) => {
-  const place_id = req.query.place_id as string;
-  if (!place_id) {
-    return res.status(400).json({ error: "Missing 'place_id' parameter" });
-  }
-
-  const apiKey = process.env.Maps_API_KEY;
-
-  // --- FIX START ---
-  // Perform the same check here
-  if (!apiKey) {
-    console.error('SERVER ERROR: Maps_API_KEY is not defined.');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-  // --- FIX END ---
-
-  const url = `https://places.googleapis.com/v1/places/${place_id}`;
-  const fieldMask = 'places.addressComponents,places.formattedAddress,places.location';
-
+apiRouter.get('/place-details', async (req, res) => {
   try {
+    const place_id = (req.query.place_id ?? '').toString();
+    if (!place_id) return res.status(400).json({ error: 'Missing place_id' });
+    if (!API_KEY) return res.status(500).json({ error: 'Missing Maps_API_KEY' });
+
+    const fieldMask = 'addressComponents,formattedAddress,location';
+    const url = `${GOOGLE_PLACES_BASE}/places/${encodeURIComponent(place_id)}`;
+
     const googleRes = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // TypeScript now knows apiKey is a string here too
-        'X-Goog-Api-Key': apiKey,
+        'X-Goog-Api-Key': API_KEY,
         'X-Goog-FieldMask': fieldMask,
       },
     });
 
-    const data = await googleRes.json();
-    res.status(200).json(data);
+    const text = await googleRes.text();
+    if (!googleRes.ok) {
+      console.error('Google place details error:', googleRes.status, text);
+      return res.status(googleRes.status).send(text);
+    }
+
+    // Pass-thru JSON; client expects formattedAddress + location
+    return res.type('application/json').send(text);
   } catch (err) {
-    console.error('Place details proxy error:', err);
-    res.status(500).json({ error: 'Failed to fetch place details' });
+    console.error('Place details proxy failed:', err);
+    return res.status(500).json({ error: 'Internal error' });
   }
 });
 
-export default router;
+export default apiRouter;
