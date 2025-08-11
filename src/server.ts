@@ -98,8 +98,11 @@ async function startApolloServer() {
   setupWebSocket(httpServer, prisma, permissionService);
 
   httpServer.listen(PORT, () => {
-    console.log(`Server ready at http://localhost:${PORT}/graphql`);
-    console.log('DB host:', new URL(process.env.DATABASE_URL!).host);
+    type Stage = "development" | "staging" | "production";
+    const stage = (process.env.APP_ENV ?? "production").toLowerCase() as Stage;
+    console.log(`running on ${stage} stage`);
+
+    console.log("DB host:", new URL(process.env.DATABASE_URL!).host);
   });
 
   // Graceful shutdown
