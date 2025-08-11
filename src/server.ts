@@ -99,6 +99,7 @@ async function startApolloServer() {
 
   httpServer.listen(PORT, () => {
     console.log(`Server ready at http://localhost:${PORT}/graphql`);
+    console.log('DB host:', new URL(process.env.DATABASE_URL!).host);
   });
 
   // Graceful shutdown
