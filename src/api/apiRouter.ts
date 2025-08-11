@@ -6,7 +6,7 @@ const apiRouter = Router();
 // import fetch from 'node-fetch';
 
 const GOOGLE_PLACES_BASE = 'https://places.googleapis.com/v1';
-const API_KEY = process.env.Maps_API_KEY ?? '';
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? '';
 
 if (!API_KEY) {
   // You can keep this, but don't throw here—surface a clear 500 on requests instead.
