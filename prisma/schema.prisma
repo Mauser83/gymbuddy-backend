@@ -31,6 +31,13 @@ enum AssignmentStatus {
   MISSED
 }
 
+enum ImageJobStatus {
+  pending
+  processing
+  succeeded
+  failed
+}
+
 // --- Models ---
 
 model User {
@@ -66,9 +73,11 @@ model User {
   UserWorkoutPreferences     UserWorkoutPreferences?
 
   experienceLevelId Int?
-  experienceLevel   ExperienceLevel? @relation(fields: [experienceLevelId], references: [id])
+  experienceLevel   ExperienceLevel?    @relation(fields: [experienceLevelId], references: [id])
   trainingGoalId    Int?
-  trainingGoal      TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
+  trainingGoal      TrainingGoal?       @relation(fields: [trainingGoalId], references: [id])
+  EquipmentImage    EquipmentImage[]
+  GymEquipmentImage GymEquipmentImage[]
 }
 
 model WorkoutPlan {
@@ -341,8 +350,9 @@ model Equipment {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  images EquipmentImage[]
-  gyms   GymEquipment[]
+  images            EquipmentImage[]
+  gyms              GymEquipment[]
+  GymEquipmentImage GymEquipmentImage[]
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -398,9 +408,10 @@ model Gym {
 
   gymRoles GymManagementRole[]
 
-  trainers     GymTrainer[]
-  chatMembers  GymChatMember[]
-  gymEquipment GymEquipment[]
+  trainers          GymTrainer[]
+  chatMembers       GymChatMember[]
+  gymEquipment      GymEquipment[]
+  GymEquipmentImage GymEquipmentImage[]
 
   @@index([name])
   @@index([city])
@@ -459,16 +470,6 @@ model GymChatMember {
   @@unique([userId, gymId])
 }
 
-model EquipmentImage {
-  id          Int       @id @default(autoincrement())
-  url         String    @db.VarChar(300)
-  equipment   Equipment @relation(fields: [equipmentId], references: [id])
-  equipmentId Int
-  createdAt   DateTime  @default(now())
-
-  @@index([equipmentId])
-}
-
 model GymEquipment {
   id          Int       @id @default(autoincrement())
   gym         Gym       @relation(fields: [gymId], references: [id])
@@ -489,16 +490,6 @@ model GymEquipment {
   @@index([equipmentId])
 }
 
-model GymEquipmentImage {
-  id             Int          @id @default(autoincrement())
-  url            String       @db.VarChar(300)
-  gymEquipment   GymEquipment @relation(fields: [gymEquipmentId], references: [id])
-  gymEquipmentId Int
-  createdAt      DateTime     @default(now())
-
-  @@index([gymEquipmentId])
-}
-
 model TrainingGoal {
   id           Int               @id @default(autoincrement())
   name         String
@@ -511,10 +502,10 @@ model TrainingGoal {
 }
 
 model IntensityPreset {
-  id                Int             @id @default(autoincrement())
-  trainingGoal      TrainingGoal    @relation(fields: [trainingGoalId], references: [id])
+  id                Int                      @id @default(autoincrement())
+  trainingGoal      TrainingGoal             @relation(fields: [trainingGoalId], references: [id])
   trainingGoalId    Int
-  experienceLevel   ExperienceLevel @relation(fields: [experienceLevelId], references: [id])
+  experienceLevel   ExperienceLevel          @relation(fields: [experienceLevelId], references: [id])
   experienceLevelId Int
   metricDefaults    IntensityMetricDefault[]
 
@@ -660,4 +651,98 @@ model ExerciseTypeMetric {
   order          Int
 
   @@id([exerciseTypeId, metricId]) // composite key
+}
+
+
+/// --- NEW + PATCHED TABLES FOR CV PIPELINE ---
+
+// Images uploaded for any equipment (originals, crops, etc.)
+model EquipmentImage {
+  id               String   @id @default(cuid())
+  equipmentId      Int
+  uploadedByUserId Int?
+  // storage + metadata
+  storageKey       String
+  mimeType         String
+  width            Int
+  height           Int
+  sha256           String   @unique
+  // optional annotations
+  note             String?
+  createdAt        DateTime @default(now())
+
+  // relations
+  equipment      Equipment @relation(fields: [equipmentId], references: [id])
+  uploadedByUser User?     @relation(fields: [uploadedByUserId], references: [id])
+
+  // reverse
+  embeddings ImageEmbedding[]
+  links      GymEquipmentImage[]
+  ImageQueue ImageQueue[]
+
+  @@index([equipmentId, createdAt])
+  @@index([uploadedByUserId])
+}
+
+// Image ↔ Gym+Equipment join (what gym this image was captured at)
+model GymEquipmentImage {
+  id               String   @id @default(cuid())
+  gymId            Int
+  equipmentId      Int
+  imageId          String
+  capturedByUserId Int?
+  capturedAt       DateTime @default(now())
+
+  // relations
+  gym            Gym            @relation(fields: [gymId], references: [id])
+  equipment      Equipment      @relation(fields: [equipmentId], references: [id])
+  image          EquipmentImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  capturedByUser User?          @relation(fields: [capturedByUserId], references: [id])
+
+  @@unique([gymId, equipmentId, imageId])
+  @@index([gymId, equipmentId])
+  @@index([imageId])
+}
+
+// Vector embeddings (one row per image/model/scope)
+model ImageEmbedding {
+  id           String                @id @default(cuid())
+  imageId      String
+  scope        String
+  modelVendor  String
+  modelName    String
+  modelVersion String
+  dim          Int
+  // Prisma does not (yet) have a native pgvector type.
+  // Use Unsupported("vector"); final type/ops tuned in SQL migrations.
+  embeddingVec Unsupported("vector")
+  createdAt    DateTime              @default(now())
+
+  image EquipmentImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@unique([imageId, scope, modelVendor, modelName, modelVersion])
+  @@index([scope, modelVendor, modelName, modelVersion])
+  @@index([createdAt])
+}
+
+// Light-weight work queue for (re)processing images (crop, embed, etc.)
+model ImageQueue {
+  id          String         @id @default(cuid())
+  imageId     String
+  jobType     String
+  status      ImageJobStatus @default(pending)
+  priority    Int            @default(0)
+  attempts    Int            @default(0)
+  lastError   String?
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  image EquipmentImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([status, priority, scheduledAt])
+  @@index([jobType, status])
+  @@index([imageId])
 }
