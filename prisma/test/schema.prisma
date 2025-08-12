@@ -748,3 +748,81 @@ model ImageQueue {
   @@index([jobType, status])
   @@index([imageId])
 }
+
+
+model AngleType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model HeightType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LightingType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MirrorType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model DistanceType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SourceType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SplitType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
