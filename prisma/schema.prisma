@@ -38,6 +38,12 @@ enum ImageJobStatus {
   failed
 }
 
+enum GymImageStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // --- Models ---
 
 model User {
@@ -720,6 +726,9 @@ model GymEquipmentImage {
   distanceId       Int? @db.SmallInt
   sourceId         Int? @db.SmallInt
   splitId          Int? @db.SmallInt
+  status               GymImageStatus @default(PENDING)
+  candidateForGlobal   Boolean        @default(false)
+  recognitionScoreAtCapture Float?
 
   // relations
   gymEquipment   GymEquipment   @relation(fields: [gymEquipmentId], references: [id])
@@ -740,6 +749,7 @@ model GymEquipmentImage {
   @@index([imageId])
   @@index([gymEquipmentId])
   @@index([splitId])
+  @@index([status])
   @@index([angleId, heightId, lightingId])
 }
 
