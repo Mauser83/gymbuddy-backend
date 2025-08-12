@@ -39,10 +39,12 @@ export const gymTypeDefs = `
   }
 
   type GymEquipmentImage {
-    id: Int!
+    id: String!
     gymEquipment: GymEquipment!
-    url: String!
-    createdAt: String
+    gymId: Int!
+    equipmentId: Int!
+    imageId: String!
+    capturedAt: String
   }
 
   input CreateGymInput {
@@ -96,7 +98,9 @@ export const gymTypeDefs = `
 
   input UploadGymEquipmentImageInput {
     gymEquipmentId: Int!
-    url: String!
+    gymId: Int!
+    equipmentId: Int!
+    imageId: String!
   }
 
   extend type Query {
@@ -120,7 +124,7 @@ export const gymTypeDefs = `
     updateGymEquipment(input: UpdateGymEquipmentInput!): GymEquipment!
     removeGymEquipment(gymEquipmentId: Int!): Boolean!
     uploadGymEquipmentImage(input: UploadGymEquipmentImageInput!): GymEquipmentImage!
-    deleteGymEquipmentImage(imageId: Int!): Boolean!
+    deleteGymEquipmentImage(imageId: String!): Boolean!
   }
 
   extend type Subscription {

@@ -194,7 +194,13 @@ export class UploadGymEquipmentImageDto {
   @IsInt()
   gymEquipmentId!: number;
 
-  @IsUrl()
+  @IsInt()
+  gymId!: number;
+
+  @IsInt()
+  equipmentId!: number;
+
+  @IsString()
   @MaxLength(500)
-  url!: string;
+  imageId!: string;
 }

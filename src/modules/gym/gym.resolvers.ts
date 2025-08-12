@@ -236,7 +236,7 @@ export const GymResolvers = {
 
     deleteGymEquipmentImage: async (
       _: any,
-      args: { imageId: number },
+      args: { imageId: string },
       context: AuthContext
     ) => {
       const service = new GymService(

@@ -70,8 +70,24 @@ export class UploadEquipmentImageDto {
   @IsInt({ message: 'Equipment ID must be an integer' })
   equipmentId!: number;
 
-  @IsUrl({}, { message: 'URL must be valid' })
-  url!: string;
+  @IsString({ message: 'Storage key must be a string' })
+  storageKey!: string;
+
+  @IsString({ message: 'MIME type must be a string' })
+  mimeType!: string;
+
+  @IsInt({ message: 'Width must be an integer' })
+  width!: number;
+
+  @IsInt({ message: 'Height must be an integer' })
+  height!: number;
+
+  @IsString({ message: 'SHA256 must be a string' })
+  sha256!: string;
+
+  @IsOptional()
+  @IsString({ message: 'Note must be a string' })
+  note?: string;
 }
 
 // --- Category DTOs ---

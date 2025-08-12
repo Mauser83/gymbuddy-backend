@@ -18,9 +18,14 @@ export interface Equipment {
 }
 
 export interface EquipmentImage {
-  id: number;
+  id: string;
   equipmentId: number;
-  url: string;
+  storageKey: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  sha256: string;
+  note?: string;
   createdAt: string;
 }
 
@@ -44,7 +49,12 @@ export interface UpdateEquipmentInput {
 
 export interface UploadEquipmentImageInput {
   equipmentId: number;
-  url: string;
+  storageKey: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  sha256: string;
+  note?: string;
 }
 
 export interface CreateEquipmentCategoryInput {

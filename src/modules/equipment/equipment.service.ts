@@ -126,12 +126,20 @@ export class EquipmentService {
     return this.prisma.equipmentImage.create({
       data: {
         equipmentId: input.equipmentId,
-        url: input.url,
+        storageKey: input.storageKey,
+        mimeType: input.mimeType,
+        width: input.width,
+        height: input.height,
+        sha256: input.sha256,
+        note: input.note,
+        ...(context.userId
+          ? { uploadedByUserId: context.userId }
+          : {}),
       },
     });
   }
 
-  async deleteEquipmentImage(imageId: number, context: AuthContext) {
+  async deleteEquipmentImage(imageId: string, context: AuthContext) {
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });

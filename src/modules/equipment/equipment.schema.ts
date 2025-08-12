@@ -20,9 +20,14 @@ export const equipmentTypeDefs = `
   }
 
   type EquipmentImage {
-    id: Int!
+    id: String!
     equipmentId: Int!
-    url: String!
+    storageKey: String!
+    mimeType: String!
+    width: Int!
+    height: Int!
+    sha256: String!
+    note: String
     createdAt: String!
   }
 
@@ -61,7 +66,12 @@ export const equipmentTypeDefs = `
 
   input UploadEquipmentImageInput {
     equipmentId: Int!
-    url: String!
+    storageKey: String!
+    mimeType: String!
+    width: Int!
+    height: Int!
+    sha256: String!
+    note: String
   }
 
   input CreateEquipmentCategoryInput {
@@ -100,7 +110,7 @@ export const equipmentTypeDefs = `
     deleteEquipment(id: Int!): Boolean!
 
     uploadEquipmentImage(input: UploadEquipmentImageInput!): EquipmentImage!
-    deleteEquipmentImage(imageId: Int!): Boolean!
+    deleteEquipmentImage(imageId: String!): Boolean!
 
     createEquipmentCategory(input: CreateEquipmentCategoryInput!): EquipmentCategory!
     updateEquipmentCategory(id: Int!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!

@@ -300,12 +300,14 @@ export class GymService {
     return this.prisma.gymEquipmentImage.create({
       data: {
         gymEquipmentId: input.gymEquipmentId,
-        url: input.url,
+        gymId: input.gymId,
+        equipmentId: input.equipmentId,
+        imageId: input.imageId,
       },
     });
   }
 
-  async deleteGymEquipmentImage(imageId: number) {
+  async deleteGymEquipmentImage(imageId: string) {
     await this.prisma.gymEquipmentImage.delete({
       where: { id: imageId },
     });

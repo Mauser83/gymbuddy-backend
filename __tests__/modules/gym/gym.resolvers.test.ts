@@ -213,8 +213,8 @@ describe('GymResolvers', () => {
       const instance = { deleteGymEquipmentImage: jest.fn() } as any;
       mockedService.mockImplementation(() => instance);
       const ctx = createContext();
-      await GymResolvers.Mutation.deleteGymEquipmentImage(null as any, { imageId: 2 }, ctx);
-      expect(instance.deleteGymEquipmentImage).toHaveBeenCalledWith(2);
+      await GymResolvers.Mutation.deleteGymEquipmentImage(null as any, { imageId: '2' }, ctx);
+      expect(instance.deleteGymEquipmentImage).toHaveBeenCalledWith('2');
     });
   });
 });

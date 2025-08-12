@@ -72,10 +72,12 @@ export interface GymEquipment {
 }
 
 export interface GymEquipmentImage {
-  id: number;
+  id: string;
   gymEquipmentId: number;
-  url: string;
-  createdAt: Date;
+  gymId: number;
+  equipmentId: number;
+  imageId: string;
+  capturedAt: Date;
 }
 
 // --- Inputs ---
@@ -95,5 +97,7 @@ export interface UpdateGymEquipmentInput {
 
 export interface UploadGymEquipmentImageInput {
   gymEquipmentId: number;
-  url: string;
+  gymId: number;
+  equipmentId: number;
+  imageId: string;
 }

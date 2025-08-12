@@ -198,7 +198,7 @@ describe('EquipmentResolvers', () => {
       const serviceInstance = { deleteEquipmentImage: jest.fn() } as any;
       mockedService.mockImplementation(() => serviceInstance);
       const ctx = createContext();
-      await EquipmentResolvers.Mutation.deleteEquipmentImage(null as any, { imageId: 2 }, ctx);
+      await EquipmentResolvers.Mutation.deleteEquipmentImage(null as any, { imageId: '2' }, ctx);
       expect(serviceInstance.deleteEquipmentImage).toHaveBeenCalled();
     });
 
