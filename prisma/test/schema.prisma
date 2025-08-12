@@ -666,6 +666,10 @@ model EquipmentImage {
   width            Int
   height           Int
   sha256           String   @unique
+  cdnUrl           String?
+  phash            String?
+  hasPerson        Boolean?
+  modelVersion     String?
   // optional annotations
   note             String?
   angleId          Int? @db.SmallInt
@@ -697,6 +701,7 @@ model EquipmentImage {
   @@index([uploadedByUserId])
   @@index([splitId])
   @@index([angleId, heightId, lightingId])
+  @@index([cdnUrl])
 }
 
 // Image ↔ Gym+Equipment join (what gym this image was captured at)
