@@ -668,11 +668,25 @@ model EquipmentImage {
   sha256           String   @unique
   // optional annotations
   note             String?
+  angleId          Int? @db.SmallInt
+  heightId         Int? @db.SmallInt
+  lightingId       Int? @db.SmallInt
+  mirrorId         Int? @db.SmallInt
+  distanceId       Int? @db.SmallInt
+  sourceId         Int? @db.SmallInt
+  splitId          Int? @db.SmallInt
   createdAt        DateTime @default(now())
 
   // relations
   equipment      Equipment @relation(fields: [equipmentId], references: [id])
   uploadedByUser User?     @relation(fields: [uploadedByUserId], references: [id])
+  angle          AngleType?    @relation(fields: [angleId], references: [id])
+  heightType     HeightType?   @relation(fields: [heightId], references: [id])
+  lighting       LightingType? @relation(fields: [lightingId], references: [id])
+  mirror         MirrorType?   @relation(fields: [mirrorId], references: [id])
+  distance       DistanceType? @relation(fields: [distanceId], references: [id])
+  source         SourceType?   @relation(fields: [sourceId], references: [id])
+  split          SplitType?    @relation(fields: [splitId], references: [id])
 
   // reverse
   embeddings ImageEmbedding[]
@@ -681,6 +695,8 @@ model EquipmentImage {
 
   @@index([equipmentId, createdAt])
   @@index([uploadedByUserId])
+  @@index([splitId])
+  @@index([angleId, heightId, lightingId])
 }
 
 // Image ↔ Gym+Equipment join (what gym this image was captured at)
@@ -692,6 +708,13 @@ model GymEquipmentImage {
   imageId          String
   capturedByUserId Int?
   capturedAt       DateTime @default(now())
+  angleId          Int? @db.SmallInt
+  heightId         Int? @db.SmallInt
+  lightingId       Int? @db.SmallInt
+  mirrorId         Int? @db.SmallInt
+  distanceId       Int? @db.SmallInt
+  sourceId         Int? @db.SmallInt
+  splitId          Int? @db.SmallInt
 
   // relations
   gymEquipment   GymEquipment   @relation(fields: [gymEquipmentId], references: [id])
@@ -699,11 +722,20 @@ model GymEquipmentImage {
   equipment      Equipment      @relation(fields: [equipmentId], references: [id])
   image          EquipmentImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
   capturedByUser User?          @relation(fields: [capturedByUserId], references: [id])
+  angle          AngleType?    @relation(fields: [angleId], references: [id])
+  heightType     HeightType?   @relation(fields: [heightId], references: [id])
+  lighting       LightingType? @relation(fields: [lightingId], references: [id])
+  mirror         MirrorType?   @relation(fields: [mirrorId], references: [id])
+  distance       DistanceType? @relation(fields: [distanceId], references: [id])
+  source         SourceType?   @relation(fields: [sourceId], references: [id])
+  split          SplitType?    @relation(fields: [splitId], references: [id])
 
   @@unique([gymId, equipmentId, imageId])
   @@index([gymId, equipmentId])
   @@index([imageId])
   @@index([gymEquipmentId])
+  @@index([splitId])
+  @@index([angleId, heightId, lightingId])
 }
 
 // Vector embeddings (one row per image/model/scope)
@@ -759,6 +791,9 @@ model AngleType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model HeightType {
@@ -770,6 +805,9 @@ model HeightType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model LightingType {
@@ -781,6 +819,9 @@ model LightingType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model MirrorType {
@@ -792,6 +833,9 @@ model MirrorType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model DistanceType {
@@ -803,6 +847,9 @@ model DistanceType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model SourceType {
@@ -814,6 +861,9 @@ model SourceType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
 
 model SplitType {
@@ -825,4 +875,7 @@ model SplitType {
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }
