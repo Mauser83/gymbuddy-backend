@@ -1,16 +1,18 @@
-export interface BaseTaxonomy {
+export type TaxonomyKind =
+  | "ANGLE"
+  | "HEIGHT"
+  | "LIGHTING"
+  | "MIRROR"
+  | "DISTANCE"
+  | "SOURCE"
+  | "SPLIT";
+
+export interface TaxonomyType {
   id: number;
   key: string;
   label: string;
   description?: string;
   active: boolean;
   displayOrder: number;
+  kind: TaxonomyKind;
 }
-
-export type AngleType = BaseTaxonomy;
-export type HeightType = BaseTaxonomy;
-export type LightingType = BaseTaxonomy;
-export type MirrorType = BaseTaxonomy;
-export type DistanceType = BaseTaxonomy;
-export type SourceType = BaseTaxonomy;
-export type SplitType = BaseTaxonomy;

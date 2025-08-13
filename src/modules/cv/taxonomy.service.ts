@@ -1,58 +1,114 @@
-import { PrismaClient } from "../../lib/prisma";
+import { PrismaClient, Prisma } from "../../lib/prisma";
+import { TaxonomyKind } from "./taxonomy.types";
 
 export class TaxonomyService {
-  private prisma: PrismaClient;
+  constructor(private readonly prisma: PrismaClient) {}
 
-  constructor(prisma: PrismaClient) {
-    this.prisma = prisma;
+  private delegate(kind: TaxonomyKind): { d: any; kind: TaxonomyKind } {
+    switch (kind) {
+      case "ANGLE":
+        return { d: this.prisma.angleType, kind };
+      case "HEIGHT":
+        return { d: this.prisma.heightType, kind };
+      case "LIGHTING":
+        return { d: this.prisma.lightingType, kind };
+      case "MIRROR":
+        return { d: this.prisma.mirrorType, kind };
+      case "DISTANCE":
+        return { d: this.prisma.distanceType, kind };
+      case "SOURCE":
+        return { d: this.prisma.sourceType, kind };
+      case "SPLIT":
+        return { d: this.prisma.splitType, kind };
+    }
   }
 
-  angleTypes(active = true) {
-    return this.prisma.angleType.findMany({
-      where: active ? { active: true } : {},
+  async list(kind: TaxonomyKind, active?: boolean) {
+    const { d, kind: k } = this.delegate(kind)!;
+    const rows = await d.findMany({
+      where: active === undefined ? {} : { active },
       orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
     });
+    return rows.map((r: any) => ({ ...r, kind: k }));
   }
 
-  heightTypes(active = true) {
-    return this.prisma.heightType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async get(kind: TaxonomyKind, id: number) {
+    const { d, kind: k } = this.delegate(kind)!;
+    const row = await d.findUnique({ where: { id } });
+    return row ? { ...row, kind: k } : null;
   }
 
-  lightingTypes(active = true) {
-    return this.prisma.lightingType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async create(
+    kind: TaxonomyKind,
+    input: {
+      key: string;
+      label: string;
+      description?: string;
+      active?: boolean;
+      displayOrder?: number;
+    },
+  ) {
+    const { d, kind: k } = this.delegate(kind)!;
+    try {
+      const row = await d.create({ data: { ...input } });
+      return { ...row, kind: k };
+    } catch (e: any) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        throw new Error("Key already exists");
+      }
+      throw e;
+    }
   }
 
-  mirrorTypes(active = true) {
-    return this.prisma.mirrorType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async update(
+    kind: TaxonomyKind,
+    id: number,
+    input: Partial<{
+      key: string;
+      label: string;
+      description?: string;
+      active?: boolean;
+      displayOrder?: number;
+    }>,
+  ) {
+    const { d, kind: k } = this.delegate(kind)!;
+    try {
+      const row = await d.update({ where: { id }, data: { ...input } });
+      return { ...row, kind: k };
+    } catch (e: any) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        throw new Error("Key already exists");
+      }
+      throw e;
+    }
   }
 
-  distanceTypes(active = true) {
-    return this.prisma.distanceType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async setActive(kind: TaxonomyKind, id: number, active: boolean) {
+    const { d, kind: k } = this.delegate(kind)!;
+    const row = await d.update({ where: { id }, data: { active } });
+    return { ...row, kind: k };
   }
 
-  sourceTypes(active = true) {
-    return this.prisma.sourceType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async delete(kind: TaxonomyKind, id: number) {
+    await this.delegate(kind)!.d.delete({ where: { id } });
+    return true;
   }
 
-  splitTypes(active = true) {
-    return this.prisma.splitType.findMany({
-      where: active ? { active: true } : {},
-      orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-    });
+  async reorder(
+    kind: TaxonomyKind,
+    items: { id: number; displayOrder: number }[],
+  ) {
+    const { d, kind: k } = this.delegate(kind)!;
+    const tx = items.map((it) =>
+      d.update({ where: { id: it.id }, data: { displayOrder: it.displayOrder } }),
+    );
+    await this.prisma.$transaction(tx);
+    return this.list(kind, undefined);
   }
 }

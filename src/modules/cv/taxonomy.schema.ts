@@ -1,74 +1,47 @@
 export const taxonomyTypeDefs = `
+  enum TaxonomyKind { ANGLE HEIGHT LIGHTING MIRROR DISTANCE SOURCE SPLIT }
+
+  type TaxonomyType {
+    id: Int!
+    key: String!
+    label: String!
+    description: String
+    active: Boolean!
+    displayOrder: Int!
+    kind: TaxonomyKind!
+  }
+
+  input CreateTaxonomyInput {
+    key: String!
+    label: String!
+    description: String
+    active: Boolean = true
+    displayOrder: Int = 0
+  }
+
+  input UpdateTaxonomyInput {
+    key: String
+    label: String
+    description: String
+    active: Boolean
+    displayOrder: Int
+  }
+
+  input ReorderTaxonomyItemInput {
+    id: Int!
+    displayOrder: Int!
+  }
+
   extend type Query {
-    angleTypes(active: Boolean = true): [AngleType!]!
-    heightTypes(active: Boolean = true): [HeightType!]!
-    lightingTypes(active: Boolean = true): [LightingType!]!
-    mirrorTypes(active: Boolean = true): [MirrorType!]!
-    distanceTypes(active: Boolean = true): [DistanceType!]!
-    sourceTypes(active: Boolean = true): [SourceType!]!
-    splitTypes(active: Boolean = true): [SplitType!]!
+    taxonomyTypes(kind: TaxonomyKind!, active: Boolean = true): [TaxonomyType!]!
+    taxonomyType(kind: TaxonomyKind!, id: Int!): TaxonomyType
   }
 
-  type AngleType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type HeightType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type LightingType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type MirrorType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type DistanceType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type SourceType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
-  }
-
-  type SplitType {
-    id: Int!
-    key: String!
-    label: String!
-    description: String
-    active: Boolean!
-    displayOrder: Int!
+  extend type Mutation {
+    createTaxonomyType(kind: TaxonomyKind!, input: CreateTaxonomyInput!): TaxonomyType!
+    updateTaxonomyType(kind: TaxonomyKind!, id: Int!, input: UpdateTaxonomyInput!): TaxonomyType!
+    setTaxonomyActive(kind: TaxonomyKind!, id: Int!, active: Boolean!): TaxonomyType!
+    deleteTaxonomyType(kind: TaxonomyKind!, id: Int!): Boolean!
+    reorderTaxonomyTypes(kind: TaxonomyKind!, items: [ReorderTaxonomyItemInput!]!): [TaxonomyType!]!
   }
 `;
