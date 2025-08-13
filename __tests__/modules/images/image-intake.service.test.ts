@@ -1,14 +1,11 @@
 import { ImageIntakeService } from "../../../src/modules/images/image-intake.service";
 import { PrismaClient } from "../../../src/lib/prisma";
-import * as AWS from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
-jest.spyOn(AWS, "S3Client").mockImplementation(() => ({} as any));
-jest.spyOn(AWS, "HeadObjectCommand").mockImplementation((x: any) => x as any);
-
+// Mock the S3 client's send method so no real network calls are made during tests
 const sendMock = jest
-  .fn()
-  .mockResolvedValue({ ContentType: "image/jpeg", ContentLength: 12345 });
-(AWS as any).__proto__.send = sendMock;
+  .spyOn(S3Client.prototype, "send")
+  .mockResolvedValue({ ContentType: "image/jpeg", ContentLength: 12345 } as any);
 
 const prisma = {
   gymEquipmentImage: {
@@ -42,7 +39,8 @@ describe("finalizeGymImage", () => {
     const svc = new ImageIntakeService(prisma);
     await expect(
       svc.finalizeGymImage({
-        storageKey: "private/uploads/99/2025/01/uuid.jpg",
+        storageKey:
+          "private/uploads/99/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg",
         gymId: 1,
         equipmentId: 2,
       } as any)
