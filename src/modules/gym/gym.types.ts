@@ -72,12 +72,15 @@ export interface GymEquipment {
 }
 
 export interface GymEquipmentImage {
-  id: string;
-  gymEquipmentId: number;
-  gymId: number;
-  equipmentId: number;
-  imageId: string;
-  capturedAt: Date;
+  id: string;          // cuid
+  gymId: number;       // Int FK
+  equipmentId: number; // Int FK
+  storageKey: string;
+  sha256?: string;
+  status?: GymImageStatus;
+  createdAt: Date;
+  updatedAt?: Date;
+  thumbUrl?: string;
 }
 
 // --- Inputs ---
@@ -95,9 +98,12 @@ export interface UpdateGymEquipmentInput {
   note?: string;
 }
 
-export interface UploadGymEquipmentImageInput {
-  gymEquipmentId: number;
+export type GymImageStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface UploadGymImageInput {
   gymId: number;
   equipmentId: number;
-  imageId: string;
+  storageKey: string;
+  sha256?: string;
+  status?: GymImageStatus;
 }

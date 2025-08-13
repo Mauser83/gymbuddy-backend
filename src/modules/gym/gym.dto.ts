@@ -6,9 +6,10 @@ import {
   IsEmail,
   IsUrl,
   IsInt,
+  IsEnum,
   Min,
   MaxLength,
-} from 'class-validator';
+} from "class-validator";
 
 export class CreateGymDto {
   @IsString()
@@ -190,17 +191,34 @@ export class UpdateGymEquipmentDto {
   note?: string;
 }
 
-export class UploadGymEquipmentImageDto {
-  @IsInt()
-  gymEquipmentId!: number;
+export enum GymImageStatusDto {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 
-  @IsInt()
+export class UploadGymImageDto {
+  @IsInt({ message: "gymId must be an integer" })
   gymId!: number;
 
-  @IsInt()
+  @IsInt({ message: "equipmentId must be an integer" })
   equipmentId!: number;
 
-  @IsString()
-  @MaxLength(500)
+  @IsString({ message: "storageKey must be a string" })
+  storageKey!: string;
+
+  @IsOptional()
+  @IsString({ message: "sha256 must be a string" })
+  sha256?: string;
+
+  @IsOptional()
+  @IsEnum(GymImageStatusDto, {
+    message: "status must be PENDING | APPROVED | REJECTED",
+  })
+  status?: GymImageStatusDto;
+}
+
+export class DeleteGymImageDto {
+  @IsString({ message: "imageId must be a string cuid" })
   imageId!: string;
 }

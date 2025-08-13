@@ -1,4 +1,6 @@
 export const gymTypeDefs = `
+  enum GymImageStatus { PENDING APPROVED REJECTED }
+
   type Gym {
     id: Int!
     name: String!
@@ -23,8 +25,8 @@ export const gymTypeDefs = `
     gymEquipment: [GymEquipment!]!
     trainers: [User!]!
     gymRoles: [GymManagementRole!]!
-    exerciseLogs: [ExerciseLog!]!  # ➕ Added
-
+    exerciseLogs: [ExerciseLog!]!
+    images: [GymEquipmentImage!]!
   }
 
   type GymEquipment {
@@ -39,12 +41,15 @@ export const gymTypeDefs = `
   }
 
   type GymEquipmentImage {
-    id: String!
-    gymEquipment: GymEquipment!
+    id: ID!
     gymId: Int!
     equipmentId: Int!
-    imageId: String!
-    capturedAt: String
+    storageKey: String!
+    sha256: String!
+    status: GymImageStatus
+    createdAt: String!
+    updatedAt: String
+    thumbUrl(ttlSec: Int = 300): String
   }
 
   input CreateGymInput {
@@ -96,20 +101,23 @@ export const gymTypeDefs = `
     note: String
   }
 
-  input UploadGymEquipmentImageInput {
-    gymEquipmentId: Int!
+  input UploadGymImageInput {
     gymId: Int!
     equipmentId: Int!
-    imageId: String!
+    storageKey: String!
+    sha256: String
+    status: GymImageStatus
   }
 
   extend type Query {
     gyms(search: String): [Gym]
-    gymById(id: Int!): Gym
+    gym(id: Int!): Gym
     pendingGyms: [Gym]
 
     getGymEquipment(gymId: Int!): [GymEquipment!]!
     getGymEquipmentDetail(gymEquipmentId: Int!): GymEquipment
+    gymImagesByGymId(gymId: Int!): [GymEquipmentImage!]!
+    gymImage(id: ID!): GymEquipmentImage
   }
 
   extend type Mutation {
@@ -123,8 +131,8 @@ export const gymTypeDefs = `
     assignEquipmentToGym(input: AssignEquipmentToGymInput!): GymEquipment!
     updateGymEquipment(input: UpdateGymEquipmentInput!): GymEquipment!
     removeGymEquipment(gymEquipmentId: Int!): Boolean!
-    uploadGymEquipmentImage(input: UploadGymEquipmentImageInput!): GymEquipmentImage!
-    deleteGymEquipmentImage(imageId: String!): Boolean!
+    uploadGymImage(input: UploadGymImageInput!): GymEquipmentImage!
+    deleteGymImage(imageId: ID!): Boolean!
   }
 
   extend type Subscription {

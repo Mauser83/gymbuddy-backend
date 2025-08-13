@@ -282,29 +282,39 @@ describe("GymService", () => {
     expect(res).toBe(true);
   });
 
-  test("uploadGymEquipmentImage creates image", async () => {
+    test("uploadGymImage creates image", async () => {
+    prisma.gymEquipment.findFirst.mockResolvedValue({ id: 10 } as any);
+    prisma.equipmentImage.create.mockResolvedValue({ id: "img1" } as any);
     prisma.gymEquipmentImage.create.mockResolvedValue({ id: "1" } as any);
     const input: any = {
-      gymEquipmentId: 2,
       gymId: 1,
       equipmentId: 5,
-      imageId: "img1",
+      storageKey: "key.jpg",
+      sha256: "abc",
     };
-    await service.uploadGymEquipmentImage(input);
+    await service.uploadGymImage(input);
     expect(mockedValidate).toHaveBeenCalledWith(input, expect.any(Function));
+    expect(prisma.gymEquipment.findFirst).toHaveBeenCalledWith({
+      where: { gymId: 1, equipmentId: 5 },
+      select: { id: true },
+    });
+    expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
+      data: { equipmentId: 5, storageKey: "key.jpg", sha256: "abc" },
+    });
     expect(prisma.gymEquipmentImage.create).toHaveBeenCalledWith({
       data: {
-        gymEquipmentId: 2,
+        gymEquipmentId: 10,
         gymId: 1,
         equipmentId: 5,
         imageId: "img1",
+        status: undefined,
       },
     });
   });
 
-  test("deleteGymEquipmentImage deletes image", async () => {
+  test("deleteGymImage deletes image", async () => {
     prisma.gymEquipmentImage.delete.mockResolvedValue({} as any);
-    const res = await service.deleteGymEquipmentImage('3');
+    const res = await service.deleteGymImage('3');
     expect(prisma.gymEquipmentImage.delete).toHaveBeenCalledWith({ where: { id: '3' } });
     expect(res).toBe(true);
   });
