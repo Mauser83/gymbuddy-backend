@@ -7,12 +7,14 @@ import type { AuthContext, UserRole } from "../modules/auth/auth.types";
 import { PermissionService } from "../modules/core/permission.service";
 import { PrismaClient } from "../lib/prisma";
 import { MediaService } from "../modules/media/media.service";
+import { ImageIntakeService } from "../modules/images/image-intake.service";
 
 export async function setupApollo(
   app: any,
   prisma: PrismaClient,
   permissionService: PermissionService,
-  mediaService: MediaService
+  mediaService: MediaService,
+  imageIntakeService: ImageIntakeService
 ) {
   const apolloServer = new ApolloServer<AuthContext>({ typeDefs, resolvers });
   await apolloServer.start();
@@ -32,6 +34,7 @@ export async function setupApollo(
           prisma,
           permissionService,
           mediaService,
+          imageIntakeService,
         };
       },
     })

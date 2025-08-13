@@ -13,6 +13,7 @@ import { EmbeddingResolvers } from "../modules/cv/embedding.resolvers";
 import { QueueResolvers } from "../modules/cv/queue.resolvers";
 import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
 import { MediaResolvers } from "../modules/media/media.resolvers";
+import { ImagesResolvers } from "../modules/images/images.resolvers";
 
 export const pubsub = new PubSub();
 
@@ -47,6 +48,7 @@ const resolvers = {
   ...QueueResolvers,
   ...TaxonomyResolvers,
   ...MediaResolvers,
+  ...ImagesResolvers,
   Query: {
     hello: () => "Hello world!",
     ...EquipmentResolvers.Query,
@@ -70,6 +72,7 @@ const resolvers = {
     ...EmbeddingResolvers.Mutation,
     ...QueueResolvers.Mutation,
     ...MediaResolvers.Mutation,
+    ...ImagesResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,
