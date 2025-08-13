@@ -82,7 +82,7 @@ export class ImageIntakeService {
     // 3) If sha256 provided, avoid duplicates (unique index on sha256)
     if (input.sha256) {
       const existing = await this.prisma.gymEquipmentImage.findFirst({
-        where: { sha256: input.sha256 },
+        where: { image: { sha256: input.sha256 } },
         select: { id: true },
       });
       if (existing) {
