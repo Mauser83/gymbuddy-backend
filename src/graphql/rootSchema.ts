@@ -6,6 +6,9 @@ import { equipmentTypeDefs } from "../modules/equipment/equipment.schema";
 import { workoutplanTypeDefs } from "../modules/workoutplan/workoutplan.schema";
 import { userTypeDefs } from "../modules/user/user.schema";
 import { authTypeDefs } from "../modules/auth/auth.schema";
+import { embeddingTypeDefs } from "../modules/cv/embedding.schema";
+import { queueTypeDefs } from "../modules/cv/queue.schema";
+import { taxonomyTypeDefs } from "../modules/cv/taxonomy.schema";
 
 const baseTypeDefs = `
   scalar JSON       # ✅ Add this line
@@ -23,6 +26,9 @@ const typeDefs = gql`
   ${workoutplanTypeDefs}
   ${userTypeDefs}
   ${authTypeDefs}
+  ${embeddingTypeDefs}
+  ${queueTypeDefs}
+  ${taxonomyTypeDefs}
 
   extend type Query {
     hello: String

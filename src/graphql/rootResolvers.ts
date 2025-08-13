@@ -8,6 +8,9 @@ import { ExerciseLogResolvers } from "../modules/exerciselog/exerciselog.resolve
 import { AuthResolvers } from "../modules/auth/auth.resolvers";
 import { SubscriptionResolvers } from "./subscription.resolvers";
 import { GraphQLJSON } from "graphql-type-json";
+import { EmbeddingResolvers } from "../modules/cv/embedding.resolvers";
+import { QueueResolvers } from "../modules/cv/queue.resolvers";
+import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
 
 export const pubsub = new PubSub();
 
@@ -21,6 +24,9 @@ const resolvers = {
   ...ExerciseLogResolvers,
   ...AuthResolvers,
   ...SubscriptionResolvers,
+  ...EmbeddingResolvers,
+  ...QueueResolvers,
+  ...TaxonomyResolvers,
   Query: {
     hello: () => "Hello world!",
     ...EquipmentResolvers.Query,
@@ -29,6 +35,9 @@ const resolvers = {
     ...WorkoutPlanResolvers.Query,
     ...ExerciseResolvers.Query,
     ...ExerciseLogResolvers.Query,
+    ...EmbeddingResolvers.Query,
+    ...QueueResolvers.Query,
+    ...TaxonomyResolvers.Query,
   },
   Mutation: {
     ...EquipmentResolvers.Mutation,
@@ -38,6 +47,8 @@ const resolvers = {
     ...ExerciseResolvers.Mutation,
     ...ExerciseLogResolvers.Mutation,
     ...AuthResolvers.Mutation,
+    ...EmbeddingResolvers.Mutation,
+    ...QueueResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,
