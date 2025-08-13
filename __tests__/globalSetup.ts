@@ -3,6 +3,10 @@ import { startStandaloneServer } from '@apollo/server/standalone';
 
 // Ensure JWT secret is available for modules that depend on it
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'testsecret';
+process.env.R2_BUCKET = process.env.R2_BUCKET || 'bucket';
+process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'account';
+process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || 'id';
+process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || 'secret';
 import { prisma } from '../src/lib/prisma';
 import resolvers from '../src/graphql/rootResolvers';
 import typeDefs from '../src/graphql/rootSchema';

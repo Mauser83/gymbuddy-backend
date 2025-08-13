@@ -141,12 +141,16 @@ describe("EquipmentService", () => {
 
   test("deleteEquipmentImage checks roles and deletes", async () => {
     prisma.equipmentImage.delete.mockResolvedValue({} as any);
-    const res = await service.deleteEquipmentImage('2', ctx);
-    expect(mockedValidate).toHaveBeenCalledWith({ imageId: '2' }, DeleteEquipmentImageDto);
+    const res = await service.deleteEquipmentImage("2", ctx);
+    expect(mockedValidate).toHaveBeenCalledWith(
+      { imageId: "2" },
+      DeleteEquipmentImageDto
+    );
     expect(mockedVerify).toHaveBeenCalled();
-    expect(prisma.equipmentImage.delete).toHaveBeenCalledWith({ where: { id: '2' } });
+    expect(prisma.equipmentImage.delete).toHaveBeenCalledWith({
+      where: { id: "2" },
+    });
     expect(res).toBe(true);
-  });
   });
 
   test("createEquipmentCategory validates and creates", async () => {
@@ -223,3 +227,4 @@ describe("EquipmentService", () => {
       where: { id: 5 },
     });
   });
+});

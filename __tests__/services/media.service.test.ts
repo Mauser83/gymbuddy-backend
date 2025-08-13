@@ -9,17 +9,25 @@ jest.spyOn(presigner, "getSignedUrl").mockResolvedValue("https://signed-url.exam
 
 const { MediaService } = require("../../src/services/media.service");
 
+const UUID = "123e4567-e89b-42d3-a456-426614174000";
+
 describe("MediaService.presignGetForKey", () => {
   const svc = new MediaService();
 
   it("signs public golden key", async () => {
-    const url = await svc.presignGetForKey("public/golden/1/2025/01/uuid.jpg", 120);
+    const url = await svc.presignGetForKey(
+      `public/golden/1/2025/01/${UUID}.jpg`,
+      120
+    );
     expect(url).toContain("https://signed-url.example");
     expect(presigner.getSignedUrl).toHaveBeenCalled();
   });
 
   it("sets content type from extension", async () => {
-    await svc.presignGetForKey("public/training/1/2025/01/uuid.webp", 60);
+    await svc.presignGetForKey(
+      `public/training/1/2025/01/${UUID}.webp`,
+      60
+    );
     const call = (presigner.getSignedUrl as jest.Mock).mock.calls.pop();
     const cmd = call[1];
     expect(cmd.input.ResponseContentType).toBe("image/webp");
@@ -32,7 +40,10 @@ describe("MediaService.presignGetForKey", () => {
   });
 
   it("clamps TTL", async () => {
-    await svc.presignGetForKey("public/golden/1/2025/01/uuid.jpg", 5);
+    await svc.presignGetForKey(
+      `public/golden/1/2025/01/${UUID}.jpg`,
+      5
+    );
     const call = (presigner.getSignedUrl as jest.Mock).mock.calls.pop();
     expect(call[2].expiresIn).toBeGreaterThanOrEqual(30);
   });

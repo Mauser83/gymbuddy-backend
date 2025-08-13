@@ -1,3 +1,7 @@
+jest.mock("@aws-sdk/s3-request-presigner", () => ({
+  getSignedUrl: jest.fn(),
+}));
+
 async function getUtils() {
   const utils = (global as any).__TEST_UTILS__;
   if (!utils) {
