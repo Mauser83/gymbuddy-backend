@@ -12,6 +12,7 @@ import { taxonomyTypeDefs } from "../modules/cv/taxonomy.schema";
 
 const baseTypeDefs = `
   scalar JSON       # ✅ Add this line
+  scalar DateTime
   type Query
   type Mutation
   type Subscription
@@ -32,7 +33,6 @@ const typeDefs = gql`
 
   extend type Query {
     hello: String
-
   }
 `;
 
