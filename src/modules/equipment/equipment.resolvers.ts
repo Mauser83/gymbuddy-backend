@@ -57,6 +57,20 @@ export const EquipmentResolvers = {
       }),
   },
 
+  EquipmentImage: {
+    thumbUrl: async (
+      src: { storageKey: string },
+      args: { ttlSec?: number },
+      context: AuthContext
+    ) => {
+      if (!src.storageKey) return null;
+      return context.mediaService.presignGetForKey(
+        src.storageKey,
+        args.ttlSec ?? 300
+      );
+    },
+  },
+
   Query: {
     equipment: async (
       _: unknown,
@@ -98,7 +112,7 @@ export const EquipmentResolvers = {
       });
     },
 
-        gymEquipmentByGymId: async (
+    gymEquipmentByGymId: async (
       _: unknown,
       args: { gymId: number },
       context: AuthContext

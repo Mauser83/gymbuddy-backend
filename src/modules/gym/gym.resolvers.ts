@@ -57,6 +57,23 @@ export const GymResolvers = {
     },
   },
 
+  GymEquipmentImage: {
+    thumbUrl: async (
+      src: { storageKey: string },
+      args: { ttlSec?: number },
+      context: AuthContext
+    ) => {
+      if (!src.storageKey) return null;
+      if (src.storageKey.startsWith("private/uploads/")) {
+        // potential auth check can go here
+      }
+      return context.mediaService.presignGetForKey(
+        src.storageKey,
+        args.ttlSec ?? 300
+      );
+    },
+  },
+
   Query: {
     gyms: async (
       _: unknown,
@@ -253,7 +270,7 @@ export const GymResolvers = {
       return service.removeGymEquipment(args.gymEquipmentId);
     },
 
-        uploadGymImage: async (
+    uploadGymImage: async (
       _: any,
       args: { input: UploadGymImageDto },
       context: AuthContext

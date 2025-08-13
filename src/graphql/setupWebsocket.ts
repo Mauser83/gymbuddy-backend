@@ -7,12 +7,14 @@ import typeDefs from "./rootSchema";
 import resolvers from "./rootResolvers";
 import { PrismaClient } from "../lib/prisma";
 import { PermissionService } from "../modules/core/permission.service";
+import { MediaService } from "../services/media.service";
 import { JWT_SECRET } from "../server";
 
 export function setupWebSocket(
   server: any,
   prisma: PrismaClient,
-  permissionService: PermissionService
+  permissionService: PermissionService,
+  mediaService: MediaService
 ) {
   const wsServer = new WebSocketServer({
     server,
@@ -28,16 +30,22 @@ export function setupWebSocket(
 
       // ✅ **THE FIX:** Add your Render URL to this list.
       const allowedOrigins = [
-        'https://gymbuddy-backend-cv-dev.onrender.com', 
+        "https://gymbuddy-backend-cv-dev.onrender.com",
         // You might also want your frontend's URL here for web clients
-        // 'https://your-frontend-app.onrender.com' 
+        // 'https://your-frontend-app.onrender.com'
       ];
 
-      if (allowedOrigins.includes(origin) || origin.includes("localhost") || origin.includes("192.168.")) {
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.includes("localhost") ||
+        origin.includes("192.168.")
+      ) {
         return done(true);
       }
 
-      console.warn(`[WebSocket] Connection rejected for invalid origin: ${origin}`);
+      console.warn(
+        `[WebSocket] Connection rejected for invalid origin: ${origin}`
+      );
       return done(false, 401, "Unauthorized origin");
     },
   });
@@ -71,6 +79,7 @@ export function setupWebSocket(
             isPremium: false,
             prisma,
             permissionService,
+            mediaService,
           };
         }
 
@@ -101,6 +110,7 @@ export function setupWebSocket(
           isPremium: decoded.isPremium || false,
           prisma,
           permissionService,
+          mediaService,
         };
       },
     },

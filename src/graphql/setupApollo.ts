@@ -6,11 +6,13 @@ import { graphqlAuth } from "../modules/auth/auth.guard";
 import type { AuthContext, UserRole } from "../modules/auth/auth.types";
 import { PermissionService } from "../modules/core/permission.service";
 import { PrismaClient } from "../lib/prisma";
+import { MediaService } from "../services/media.service";
 
 export async function setupApollo(
   app: any,
   prisma: PrismaClient,
-  permissionService: PermissionService
+  permissionService: PermissionService,
+  mediaService: MediaService
 ) {
   const apolloServer = new ApolloServer<AuthContext>({ typeDefs, resolvers });
   await apolloServer.start();
@@ -29,6 +31,7 @@ export async function setupApollo(
           isPremium: authContext.isPremium ?? false,
           prisma,
           permissionService,
+          mediaService,
         };
       },
     })

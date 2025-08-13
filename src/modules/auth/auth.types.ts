@@ -1,5 +1,6 @@
 import { PrismaClient, User } from "../../lib/prisma";
 import { PermissionService } from "../core/permission.service";
+import { MediaService } from "../../services/media.service";
 
 // Existing GraphQL-related types
 export interface RegisterInput {
@@ -73,4 +74,5 @@ export interface AuthContext {
   isPremium: boolean;
   prisma: PrismaClient;
   permissionService: PermissionService;
+  mediaService: MediaService;
 }

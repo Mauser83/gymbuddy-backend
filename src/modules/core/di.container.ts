@@ -3,6 +3,7 @@ import { PermissionService } from '../core/permission.service';
 import { SharingService } from '../workoutplan/workoutplanSharing.service';
 import { UserService } from '../auth/user.service';
 import { AuditService } from '../core/audit.service';
+import { MediaService } from '../../services/media.service';
 
 type ServiceConstructor<T> = new (...args: any[]) => T;
 
@@ -53,6 +54,10 @@ export class DIContainer {
     this.registerSingleton<AuditService>('AuditService', (container) => {
       const prisma = container.resolve<PrismaClient>('PrismaClient');
       return new AuditService(prisma);
+    });
+    
+    this.registerSingleton<MediaService>('MediaService', () => {
+      return new MediaService();
     });
   }
 

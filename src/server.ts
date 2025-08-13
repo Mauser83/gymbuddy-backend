@@ -8,6 +8,7 @@ import http from "http";
 import { PrismaClient } from "./lib/prisma";
 import { PermissionService } from "./modules/core/permission.service";
 import { DIContainer } from "./modules/core/di.container";
+import { MediaService } from "./services/media.service";
 
 import { errorHandler } from "./middlewares/errorHandler";
 import { errorLogger, requestLogger } from "./middlewares/logger";
@@ -68,6 +69,7 @@ const container = DIContainer.getInstance();
 const prisma = container.resolve<PrismaClient>("PrismaClient");
 const permissionService =
   container.resolve<PermissionService>("PermissionService");
+const mediaService = container.resolve<MediaService>("MediaService");
 
 // === Health & Metrics ===
 app.get("/health", (_req, res) => {
@@ -90,12 +92,12 @@ app.get("/metrics", async (_req, res) => {
 // === Start Server ===
 async function startApolloServer() {
   console.log("Starting Apollo Server...");
-  await setupApollo(app, prisma, permissionService);
+  await setupApollo(app, prisma, permissionService, mediaService);
   console.log("Apollo ready.");
 
   const httpServer = http.createServer(app);
 
-  setupWebSocket(httpServer, prisma, permissionService);
+  setupWebSocket(httpServer, prisma, permissionService, mediaService);
 
   httpServer.listen(PORT, () => {
     type Stage = "development" | "staging" | "production";
