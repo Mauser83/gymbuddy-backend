@@ -8,6 +8,7 @@ import {
   CreateEquipmentDto,
   UpdateEquipmentDto,
   UploadEquipmentImageDto,
+  DeleteEquipmentImageDto,
   CreateEquipmentCategoryDto,
   UpdateEquipmentCategoryDto,
   CreateEquipmentSubcategoryDto,
@@ -124,9 +125,6 @@ describe("EquipmentService", () => {
     const input: any = {
       equipmentId: 1,
       storageKey: "key",
-      mimeType: "image/jpeg",
-      width: 100,
-      height: 200,
       sha256: "hash",
     };
     await service.uploadEquipmentImage(input, ctx);
@@ -136,20 +134,19 @@ describe("EquipmentService", () => {
       data: {
         equipmentId: 1,
         storageKey: "key",
-        mimeType: "image/jpeg",
-        width: 100,
-        height: 200,
         sha256: "hash",
-        note: undefined,
       },
     });
   });
 
   test("deleteEquipmentImage checks roles and deletes", async () => {
     prisma.equipmentImage.delete.mockResolvedValue({} as any);
-    await service.deleteEquipmentImage('2', ctx);
+    const res = await service.deleteEquipmentImage('2', ctx);
+    expect(mockedValidate).toHaveBeenCalledWith({ imageId: '2' }, DeleteEquipmentImageDto);
     expect(mockedVerify).toHaveBeenCalled();
     expect(prisma.equipmentImage.delete).toHaveBeenCalledWith({ where: { id: '2' } });
+    expect(res).toBe(true);
+  });
   });
 
   test("createEquipmentCategory validates and creates", async () => {

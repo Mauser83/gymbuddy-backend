@@ -98,7 +98,7 @@ export const EquipmentResolvers = {
       });
     },
 
-    gymEquipmentByGymId: async (
+        gymEquipmentByGymId: async (
       _: unknown,
       args: { gymId: number },
       context: AuthContext
@@ -108,6 +108,30 @@ export const EquipmentResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getGymEquipmentByGymId(args.gymId);
+    },
+
+    equipmentImagesByEquipmentId: async (
+      _: unknown,
+      args: { equipmentId: number },
+      context: AuthContext
+    ) => {
+      const service = new EquipmentService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getEquipmentImages(args.equipmentId);
+    },
+
+    equipmentImage: async (
+      _: unknown,
+      args: { id: string },
+      context: AuthContext
+    ) => {
+      const service = new EquipmentService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getEquipmentImageById(args.id);
     },
   },
 

@@ -11,6 +11,7 @@ import {
   CreateEquipmentDto,
   UpdateEquipmentDto,
   UploadEquipmentImageDto,
+  DeleteEquipmentImageDto,
   CreateEquipmentCategoryDto,
   UpdateEquipmentCategoryDto,
   CreateEquipmentSubcategoryDto,
@@ -113,7 +114,7 @@ export class EquipmentService {
     });
   }
 
-  async uploadEquipmentImage(
+    async uploadEquipmentImage(
     input: UploadEquipmentImageDto,
     context: AuthContext
   ) {
@@ -127,26 +128,36 @@ export class EquipmentService {
       data: {
         equipmentId: input.equipmentId,
         storageKey: input.storageKey,
-        mimeType: input.mimeType,
-        width: input.width,
-        height: input.height,
-        sha256: input.sha256,
-        note: input.note,
+        sha256: input.sha256 ?? undefined,
         ...(context.userId
           ? { uploadedByUserId: context.userId }
           : {}),
-      },
+      } as any,
     });
   }
 
   async deleteEquipmentImage(imageId: string, context: AuthContext) {
+    await validateInput({ imageId }, DeleteEquipmentImageDto);
+
     verifyRoles(context, {
       or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
     });
 
-    return this.prisma.equipmentImage.delete({
+    await this.prisma.equipmentImage.delete({
       where: { id: imageId },
     });
+    return true;
+  }
+
+  async getEquipmentImages(equipmentId: number) {
+    return this.prisma.equipmentImage.findMany({
+      where: { equipmentId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async getEquipmentImageById(imageId: string) {
+    return this.prisma.equipmentImage.findUnique({ where: { id: imageId } });
   }
 
   async createEquipmentCategory(
