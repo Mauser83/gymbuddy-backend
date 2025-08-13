@@ -17,7 +17,6 @@ apiRouter.post('/autocomplete', async (req, res) => {
   try {
     const input = (req.body?.input ?? '').toString();
     if (!input) return res.status(400).json({ error: 'Missing input' });
-    if (!API_KEY) return res.status(500).json({ error: 'Missing Maps_API_KEY' });
 
     const url = `${GOOGLE_PLACES_BASE}/places:autocomplete`;
     const googleRes = await fetch(url, {
@@ -34,17 +33,51 @@ apiRouter.post('/autocomplete', async (req, res) => {
       }),
     });
 
-    const text = await googleRes.text();
-    if (!googleRes.ok) {
+    if (googleRes.ok === false) {
+      const text = await googleRes.text();
       console.error('Google autocomplete error:', googleRes.status, text);
       return res.status(googleRes.status).send(text);
     }
 
-    // Pass-thru JSON so the client mapping stays simple
-    return res.type('application/json').send(text);
+    const data = await googleRes.json();
+    return res.json(data);
   } catch (err) {
     console.error('Autocomplete proxy failed:', err);
-    return res.status(500).json({ error: 'Internal error' });
+    return res.status(500).json({ error: 'Failed to fetch autocomplete' });
+  }
+});
+
+apiRouter.get('/autocomplete', async (req, res) => {
+  try {
+    const input = (req.query.input ?? '').toString();
+    if (!input) return res.status(400).json({ error: 'Missing input' });
+
+    const url = `${GOOGLE_PLACES_BASE}/places:autocomplete`;
+    const googleRes = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask':
+          'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
+      },
+      body: JSON.stringify({
+        input,
+        languageCode: 'en',
+      }),
+    });
+
+    if (googleRes.ok === false) {
+      const text = await googleRes.text();
+      console.error('Google autocomplete error:', googleRes.status, text);
+      return res.status(googleRes.status).send(text);
+    }
+
+    const data = await googleRes.json();
+    return res.json(data);
+  } catch (err) {
+    console.error('Autocomplete proxy failed:', err);
+    return res.status(500).json({ error: 'Failed to fetch autocomplete' });
   }
 });
 
@@ -52,7 +85,6 @@ apiRouter.get('/place-details', async (req, res) => {
   try {
     const place_id = (req.query.place_id ?? '').toString();
     if (!place_id) return res.status(400).json({ error: 'Missing place_id' });
-    if (!API_KEY) return res.status(500).json({ error: 'Missing Maps_API_KEY' });
 
     const fieldMask = 'addressComponents,formattedAddress,location';
     const url = `${GOOGLE_PLACES_BASE}/places/${encodeURIComponent(place_id)}`;
@@ -66,17 +98,17 @@ apiRouter.get('/place-details', async (req, res) => {
       },
     });
 
-    const text = await googleRes.text();
-    if (!googleRes.ok) {
+    if (googleRes.ok === false) {
+      const text = await googleRes.text();
       console.error('Google place details error:', googleRes.status, text);
       return res.status(googleRes.status).send(text);
     }
 
-    // Pass-thru JSON; client expects formattedAddress + location
-    return res.type('application/json').send(text);
+    const data = await googleRes.json();
+    return res.json(data);
   } catch (err) {
     console.error('Place details proxy failed:', err);
-    return res.status(500).json({ error: 'Internal error' });
+    return res.status(500).json({ error: 'Failed to fetch place details' });
   }
 });
 

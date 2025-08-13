@@ -223,4 +223,3 @@ describe("EquipmentService", () => {
       where: { id: 5 },
     });
   });
-});
