@@ -12,6 +12,7 @@ import { GraphQLScalarType, Kind } from "graphql";
 import { EmbeddingResolvers } from "../modules/cv/embedding.resolvers";
 import { QueueResolvers } from "../modules/cv/queue.resolvers";
 import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
+import { MediaResolvers } from "../modules/media/media.resolvers";
 
 export const pubsub = new PubSub();
 
@@ -45,6 +46,7 @@ const resolvers = {
   ...EmbeddingResolvers,
   ...QueueResolvers,
   ...TaxonomyResolvers,
+  ...MediaResolvers,
   Query: {
     hello: () => "Hello world!",
     ...EquipmentResolvers.Query,
@@ -67,6 +69,7 @@ const resolvers = {
     ...AuthResolvers.Mutation,
     ...EmbeddingResolvers.Mutation,
     ...QueueResolvers.Mutation,
+    ...MediaResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,

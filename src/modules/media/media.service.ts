@@ -1,6 +1,6 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { parseKey } from "../utils/makeKey";
+import { makeKey, parseKey } from "../../utils/makeKey";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -27,6 +27,13 @@ function clampTtl(ttlSec: number) {
   const MIN = 30;
   const MAX = 604800;
   return Math.max(MIN, Math.min(ttlSec, MAX));
+}
+
+function extFromContentType(ct: string): "jpg" | "png" | "webp" {
+  if (/jpeg/i.test(ct)) return "jpg";
+  if (/png/i.test(ct)) return "png";
+  if (/webp/i.test(ct)) return "webp";
+  return "jpg";
 }
 
 export class MediaService {
@@ -73,5 +80,40 @@ export class MediaService {
 
     const url = await getSignedUrl(this.s3, cmd, { expiresIn: clampTtl(ttlSec) });
     return url;
+  }
+
+  /**
+   * Sign a PUT for client direct upload.
+   * Returns the url + the exact headers the client MUST send.
+   */
+  async getImageUploadUrl(input: {
+    gymId: number;
+    contentType: string;
+    filename?: string;
+    ttlSec?: number;
+  }) {
+    const ttl = clampTtl(input.ttlSec ?? 300);
+    const ext = extFromContentType(input.contentType);
+
+    const key = makeKey("upload", { gymId: input.gymId }, { ext });
+
+    const cmd = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      ContentType: input.contentType,
+      ContentDisposition: input.filename
+        ? `inline; filename="${input.filename}"`
+        : undefined,
+    });
+
+    const url = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
+    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+    return {
+      url,
+      key,
+      expiresAt,
+      requiredHeaders: [{ name: "Content-Type", value: input.contentType }],
+    };
   }
 }

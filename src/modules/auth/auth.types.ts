@@ -1,6 +1,6 @@
 import { PrismaClient, User } from "../../lib/prisma";
 import { PermissionService } from "../core/permission.service";
-import { MediaService } from "../../services/media.service";
+import { MediaService } from "../media/media.service";
 
 // Existing GraphQL-related types
 export interface RegisterInput {

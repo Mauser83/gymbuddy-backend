@@ -8,7 +8,7 @@ import http from "http";
 import { PrismaClient } from "./lib/prisma";
 import { PermissionService } from "./modules/core/permission.service";
 import { DIContainer } from "./modules/core/di.container";
-import { MediaService } from "./services/media.service";
+import { MediaService } from "./modules/media/media.service";
 
 import { errorHandler } from "./middlewares/errorHandler";
 import { errorLogger, requestLogger } from "./middlewares/logger";

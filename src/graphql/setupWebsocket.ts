@@ -7,7 +7,7 @@ import typeDefs from "./rootSchema";
 import resolvers from "./rootResolvers";
 import { PrismaClient } from "../lib/prisma";
 import { PermissionService } from "../modules/core/permission.service";
-import { MediaService } from "../services/media.service";
+import { MediaService } from "../modules/media/media.service";
 import { JWT_SECRET } from "../server";
 
 export function setupWebSocket(

@@ -6,7 +6,7 @@ import { graphqlAuth } from "../modules/auth/auth.guard";
 import type { AuthContext, UserRole } from "../modules/auth/auth.types";
 import { PermissionService } from "../modules/core/permission.service";
 import { PrismaClient } from "../lib/prisma";
-import { MediaService } from "../services/media.service";
+import { MediaService } from "../modules/media/media.service";
 
 export async function setupApollo(
   app: any,
