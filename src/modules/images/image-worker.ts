@@ -51,6 +51,28 @@ async function handleHASH(storageKey: string) {
   });
 }
 
+// --- SAFETY (stub) ---
+type SafetyResult = { isSafe: boolean; nsfwScore: number; hasPerson?: boolean };
+
+async function runSafety(bytes: Uint8Array): Promise<SafetyResult> {
+  // TODO: replace with real model later
+  return { isSafe: true, nsfwScore: 0.01, hasPerson: false };
+}
+
+async function handleSAFETY(storageKey: string) {
+  const bytes = await downloadBytes(storageKey);
+  const res = await runSafety(bytes);
+
+  await prisma.gymEquipmentImage.updateMany({
+    where: { storageKey },
+    data: {
+      isSafe: res.isSafe,
+      nsfwScore: res.nsfwScore,
+      hasPerson: res.hasPerson ?? null,
+    },
+  });
+}
+
 function parseArgs() {
   const argv = process.argv.slice(2);
   const once = argv.includes("--once");
@@ -71,7 +93,10 @@ async function processOnce() {
             case "HASH":
               await handleHASH(job.storageKey);
               break;
-            // SAFETY and EMBED will arrive in Steps 4 and 5
+            case "SAFETY":
+              await handleSAFETY(job.storageKey);
+              break;
+            // EMBED comes next
             default:
               throw new Error(`Unsupported jobType for storageKey: ${job.jobType}`);
           }
