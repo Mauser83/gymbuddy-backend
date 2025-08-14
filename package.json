@@ -16,7 +16,9 @@
     "test:db:create": "dotenv -e .env.test npx prisma migrate dev --name init_test_db",
     "test:db:reset": "dotenv -e .env.test npx prisma migrate reset --force",
     "test:db:seed": "dotenv -e .env.test ts-node prisma/seed.ts",
-    "preinstall": "npx npm-force-resolutions"
+    "preinstall": "npx npm-force-resolutions",
+    "worker:image": "node dist/workers/image-worker.js",
+    "worker:image:once": "node dist/workers/image-worker.js --once --max=100"
   },
   "keywords": [],
   "author": "",
