@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prisma:test:generate": "prisma generate --schema=prisma/test/schema.prisma",
-    "build": "npx tsc",
+    "build": "tsc -p .",
     "start": "node dist/src/server.js",
     "dev": "nodemon src/server.ts",
     "migrate:deploy": "dotenv -e .env.production npx prisma migrate deploy",
@@ -17,8 +17,8 @@
     "test:db:reset": "dotenv -e .env.test npx prisma migrate reset --force",
     "test:db:seed": "dotenv -e .env.test ts-node prisma/seed.ts",
     "preinstall": "npx npm-force-resolutions",
-    "worker:image": "node dist/workers/image-worker.js",
-    "worker:image:once": "node dist/workers/image-worker.js --once --max=100"
+    "worker:image": "node dist/modules/images/image-worker.js",
+    "worker:image:once": "node dist/modules/images/image-worker.js --once --max=100"
   },
   "keywords": [],
   "author": "",
