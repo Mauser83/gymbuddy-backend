@@ -11,6 +11,7 @@ import { queueTypeDefs } from "../modules/cv/queue.schema";
 import { taxonomyTypeDefs } from "../modules/cv/taxonomy.schema";
 import { mediaTypeDefs } from "../modules/media/media.schema";
 import { imagesTypeDefs } from "../modules/images/images.schema";
+import { workerTypeDefs } from "../modules/worker/worker.schema";
 
 const baseTypeDefs = `
   scalar JSON       # ✅ Add this line
@@ -34,6 +35,7 @@ const typeDefs = gql`
   ${taxonomyTypeDefs}
   ${mediaTypeDefs}
   ${imagesTypeDefs}
+  ${workerTypeDefs}
 
   extend type Query {
     hello: String

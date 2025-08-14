@@ -133,36 +133,28 @@ function parseArgs() {
   return { once, max };
 }
 
-async function processOnce() {
-  const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 2));
+export async function processOnce() {
+  const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(concurrency);
 
   await Promise.all(
     jobs.map(async (job) => {
       try {
-        if (job.storageKey) {
-          const type = (job.jobType ?? "").trim().toUpperCase();
-          switch (type) {
-            case "HASH":
-              await handleHASH(job.storageKey);
-              break;
-            case "SAFETY":
-              await handleSAFETY(job.storageKey);
-              break;
-            case "EMBED":
-              await handleEMBED(job.storageKey);
-              break;
-            default:
-              throw new Error(
-                `Unsupported jobType for storageKey: ${job.jobType}`
-              );
-          }
-        } else {
-          throw new Error(
-            "Job missing storageKey (promotion path not implemented yet)"
-          );
+        if (!job.storageKey) throw new Error("Job missing storageKey");
+        const type = (job.jobType ?? "").trim().toUpperCase();
+        switch (type) {
+          case "HASH":
+            await handleHASH(job.storageKey);
+            break;
+          case "SAFETY":
+            await handleSAFETY(job.storageKey);
+            break;
+          case "EMBED":
+            await handleEMBED(job.storageKey);
+            break;
+          default:
+            throw new Error(`Unsupported jobType: ${job.jobType}`);
         }
-
         await queue.markDone(job.id);
       } catch (err) {
         await queue.markFailed(job.id, err, 30);
@@ -179,16 +171,13 @@ async function runForever() {
   }
 }
 
-async function runOnce(maxLoops: number) {
+export async function runOnce(maxLoops = 50) {
   let loops = 0;
-  while (loops < maxLoops) {
-    const before = loops;
+  for (; loops < maxLoops; loops++) {
     await processOnce();
-    loops += 1;
-    // crude “no more work” breaker: if we didn’t claim anything, break
-    // (processOnce() will be fast if queue is empty)
-    if (loops === before) break;
+    await new Promise((r) => setTimeout(r, 25));
   }
+  return { loops };
 }
 
 (async function main() {

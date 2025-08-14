@@ -14,6 +14,7 @@ import { QueueResolvers } from "../modules/cv/queue.resolvers";
 import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
 import { MediaResolvers } from "../modules/media/media.resolvers";
 import { ImagesResolvers } from "../modules/images/images.resolvers";
+import { WorkerResolvers } from "../modules/worker/worker.resolvers";
 
 export const pubsub = new PubSub();
 
@@ -49,6 +50,7 @@ const resolvers = {
   ...TaxonomyResolvers,
   ...MediaResolvers,
   ...ImagesResolvers,
+  ...WorkerResolvers,
   Query: {
     hello: () => "Hello world!",
     ...EquipmentResolvers.Query,
@@ -73,6 +75,7 @@ const resolvers = {
     ...QueueResolvers.Mutation,
     ...MediaResolvers.Mutation,
     ...ImagesResolvers.Mutation,
+    ...WorkerResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,
