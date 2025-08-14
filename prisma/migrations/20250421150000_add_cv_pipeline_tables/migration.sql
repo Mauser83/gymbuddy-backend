@@ -9,6 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 CREATE TABLE "EquipmentImage" (
     "id" TEXT NOT NULL,
     "equipmentId" INTEGER NOT NULL,
+    "gymEquipmentId" INTEGER NOT NULL,
     "uploadedByUserId" INTEGER,
     "storageKey" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
@@ -32,6 +33,7 @@ CREATE TABLE "GymEquipmentImage" (
     "id" TEXT NOT NULL,
     "gymId" INTEGER NOT NULL,
     "equipmentId" INTEGER NOT NULL,
+    "gymEquipmentId" INTEGER NOT NULL,
     "imageId" TEXT NOT NULL,
     "capturedByUserId" INTEGER,
     "capturedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -45,6 +47,7 @@ ALTER TABLE "GymEquipmentImage" ADD CONSTRAINT "GymEquipmentImage_capturedByUser
 
 CREATE INDEX "GymEquipmentImage_gymId_equipmentId_idx" ON "GymEquipmentImage"("gymId","equipmentId");
 CREATE INDEX "GymEquipmentImage_imageId_idx" ON "GymEquipmentImage"("imageId");
+CREATE INDEX "GymEquipmentImage_gymEquipmentId_idx" ON "GymEquipmentImage"("gymEquipmentId");
 CREATE UNIQUE INDEX "GymEquipmentImage_gymId_equipmentId_imageId_key" ON "GymEquipmentImage"("gymId","equipmentId","imageId");
 
 -- CreateTable ImageEmbedding
