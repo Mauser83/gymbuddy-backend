@@ -105,7 +105,7 @@ async function handleEMBED(storageKey: string) {
   // 2) scope is gym-specific
   const scope = `GYM:${gymImg.gymId}`;
 
-  // 3) skip if embedding exists for this (gymImageId, scope, model*)
+  // 3) find existing row (idempotent)
   const existing = await prisma.imageEmbedding.findFirst({
     where: {
       gymImageId: gymImg.id,
@@ -116,25 +116,25 @@ async function handleEMBED(storageKey: string) {
     },
     select: { id: true },
   });
-  if (existing) return;
+
+  if (existing) {
+    // keep dim fresh if config changes
+    // @ts-ignore Prisma client exposes update at runtime
+    await prisma.imageEmbedding.update({
+      where: { id: existing.id },
+      data: { dim: EMBED_DIM },
+    });
+    return;
+  }
 
   // 4) compute vector
   const bytes = await downloadBytes(storageKey);
   const vec = await embed(bytes); // number[], length = EMBED_DIM
 
-  // 5) upsert metadata row (no vector yet)
-  const row = await (prisma.imageEmbedding as any).upsert({
-    where: {
-      gymImageId_scope_modelVendor_modelName_modelVersion: {
-        gymImageId: gymImg.id,
-        scope,
-        modelVendor: EMBED_VENDOR,
-        modelName: EMBED_MODEL,
-        modelVersion: EMBED_VERSION,
-      },
-    },
-    update: { dim: EMBED_DIM },
-    create: {
+  // 5) create metadata row (no vector yet)
+  // @ts-ignore Prisma client exposes create at runtime
+  const row = await prisma.imageEmbedding.create({
+    data: {
       gymImageId: gymImg.id,
       scope,
       modelVendor: EMBED_VENDOR,
@@ -152,6 +152,8 @@ async function handleEMBED(storageKey: string) {
     row.id
   );
 }
+
+
 
 function parseArgs() {
   const argv = process.argv.slice(2);
