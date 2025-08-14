@@ -1,9 +1,8 @@
-import { PrismaClient } from "../../generated/prisma";
+import { prisma } from "../../lib/prisma";
 import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createHash } from "crypto";
 
-const prisma = new PrismaClient();
 const queue = new QueueRunnerService(prisma);
 
 // R2 client (account-specific endpoint)

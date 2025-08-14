@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../lib/prisma";
+import type { PrismaClient } from "../../lib/prisma";
 import type { Prisma } from "../../generated/prisma";
 import { ImageJobStatus } from "../../generated/prisma";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
