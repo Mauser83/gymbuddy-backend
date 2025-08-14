@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
 const queue = new QueueRunnerService(prisma);
 
@@ -18,15 +18,15 @@ const s3 = new S3Client({
   },
 });
 
-const EMBED_VENDOR  = process.env.EMBED_VENDOR  ?? "local";
-const EMBED_MODEL   = process.env.EMBED_MODEL   ?? "clip-vit-b32";
+const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
+const EMBED_MODEL = process.env.EMBED_MODEL ?? "clip-vit-b32";
 const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
-const EMBED_DIM     = Number(process.env.EMBED_DIM ?? 512);
+const EMBED_DB_DIM = Number(process.env.EMBED_DB_DIM ?? 512);
 
 // pgvector literal helper
 function toVectorLiteral(vec: number[]): string {
   // only finite numbers; anything else → 0
-  return `[${vec.map(v => (Number.isFinite(v) ? v : 0)).join(",")}]`;
+  return `[${vec.map((v) => (Number.isFinite(v) ? v : 0)).join(",")}]`;
 }
 
 // helper: download bytes from R2
@@ -35,7 +35,8 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   const body: any = res.Body;
 
   // Node 18+ AWS SDK v3 has transformToByteArray(); fallback to stream -> buffer
-  if (typeof body?.transformToByteArray === "function") return body.transformToByteArray();
+  if (typeof body?.transformToByteArray === "function")
+    return body.transformToByteArray();
 
   const chunks: Uint8Array[] = [];
   for await (const chunk of body as AsyncIterable<Uint8Array>) {
@@ -45,15 +46,18 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   const total = chunks.reduce((n, c) => n + c.length, 0);
   const out = new Uint8Array(total);
   let off = 0;
-  for (const c of chunks) { out.set(c, off); off += c.length; }
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
   return out;
 }
 
-// deterministic placeholder: hash → repeat over EMBED_DIM, values ~ [-1, 1]
+// deterministic placeholder: hash → repeat over EMBED_DB_DIM, values ~ [-1, 1]
 async function embed(bytes: Uint8Array): Promise<number[]> {
   const h = createHash("sha1").update(bytes).digest(); // 20 bytes
-  const out = new Array(EMBED_DIM).fill(0);
-  for (let i = 0; i < EMBED_DIM; i++) {
+  const out = new Array(EMBED_DB_DIM).fill(0);
+  for (let i = 0; i < EMBED_DB_DIM; i++) {
     out[i] = (h[i % h.length] / 255) * 2 - 1;
   }
   return out;
@@ -104,60 +108,27 @@ async function handleEMBED(storageKey: string) {
   // 2) scope is gym-specific
   const scope = `GYM:${gymImg.gymId}`;
 
-  // 3) find existing row (idempotent)
-  const existing = await prisma.imageEmbedding.findFirst({
-    where: {
-      gymImageId: gymImg.id,
-      scope,
-      modelVendor: EMBED_VENDOR,
-      modelName: EMBED_MODEL,
-      modelVersion: EMBED_VERSION,
-    },
-    select: { id: true },
-  });
-
-  if (existing) {
-    // keep dim fresh if config changes
-    // @ts-ignore Prisma client exposes update at runtime
-    await prisma.imageEmbedding.update({
-      where: { id: existing.id },
-      data: { dim: EMBED_DIM },
-    });
-    return;
-  }
-
-  // 4) compute vector
+  // 3) compute vector and upsert row with embedding
   const bytes = await downloadBytes(storageKey);
-  const vec = await embed(bytes); // number[], length = EMBED_DIM
-
-  // 5) create metadata row (no vector yet)
-  // @ts-ignore Prisma client exposes create at runtime
-  const row = await prisma.imageEmbedding.create({
-    data: {
-      gymImageId: gymImg.id,
-      scope,
-      modelVendor: EMBED_VENDOR,
-      modelName: EMBED_MODEL,
-      modelVersion: EMBED_VERSION,
-      dim: EMBED_DIM,
-    },
-    select: { id: true },
-  });
-
-  // 6) write vector (pgvector) via raw SQL
-  const literal = toVectorLiteral(vec);
-  await prisma.$executeRawUnsafe(
-    `UPDATE "ImageEmbedding" SET "embeddingVec" = ${literal} WHERE id = $1`,
-    row.id
-  );
+  const vec = await embed(bytes); // number[], length = EMBED_DB_DIM
+  const vectorParam = toVectorLiteral(vec);
+  const id = randomUUID();
+  await prisma.$executeRaw`
+    INSERT INTO "ImageEmbedding"
+      ("id","gymImageId","scope","modelVendor","modelName","modelVersion","dim","embeddingVec")
+    VALUES
+      (${id}, ${gymImg.id}, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${EMBED_DB_DIM}, ${vectorParam}::vector)
+    ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
+    DO UPDATE SET
+      "dim" = EXCLUDED."dim",
+      "embeddingVec" = ${vectorParam}::vector
+  `;
 }
-
-
 
 function parseArgs() {
   const argv = process.argv.slice(2);
   const once = argv.includes("--once");
-  const maxArg = argv.find(a => a.startsWith("--max="));
+  const maxArg = argv.find((a) => a.startsWith("--max="));
   const max = maxArg ? Number(maxArg.split("=")[1]) || 50 : 50;
   return { once, max };
 }
@@ -182,10 +153,14 @@ async function processOnce() {
               await handleEMBED(job.storageKey);
               break;
             default:
-              throw new Error(`Unsupported jobType for storageKey: ${job.jobType}`);
+              throw new Error(
+                `Unsupported jobType for storageKey: ${job.jobType}`
+              );
           }
         } else {
-          throw new Error("Job missing storageKey (promotion path not implemented yet)");
+          throw new Error(
+            "Job missing storageKey (promotion path not implemented yet)"
+          );
         }
 
         await queue.markDone(job.id);

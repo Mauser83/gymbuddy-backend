@@ -777,7 +777,7 @@ model ImageEmbedding {
   dim          Int
   // Prisma does not (yet) have a native pgvector type.
   // Use Unsupported("vector"); final type/ops tuned in SQL migrations.
-  embeddingVec Unsupported("vector")
+  embeddingVec Unsupported("vector")?
   createdAt    DateTime              @default(now())
 
   equipmentImage EquipmentImage?     @relation(fields: [imageId], references: [id], onDelete: Cascade)
