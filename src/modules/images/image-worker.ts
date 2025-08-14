@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { QueueRunnerService } from "../services/queue-runner.service";
+import { PrismaClient } from "../../generated/prisma";
+import { QueueRunnerService } from "./queue-runner.service";
 
 const prisma = new PrismaClient();
 const queue = new QueueRunnerService(prisma);
