@@ -19,6 +19,17 @@ const s3 = new S3Client({
   },
 });
 
+const EMBED_VENDOR  = process.env.EMBED_VENDOR  ?? "local";
+const EMBED_MODEL   = process.env.EMBED_MODEL   ?? "clip-vit-b32";
+const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
+const EMBED_DIM     = Number(process.env.EMBED_DIM ?? 512);
+
+// pgvector literal helper
+function toVectorLiteral(vec: number[]): string {
+  // only finite numbers; anything else → 0
+  return `[${vec.map(v => (Number.isFinite(v) ? v : 0)).join(",")}]`;
+}
+
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
   const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
@@ -36,6 +47,16 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   const out = new Uint8Array(total);
   let off = 0;
   for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+// deterministic placeholder: hash → repeat over EMBED_DIM, values ~ [-1, 1]
+async function embed(bytes: Uint8Array): Promise<number[]> {
+  const h = createHash("sha1").update(bytes).digest(); // 20 bytes
+  const out = new Array(EMBED_DIM).fill(0);
+  for (let i = 0; i < EMBED_DIM; i++) {
+    out[i] = (h[i % h.length] / 255) * 2 - 1;
+  }
   return out;
 }
 
@@ -73,6 +94,65 @@ async function handleSAFETY(storageKey: string) {
   });
 }
 
+async function handleEMBED(storageKey: string) {
+  // 1) locate the gym image row for this object
+  const gymImg = await prisma.gymEquipmentImage.findFirst({
+    where: { storageKey },
+    select: { id: true, gymId: true },
+  });
+  if (!gymImg) throw new Error("GymEquipmentImage not found for storageKey");
+
+  // 2) scope is gym-specific
+  const scope = `GYM:${gymImg.gymId}`;
+
+  // 3) skip if embedding exists for this (gymImageId, scope, model*)
+  const existing = await prisma.imageEmbedding.findFirst({
+    where: {
+      gymImageId: gymImg.id,
+      scope,
+      modelVendor: EMBED_VENDOR,
+      modelName: EMBED_MODEL,
+      modelVersion: EMBED_VERSION,
+    },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  // 4) compute vector
+  const bytes = await downloadBytes(storageKey);
+  const vec = await embed(bytes); // number[], length = EMBED_DIM
+
+  // 5) upsert metadata row (no vector yet)
+  const row = await (prisma.imageEmbedding as any).upsert({
+    where: {
+      gymImageId_scope_modelVendor_modelName_modelVersion: {
+        gymImageId: gymImg.id,
+        scope,
+        modelVendor: EMBED_VENDOR,
+        modelName: EMBED_MODEL,
+        modelVersion: EMBED_VERSION,
+      },
+    },
+    update: { dim: EMBED_DIM },
+    create: {
+      gymImageId: gymImg.id,
+      scope,
+      modelVendor: EMBED_VENDOR,
+      modelName: EMBED_MODEL,
+      modelVersion: EMBED_VERSION,
+      dim: EMBED_DIM,
+    },
+    select: { id: true },
+  });
+
+  // 6) write vector (pgvector) via raw SQL
+  const literal = toVectorLiteral(vec);
+  await prisma.$executeRawUnsafe(
+    `UPDATE "ImageEmbedding" SET "embeddingVec" = ${literal} WHERE id = $1`,
+    row.id
+  );
+}
+
 function parseArgs() {
   const argv = process.argv.slice(2);
   const once = argv.includes("--once");
@@ -89,14 +169,17 @@ async function processOnce() {
     jobs.map(async (job) => {
       try {
         if (job.storageKey) {
-          switch (job.jobType) {
+          const type = (job.jobType ?? "").trim().toUpperCase();
+          switch (type) {
             case "HASH":
               await handleHASH(job.storageKey);
               break;
             case "SAFETY":
               await handleSAFETY(job.storageKey);
               break;
-            // EMBED comes next
+            case "EMBED":
+              await handleEMBED(job.storageKey);
+              break;
             default:
               throw new Error(`Unsupported jobType for storageKey: ${job.jobType}`);
           }
