@@ -21,7 +21,7 @@ export const WorkerResolvers = {
       const max = Math.max(1, Math.min(1000, Number(args?.max ?? 100)));
 
       const lockedRow = await ctx.prisma.$queryRawUnsafe<{ locked: boolean }[]>(
-        `SELECT pg_try_advisory_lock($1,$2) AS locked`,
+        `SELECT pg_try_advisory_lock($1::int,$2::int) AS locked`,
         LOCK_A,
         LOCK_B
       );
@@ -36,7 +36,7 @@ export const WorkerResolvers = {
         } finally {
           try {
             await ctx.prisma.$executeRawUnsafe(
-              `SELECT pg_advisory_unlock($1,$2)`,
+              `SELECT pg_advisory_unlock($1::int,$2::int)`,
               LOCK_A,
               LOCK_B
             );
