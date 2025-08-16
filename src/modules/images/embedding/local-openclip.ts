@@ -1,12 +1,28 @@
 import * as ort from "onnxruntime-node";
 import sharp from "sharp";
+import { ensureModelFile } from "../models.ensure";
 import type { EmbeddingProvider } from "./provider";
 
-const MODEL_PATH = process.env.EMBED_MODEL_PATH ?? "./models/openclip-vit-b32.onnx";
+const MODEL_PATH =
+  process.env.EMBED_MODEL_PATH ?? "./models/openclip-vit-b32.onnx";
+const MODEL_SRC = process.env.EMBED_MODEL_R2_KEY
+  ? ({
+      kind: "r2",
+      bucket: process.env.R2_BUCKET!,
+      key: process.env.EMBED_MODEL_R2_KEY!,
+    } as const)
+  : ({
+      kind: "url",
+      url:
+        process.env.EMBED_MODEL_URL ??
+        "https://huggingface.co/immich-app/ViT-B-32__openai/resolve/main/visual/model.onnx",
+    } as const);
+// optional checksum to guard against bad downloads
+const MODEL_SHA = process.env.EMBED_MODEL_SHA256;
 const DIM = Number(process.env.EMBED_DIM ?? 512);
 
 const MEAN = [0.48145466, 0.4578275, 0.40821073];
-const STD  = [0.26862954, 0.26130258, 0.27577711];
+const STD = [0.26862954, 0.26130258, 0.27577711];
 const SIZE = 224;
 
 async function toTensorForCLIP(bytes: Uint8Array): Promise<ort.Tensor> {
@@ -40,7 +56,12 @@ export class LocalOpenClip implements EmbeddingProvider {
   dim = DIM;
   private sessionPromise: Promise<ort.InferenceSession>;
   constructor(modelPath = MODEL_PATH) {
-    this.sessionPromise = ort.InferenceSession.create(modelPath, { executionProviders: ["cpu"] });
+    this.sessionPromise = (async () => {
+      await ensureModelFile(modelPath, MODEL_SRC, MODEL_SHA);
+      return ort.InferenceSession.create(modelPath, {
+        executionProviders: ["cpu"],
+      });
+    })();
   }
   async embed(bytes: Uint8Array): Promise<number[]> {
     const session = await this.sessionPromise;

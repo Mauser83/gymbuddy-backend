@@ -1,14 +1,36 @@
 import * as ort from "onnxruntime-node";
 import sharp from "sharp";
+import { ensureModelFile } from "../models.ensure";
 import type { SafetyProvider, SafetyResult } from "./provider";
 
-const MODEL_PATH = process.env.SAFETY_MODEL_PATH ?? "./models/nsfw_mobilenet_v2.onnx";
-const LABELS = (process.env.SAFETY_OUTPUT_LABELS ?? "").split(",").map(s => s.trim()).filter(Boolean);
-const NSFW_LABELS = new Set((process.env.SAFETY_NSFW_CLASSES ?? "porn,hentai,soft,sexy,nsfw").split(",").map(s => s.trim()).filter(Boolean));
+const MODEL_PATH = process.env.SAFETY_MODEL_PATH ?? "./models/open_nsfw.onnx";
+const MODEL_SRC = process.env.SAFETY_MODEL_R2_KEY
+  ? ({
+      kind: "r2",
+      bucket: process.env.R2_BUCKET!,
+      key: process.env.SAFETY_MODEL_R2_KEY!,
+    } as const)
+  : ({
+      kind: "url",
+      url:
+        process.env.SAFETY_MODEL_URL ??
+        "https://huggingface.co/sommersoft/open_nsfw/resolve/main/open_nsfw.onnx",
+    } as const);
+const MODEL_SHA = process.env.SAFETY_MODEL_SHA256;
+const LABELS = (process.env.SAFETY_OUTPUT_LABELS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const NSFW_LABELS = new Set(
+  (process.env.SAFETY_NSFW_CLASSES ?? "porn,hentai,soft,sexy,nsfw")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
 const SIZE = 224;
 const MEAN = [0.485, 0.456, 0.406];
-const STD  = [0.229, 0.224, 0.225];
+const STD = [0.229, 0.224, 0.225];
 
 async function toTensorForImageNet(bytes: Uint8Array): Promise<ort.Tensor> {
   const img = sharp(bytes).removeAlpha().resize(SIZE, SIZE, { fit: "cover" });
@@ -30,15 +52,20 @@ async function toTensorForImageNet(bytes: Uint8Array): Promise<ort.Tensor> {
 
 function softmax(v: Float32Array): Float32Array {
   const m = Math.max(...v);
-  const exps = v.map(x => Math.exp(x - m));
+  const exps = v.map((x) => Math.exp(x - m));
   const s = exps.reduce((a, b) => a + b, 0) || 1;
-  return Float32Array.from(exps.map(x => x / s));
+  return Float32Array.from(exps.map((x) => x / s));
 }
 
 export class LocalNSFW implements SafetyProvider {
   private sessionPromise: Promise<ort.InferenceSession>;
   constructor(modelPath = MODEL_PATH) {
-    this.sessionPromise = ort.InferenceSession.create(modelPath, { executionProviders: ["cpu"] });
+    this.sessionPromise = (async () => {
+      await ensureModelFile(modelPath, MODEL_SRC, MODEL_SHA);
+      return ort.InferenceSession.create(modelPath, {
+        executionProviders: ["cpu"],
+      });
+    })();
   }
   async check(bytes: Uint8Array): Promise<SafetyResult> {
     const session = await this.sessionPromise;
@@ -57,7 +84,8 @@ export class LocalNSFW implements SafetyProvider {
     } else {
       const probs = softmax(logits);
       if (LABELS.length === probs.length) {
-        let nsfw = 0, neutral = 0;
+        let nsfw = 0,
+          neutral = 0;
         LABELS.forEach((lab, i) => {
           const p = probs[i];
           if (NSFW_LABELS.has(lab)) nsfw += p;
