@@ -29,25 +29,43 @@ const NSFW_LABELS = new Set(
 );
 
 const SIZE = 224;
-const MEAN = [0.485, 0.456, 0.406];
-const STD = [0.229, 0.224, 0.225];
+const SAFETY_PREPROC = (process.env.SAFETY_PREPROC ?? "vgg").toLowerCase();
+const SAFETY_COLOR = (process.env.SAFETY_COLOR ?? "bgr").toLowerCase();
 
-async function toTensorForImageNet(bytes: Uint8Array): Promise<ort.Tensor> {
-  const img = sharp(bytes).removeAlpha().resize(SIZE, SIZE, { fit: "cover" });
-  const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
-  if (info.channels < 3) throw new Error("image not RGB");
-  const chw = new Float32Array(1 * 3 * SIZE * SIZE);
-  let o = 0;
-  for (let c = 0; c < 3; c++) {
-    for (let y = 0; y < SIZE; y++) {
-      for (let x = 0; x < SIZE; x++) {
-        const i = (y * info.width + x) * info.channels + c;
-        const v = data[i] / 255;
-        chw[o++] = (v - MEAN[c]) / STD[c];
+// NHWC [1,H,W,3]
+async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
+  const { data, info } = await sharp(bytes)
+    .removeAlpha()
+    .resize(SIZE, SIZE, { fit: "cover" })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const out = new Float32Array(1 * SIZE * SIZE * 3);
+  let i = 0;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const p = (y * info.width + x) * info.channels;
+      const r = data[p],
+        g = data[p + 1],
+        b = data[p + 2];
+
+      if (SAFETY_PREPROC === "vgg") {
+        // OpenNSFW-style: float32 in 0..255 then minus BGR means
+        const c0 = SAFETY_COLOR === "bgr" ? b : r;
+        const c1 = SAFETY_COLOR === "bgr" ? g : g;
+        const c2 = SAFETY_COLOR === "bgr" ? r : b;
+        out[i++] = c0 - 104;
+        out[i++] = c1 - 117;
+        out[i++] = c2 - 123;
+      } else {
+        // ImageNet-style normalization (RGB 0..1 → mean/std)
+        out[i++] = (r / 255 - 0.485) / 0.229;
+        out[i++] = (g / 255 - 0.456) / 0.224;
+        out[i++] = (b / 255 - 0.406) / 0.225;
       }
     }
   }
-  return new ort.Tensor("float32", chw, [1, 3, SIZE, SIZE]);
+  return new ort.Tensor("float32", out, [1, SIZE, SIZE, 3]);
 }
 
 function softmax(v: Float32Array): Float32Array {
@@ -69,8 +87,8 @@ export class LocalNSFW implements SafetyProvider {
   }
   async check(bytes: Uint8Array): Promise<SafetyResult> {
     const session = await this.sessionPromise;
-    const input = await toTensorForImageNet(bytes);
     const inputName = session.inputNames?.[0] ?? "input";
+    const input = await toTensorNHWC(bytes);
     const out = await session.run({ [inputName]: input });
     const firstKey = session.outputNames?.[0] ?? Object.keys(out)[0];
     const logits = out[firstKey].data as Float32Array;
