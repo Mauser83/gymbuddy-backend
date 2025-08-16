@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
+import { createEmbeddingProvider } from "./embedding";
 
 const queue = new QueueRunnerService(prisma);
 
@@ -21,13 +22,16 @@ const s3 = new S3Client({
 const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
 const EMBED_MODEL = process.env.EMBED_MODEL ?? "clip-vit-b32";
 const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
-const EMBED_DB_DIM = Number(process.env.EMBED_DB_DIM ?? 512);
+const MODEL_DIM = Number(process.env.EMBED_DIM ?? 512);
+const DB_VECTOR_DIM = Number(process.env.EMBED_DB_DIM ?? MODEL_DIM);
 
-// pgvector literal helper
-function toVectorLiteral(vec: number[]): string {
-  // only finite numbers; anything else → 0
-  return `[${vec.map((v) => (Number.isFinite(v) ? v : 0)).join(",")}]`;
+function adaptToDbDim(vec: number[]): number[] {
+  if (vec.length === DB_VECTOR_DIM) return vec;
+  if (vec.length < DB_VECTOR_DIM) return [...vec, ...Array(DB_VECTOR_DIM - vec.length).fill(0)];
+  return vec.slice(0, DB_VECTOR_DIM);
 }
+
+const embedProvider = createEmbeddingProvider(); // singleton
 
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
@@ -49,16 +53,6 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   for (const c of chunks) {
     out.set(c, off);
     off += c.length;
-  }
-  return out;
-}
-
-// deterministic placeholder: hash → repeat over EMBED_DB_DIM, values ~ [-1, 1]
-async function embed(bytes: Uint8Array): Promise<number[]> {
-  const h = createHash("sha1").update(bytes).digest(); // 20 bytes
-  const out = new Array(EMBED_DB_DIM).fill(0);
-  for (let i = 0; i < EMBED_DB_DIM; i++) {
-    out[i] = (h[i % h.length] / 255) * 2 - 1;
   }
   return out;
 }
@@ -108,16 +102,16 @@ async function handleEMBED(storageKey: string) {
   // 2) scope is gym-specific
   const scope = `GYM:${gymImg.gymId}`;
 
-  // 3) compute vector and upsert row with embedding
+    // 3) compute vector and upsert row with embedding
   const bytes = await downloadBytes(storageKey);
-  const vec = await embed(bytes); // number[], length = EMBED_DB_DIM
-  const vectorParam = toVectorLiteral(vec);
-  const id = randomUUID();
+  const vecModel = await embedProvider.embed(bytes); // 512 by default
+  const vec = adaptToDbDim(vecModel); // 1536 for DB
+  const vectorParam = `[${vec.map(v => (Number.isFinite(v) ? v : 0)).join(",")}]`;
   await prisma.$executeRaw`
     INSERT INTO "ImageEmbedding"
       ("id","gymImageId","scope","modelVendor","modelName","modelVersion","dim","embeddingVec")
     VALUES
-      (${id}, ${gymImg.id}, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${EMBED_DB_DIM}, ${vectorParam}::vector)
+      (${randomUUID()}, ${gymImg.id}, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
     ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
     DO UPDATE SET
       "dim" = EXCLUDED."dim",
