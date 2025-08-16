@@ -3,6 +3,7 @@ import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
 import { createEmbeddingProvider } from "./embedding";
+import { createSafetyProvider } from "./safety";
 
 const queue = new QueueRunnerService(prisma);
 
@@ -32,6 +33,7 @@ function adaptToDbDim(vec: number[]): number[] {
 }
 
 const embedProvider = createEmbeddingProvider(); // singleton
+const safetyProvider = createSafetyProvider();
 
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
@@ -69,18 +71,10 @@ async function handleHASH(storageKey: string) {
   });
 }
 
-// --- SAFETY (stub) ---
-type SafetyResult = { isSafe: boolean; nsfwScore: number; hasPerson?: boolean };
-
-async function runSafety(bytes: Uint8Array): Promise<SafetyResult> {
-  // TODO: replace with real model later
-  return { isSafe: true, nsfwScore: 0.01, hasPerson: false };
-}
-
+// --- SAFETY ---
 async function handleSAFETY(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
-  const res = await runSafety(bytes);
-
+  const res = await safetyProvider.check(bytes);
   await prisma.gymEquipmentImage.updateMany({
     where: { storageKey },
     data: {
@@ -90,7 +84,6 @@ async function handleSAFETY(storageKey: string) {
     },
   });
 }
-
 async function handleEMBED(storageKey: string) {
   // 1) locate the gym image row for this object
   const gymImg = await prisma.gymEquipmentImage.findFirst({
