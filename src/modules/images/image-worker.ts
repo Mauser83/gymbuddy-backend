@@ -125,16 +125,7 @@ async function handleEMBED(storageKey: string) {
   `;
 }
 
-function parseArgs() {
-  const argv = process.argv.slice(2);
-  const once = argv.includes("--once");
-  const maxArg = argv.find((a) => a.startsWith("--max="));
-  const max = maxArg ? Number(maxArg.split("=")[1]) || 50 : 50;
-  return { once, max };
-}
-
 export async function processOnce() {
-  console.log("image worker called to run once");
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(concurrency);
 
@@ -164,37 +155,10 @@ export async function processOnce() {
   );
 }
 
-async function runForever() {
-  console.log("image worker called to run forever");
-  const intervalMs = 2000;
-  for (;;) {
-    await processOnce();
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-}
-
 export async function runOnce(maxLoops = 50) {
-  let loops = 0;
-  for (; loops < maxLoops; loops++) {
+  console.log("[image-worker] runOnce called, maxLoops=", maxLoops);
+  for (let i = 0; i < maxLoops; i++) {
     await processOnce();
     await new Promise((r) => setTimeout(r, 25));
   }
-  return { loops };
-}
-
-async function main() {
-  const { once, max } = parseArgs();
-  if (once) {
-    await runOnce(max);
-    process.exit(0);
-  } else {
-    await runForever();
-  }
-}
-
-if (require.main === module) {
-  main().catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
 }

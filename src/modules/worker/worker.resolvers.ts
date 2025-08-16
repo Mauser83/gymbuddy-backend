@@ -1,8 +1,7 @@
-import { runOnce } from "../images/image-worker";
 import { verifyRoles } from "../auth/auth.roles";
 import { AuthContext } from "../auth/auth.types";
 
-const LOCK_A = 9142, LOCK_B = 1;
+let isRunning = false;
 
 export const WorkerResolvers = {
   Mutation: {
@@ -20,20 +19,23 @@ export const WorkerResolvers = {
 
       const max = Math.max(1, Math.min(1000, Number(args?.max ?? 100)));
 
-      const result = await ctx.prisma.$transaction(async (tx) => {
-        const lockedRow = await tx.$queryRawUnsafe<{ locked: boolean }[]>(
-          `SELECT pg_try_advisory_xact_lock($1::int,$2::int) AS locked`,
-          LOCK_A,
-          LOCK_B
-        );
-        const locked = !!lockedRow?.[0]?.locked;
-        if (!locked) return { ok: true, status: "already-running" };
+      if (isRunning) {
+        return { ok: true, status: "already-running" };
+      }
 
-        await runOnce(max);
-        return { ok: true, status: "started" };
+      isRunning = true;
+      setImmediate(async () => {
+        try {
+          const { runOnce } = await import("../images/image-worker.js");
+          await runOnce(max);
+        } catch (err) {
+          console.error("[image-worker] runOnce error:", err);
+        } finally {
+          isRunning = false;
+        }
       });
 
-      return result;
+      return { ok: true, status: "started" };
     },
   },
 };
