@@ -134,6 +134,7 @@ function parseArgs() {
 }
 
 export async function processOnce() {
+  console.log("image worker called to run once");
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(concurrency);
 
@@ -164,6 +165,7 @@ export async function processOnce() {
 }
 
 async function runForever() {
+  console.log("image worker called to run forever");
   const intervalMs = 2000;
   for (;;) {
     await processOnce();
@@ -180,15 +182,19 @@ export async function runOnce(maxLoops = 50) {
   return { loops };
 }
 
-// (async function main() {
-//   const { once, max } = parseArgs();
-//   if (once) {
-//     await runOnce(max);
-//     process.exit(0);
-//   } else {
-//     await runForever();
-//   }
-// })().catch((e) => {
-//   console.error(e);
-//   process.exit(1);
-// });
+async function main() {
+  const { once, max } = parseArgs();
+  if (once) {
+    await runOnce(max);
+    process.exit(0);
+  } else {
+    await runForever();
+  }
+}
+
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
