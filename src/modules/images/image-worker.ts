@@ -180,15 +180,15 @@ export async function runOnce(maxLoops = 50) {
   return { loops };
 }
 
-(async function main() {
-  const { once, max } = parseArgs();
-  if (once) {
-    await runOnce(max);
-    process.exit(0);
-  } else {
-    await runForever();
-  }
-})().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// (async function main() {
+//   const { once, max } = parseArgs();
+//   if (once) {
+//     await runOnce(max);
+//     process.exit(0);
+//   } else {
+//     await runForever();
+//   }
+// })().catch((e) => {
+//   console.error(e);
+//   process.exit(1);
+// });
