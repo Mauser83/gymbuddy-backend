@@ -10,6 +10,7 @@ import { PermissionService } from "./modules/core/permission.service";
 import { DIContainer } from "./modules/core/di.container";
 import { MediaService } from "./modules/media/media.service";
 import { ImageIntakeService } from "./modules/images/image-intake.service";
+import { initLocalOpenCLIP } from "./modules/images/embedding/local-openclip-light";
 
 import { errorHandler } from "./middlewares/errorHandler";
 import { errorLogger, requestLogger } from "./middlewares/logger";
@@ -94,6 +95,7 @@ app.get("/metrics", async (_req, res) => {
 // === Start Server ===
 async function startApolloServer() {
   console.log("Starting Apollo Server...");
+  await initLocalOpenCLIP();
   await setupApollo(app, prisma, permissionService, mediaService, imageIntakeService);
   console.log("Apollo ready.");
 

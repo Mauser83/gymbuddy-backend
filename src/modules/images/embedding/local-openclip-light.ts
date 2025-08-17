@@ -1,5 +1,7 @@
 import * as ort from 'onnxruntime-node';
 import sharp from 'sharp';
+import { join, resolve } from 'path';
+import { ensureModelFile } from '../models.ensure';
 
 // --- Runtime & memory knobs (MUST set env threads=1 too) ---
 function mkSessionOptions(): ort.InferenceSession.SessionOptions {
@@ -13,6 +15,8 @@ function mkSessionOptions(): ort.InferenceSession.SessionOptions {
 
 // --- Model session (image encoder only) ---
 let CLIP_SESS: ort.InferenceSession | null = null;
+let INPUT_NAME = 'pixel_values';
+let OUTPUT_NAME = 'image_embeds';
 
 // CLIP normalization (OpenAI/MobileCLIP/TinyCLIP share these)
 const MEAN = Float32Array.from([0.48145466, 0.4578275, 0.40821073]);
@@ -50,10 +54,49 @@ function l2normalize(v: Float32Array): Float32Array {
 
 export async function initLocalOpenCLIP() {
   if (CLIP_SESS) return;
-  const modelPath =
-    process.env.CLIP_ONNX_PATH ||
-    'tinyclip_vit_61m_32_text_29m_int8.onnx'; // or your mobileclip onnx path
-  CLIP_SESS = await ort.InferenceSession.create(modelPath, mkSessionOptions());
+
+  const r2Key = process.env.EMBED_MODEL_R2_KEY;
+  const url = process.env.EMBED_MODEL_URL;
+  const sha = process.env.EMBED_MODEL_SHA256;
+  const localDir = process.env.MODEL_DIR ?? '/opt/models';
+  let modelPath =
+    process.env.EMBED_MODEL_PATH || join(localDir, 'embed_model.onnx');
+
+  modelPath = resolve(modelPath);
+
+  if (r2Key && url) {
+    const src = process.env.R2_BUCKET
+      ? ({ kind: 'r2', bucket: process.env.R2_BUCKET!, key: r2Key } as const)
+      : ({ kind: 'url', url } as const);
+    await ensureModelFile(modelPath, src, sha);
+  } else if (url && !process.env.EMBED_MODEL_PATH) {
+    await ensureModelFile(modelPath, { kind: 'url', url } as const, sha);
+  }
+
+  if (!modelPath) {
+    throw new Error(
+      'No model path. Set EMBED_MODEL_R2_KEY + EMBED_MODEL_URL (preferred) or EMBED_MODEL_PATH.'
+    );
+  }
+
+  const so = mkSessionOptions();
+  CLIP_SESS = await ort.InferenceSession.create(modelPath, so);
+
+  const inputs = CLIP_SESS.inputNames;
+  const outputs = CLIP_SESS.outputNames;
+  INPUT_NAME = inputs.includes('pixel_values') ? 'pixel_values' : inputs[0];
+  OUTPUT_NAME = outputs.includes('image_embeds') ? 'image_embeds' : outputs[0];
+
+  const meta = CLIP_SESS.outputMetadata as unknown as Record<string, {
+    dimensions: readonly number[] | null;
+  }>;
+  const dims = meta[OUTPUT_NAME]?.dimensions ?? [];
+  const dim = dims[dims.length - 1];
+  if (dim && dim !== 512) {
+    throw new Error(`Unexpected embedding dim ${dim}. Expected 512.`);
+  }
+
+  console.log(`[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME}`);
 }
 
 export async function embedImage(buffer: Buffer): Promise<Float32Array> {
@@ -61,12 +104,10 @@ export async function embedImage(buffer: Buffer): Promise<Float32Array> {
   const chw = await toCHWFloat32(buffer);
   const tensor = new ort.Tensor('float32', chw, [1, 3, 224, 224]);
 
-  // Input/output names must match your ONNX export
-  const feeds: Record<string, ort.Tensor> = { pixel_values: tensor };
-  const outputs = await CLIP_SESS.run(feeds);
-  // Prefer an explicit key if you know it, else take the first
-  const key = outputs['image_embeds'] ? 'image_embeds' : Object.keys(outputs)[0];
-  const vec = outputs[key].data as Float32Array; // [1,512]
+  const outputs = (await CLIP_SESS.run({
+    [INPUT_NAME]: tensor,
+  })) as Record<string, ort.Tensor>;
+  const vec = outputs[OUTPUT_NAME].data as Float32Array; // [1,512]
   return l2normalize(vec);
 }
 
