@@ -2,7 +2,11 @@ import { prisma } from "../../lib/prisma";
 import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
-import { createEmbeddingProvider } from "./embedding";
+import {
+  initLocalOpenCLIP,
+  embedImage,
+  EMBEDDING_DIM,
+} from "./embedding/local-openclip-light";
 import { createSafetyProvider } from "./safety";
 
 const queue = new QueueRunnerService(prisma);
@@ -23,16 +27,17 @@ const s3 = new S3Client({
 const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
 const EMBED_MODEL = process.env.EMBED_MODEL ?? "clip-vit-b32";
 const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
-const MODEL_DIM = Number(process.env.EMBED_DIM ?? 512);
+const MODEL_DIM = Number(process.env.EMBED_DIM ?? EMBEDDING_DIM);
 const DB_VECTOR_DIM = Number(process.env.EMBED_DB_DIM ?? MODEL_DIM);
 
 function adaptToDbDim(vec: number[]): number[] {
   if (vec.length === DB_VECTOR_DIM) return vec;
-  if (vec.length < DB_VECTOR_DIM) return [...vec, ...Array(DB_VECTOR_DIM - vec.length).fill(0)];
+  if (vec.length < DB_VECTOR_DIM)
+    return [...vec, ...Array(DB_VECTOR_DIM - vec.length).fill(0)];
   return vec.slice(0, DB_VECTOR_DIM);
 }
 
-const embedProvider = createEmbeddingProvider(); // singleton
+const embedInitPromise = initLocalOpenCLIP();
 const safetyProvider = createSafetyProvider();
 
 // helper: download bytes from R2
@@ -95,16 +100,22 @@ async function handleEMBED(storageKey: string) {
   // 2) scope is gym-specific
   const scope = `GYM:${gymImg.gymId}`;
 
-    // 3) compute vector and upsert row with embedding
+  // 3) compute vector and upsert row with embedding
   const bytes = await downloadBytes(storageKey);
-  const vecModel = await embedProvider.embed(bytes); // 512 by default
+  await embedInitPromise;
+  const vecFloat = await embedImage(Buffer.from(bytes));
+  const vecModel = Array.from(vecFloat); // 512 by default
   const vec = adaptToDbDim(vecModel); // 1536 for DB
-  const vectorParam = `[${vec.map(v => (Number.isFinite(v) ? v : 0)).join(",")}]`;
+  const vectorParam = `[${vec
+    .map((v) => (Number.isFinite(v) ? v : 0))
+    .join(",")}]`;
   await prisma.$executeRaw`
     INSERT INTO "ImageEmbedding"
       ("id","gymImageId","scope","modelVendor","modelName","modelVersion","dim","embeddingVec")
     VALUES
-      (${randomUUID()}, ${gymImg.id}, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
+      (${randomUUID()}, ${
+    gymImg.id
+  }, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
     ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
     DO UPDATE SET
       "dim" = EXCLUDED."dim",
