@@ -51,33 +51,81 @@ function fp16ToFloat32Array(u16: Uint16Array): Float32Array {
   return out;
 }
 
-async function toCHWFloat32(input: Buffer, w: number, h: number): Promise<Float32Array> {
-  const { data } = await sharp(input)
-    .toColourspace('srgb')
-    .resize(w, h, { fit: 'cover' })
+async function toCHWFloat32(input: Buffer, W: number, H: number): Promise<Float32Array> {
+  const resized = await sharp(input, { unlimited: false })
+    .rotate()
+    .resize(W, H, { fit: 'cover' })
     .removeAlpha()
+    .toColourspace('rgb')
     .raw()
-    .toBuffer({ resolveWithObject: true });
+    .toBuffer();
 
-  const hw = w * h;
-  const out = new Float32Array(3 * hw);
-  for (let i = 0; i < hw; i++) {
-    const r = data[i * 3] / 255;
-    const g = data[i * 3 + 1] / 255;
-    const b = data[i * 3 + 2] / 255;
-    out[i] = (r - MEAN[0]) / STD[0];
-    out[hw + i] = (g - MEAN[1]) / STD[1];
-    out[2 * hw + i] = (b - MEAN[2]) / STD[2];
+  if (resized.length !== W * H * 3) {
+    throw new Error(`[prep] unexpected buffer size ${resized.length} for ${W}x${H}x3`);
   }
-  return out;
+
+  const f32 = new Float32Array(resized.length);
+  for (let i = 0; i < resized.length; i++) f32[i] = resized[i] / 255;
+
+  let minv = Infinity,
+    maxv = -Infinity,
+    mean = 0;
+  for (let i = 0; i < f32.length; i++) {
+    const v = f32[i];
+    if (v < minv) minv = v;
+    if (v > maxv) maxv = v;
+    mean += v;
+  }
+  mean /= f32.length;
+  console.log('[prep] raw[0..1] min/max/mean:', minv, maxv, mean);
+
+  const chw = new Float32Array(3 * H * W);
+  let idx = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const r = f32[idx++];
+      const g = f32[idx++];
+      const b = f32[idx++];
+      chw[0 * H * W + y * W + x] = (r - MEAN[0]) / STD[0];
+      chw[1 * H * W + y * W + x] = (g - MEAN[1]) / STD[1];
+      chw[2 * H * W + y * W + x] = (b - MEAN[2]) / STD[2];
+    }
+  }
+
+  let nmin = Infinity,
+    nmax = -Infinity,
+    nmean = 0;
+  for (let i = 0; i < chw.length; i++) {
+    const v = chw[i];
+    if (v < nmin) nmin = v;
+    if (v > nmax) nmax = v;
+    nmean += v;
+  }
+  nmean /= chw.length;
+  console.log('[prep] norm min/max/mean:', nmin, nmax, nmean);
+
+  return chw;
 }
 
-function l2normalize(v: Float32Array): Float32Array {
-  let s = 0;
-  for (let i = 0; i < v.length; i++) s += v[i] * v[i];
-  const inv = 1 / (Math.sqrt(s) + 1e-12);
-  const out = new Float32Array(v.length);
-  for (let i = 0; i < v.length; i++) out[i] = v[i] * inv;
+function l2NormalizeChecked(vec: Float32Array): Float32Array {
+  const D = vec.length;
+  if (D !== 512 && D !== 1 * 512) {
+    throw new Error(`[embed] unexpected embed length ${D}; expected 512`);
+  }
+  let ss = 0,
+    hasNaN = false;
+  for (let i = 0; i < 512; i++) {
+    const v = vec[i];
+    if (Number.isNaN(v)) hasNaN = true;
+    ss += v * v;
+  }
+  if (hasNaN) throw new Error('[embed] NaN in embedding');
+  const norm = Math.sqrt(ss);
+  console.log('[embed] pre-norm L2:', norm);
+  if (!(norm > 0)) throw new Error('[embed] zero or invalid norm; refusing to output zeros');
+  const out = new Float32Array(512);
+  for (let i = 0; i < 512; i++) out[i] = vec[i] / norm;
+  console.log('[embed] post-norm sample:', Array.from(out.slice(0, 8)));
   return out;
 }
 
@@ -136,6 +184,20 @@ export async function initLocalOpenCLIP(): Promise<void> {
 
     const so = mkSessionOptions();
     const sess = await ort.InferenceSession.create(modelPath, so);
+    console.log('[embed] inputs:', sess.inputNames);
+    console.log('[embed] outputs:', sess.outputNames);
+    const inName = sess.inputNames[0];
+    const outName = sess.outputNames[0];
+    const inMeta = (sess.inputMetadata as any)[inName];
+    const outMeta = (sess.outputMetadata as any)[outName];
+    console.log('[embed] input meta:', {
+      type: inMeta?.type,
+      dims: inMeta?.dimensions,
+    });
+    console.log('[embed] output meta:', {
+      type: outMeta?.type,
+      dims: outMeta?.dimensions,
+    });
 
     // Resolve IO names
     INPUT_NAME = sess.inputNames.includes('pixel_values')
@@ -144,7 +206,6 @@ export async function initLocalOpenCLIP(): Promise<void> {
     OUTPUT_NAME = sess.outputNames.includes('image_embeds')
       ? 'image_embeds'
       : sess.outputNames[0];
-
 
     const md = sess.inputMetadata as unknown as Record<string, Metadata>;
     const meta = md[INPUT_NAME];
@@ -218,47 +279,31 @@ export async function embedImage(buffer: Buffer): Promise<Float32Array> {
 
   const chw = await toCHWFloat32(buffer, TARGET_W, TARGET_H);
   const tensor = new ort.Tensor('float32', chw, [1, 3, TARGET_H, TARGET_W]);
+const feeds = { [INPUT_NAME]: tensor } as Record<string, ort.Tensor>;
+  const results = await CLIP_SESS.run(feeds);
+  const tens = results[OUTPUT_NAME] as ort.Tensor;
+  console.log(
+    '[embed] out type:',
+    (tens as any).type,
+    'dims:',
+    (tens as any).dims,
+    'len:',
+    tens.data?.length,
+  );
 
-  const out = await CLIP_SESS.run({ [INPUT_NAME]: tensor });
-  const t = out[OUTPUT_NAME] as ort.Tensor;
-
-  const dtype =
-    (t as any).type ??
-    (t.data instanceof Float32Array
-      ? 'float32'
-      : t.data instanceof Uint16Array
-      ? 'float16'
-      : 'unknown');
-
-  let vecF32: Float32Array;
-  if (dtype === 'float32' && t.data instanceof Float32Array) {
-    vecF32 = t.data;
-  } else if (dtype === 'float16' && t.data instanceof Uint16Array) {
-    vecF32 = fp16ToFloat32Array(t.data);
-  } else if (Array.isArray(t.data)) {
-    vecF32 = Float32Array.from(t.data as unknown as number[]);
+  let vec: Float32Array;
+  if ((tens as any).type === 'float16') {
+    const raw = tens.data as Uint16Array;
+    console.log('[embed] raw16 sample:', Array.from(raw.slice(0, 8)));
+    vec = fp16ToFloat32Array(raw);
+  } else if ((tens as any).type === 'float32') {
+    vec = tens.data as Float32Array;
   } else {
-    vecF32 = Float32Array.from(t.data as Iterable<number>);
+    throw new Error(`[embed] unexpected output type ${(tens as any).type}`);
   }
+  console.log('[embed] f32 sample:', Array.from(vec.slice(0, 8)));
 
-  let min = Infinity,
-    max = -Infinity,
-    nz = 0,
-    nan = 0;
-  for (let i = 0; i < vecF32.length; i++) {
-    const v = vecF32[i];
-    if (!Number.isFinite(v)) nan++;
-    if (v !== 0 && Number.isFinite(v)) nz++;
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  if (nz === 0) {
-    console.warn(
-      `[openclip] WARNING: pre-norm embedding has no non-zero finite values (dtype=${dtype}, min=${min}, max=${max}, nan=${nan})`,
-    );
-  }
-
-  return l2normalize(vecF32);
+  return l2NormalizeChecked(vec);
 }
 
 // Optional: typed dim if you need it elsewhere
