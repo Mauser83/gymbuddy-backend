@@ -17,7 +17,7 @@ let globalImg2: any;
 let gymImg1: any;
 let gymImg2: any;
 
-const DIM = 1536;
+const DIM = 512;
 function padVec(seed: number[]) {
   return Array.from({ length: DIM }, (_, i) => seed[i] ?? 0);
 }
@@ -49,19 +49,25 @@ beforeAll(async () => {
     data: { gymId: gym.id, equipmentId: eq.id, quantity: 1 },
   });
 
-  async function createImage(storageKey: string, sha: string) {
+    async function createImage(storageKey: string, sha: string, isGym = false) {
     const id = randomUUID();
     await prisma.$executeRaw`
-      INSERT INTO "EquipmentImage" ("id","equipmentId","gymEquipmentId","storageKey","mimeType","width","height","sha256")
-      VALUES (${id}, ${eq.id}, ${gymEq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha})
+      INSERT INTO "EquipmentImage" ("id","equipmentId","storageKey","mimeType","width","height","sha256")
+      VALUES (${id}, ${eq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha})
     `;
+    if (isGym) {
+      await prisma.$executeRaw`
+        INSERT INTO "GymEquipmentImage" ("id","gymId","equipmentId","gymEquipmentId","imageId","storageKey","sha256")
+        VALUES (${randomUUID()}, ${gym.id}, ${eq.id}, ${gymEq.id}, ${id}, ${storageKey}, ${sha})
+      `;
+    }
     return { id };
   }
 
   globalImg1 = await createImage("g1", "sha1");
   globalImg2 = await createImage("g2", "sha2");
-  gymImg1 = await createImage("gy1", "sha3");
-  gymImg2 = await createImage("gy2", "sha4");
+  gymImg1 = await createImage("gy1", "sha3", true);
+  gymImg2 = await createImage("gy2", "sha4", true);
 
   // extra global images for limit/latency tests
   const extras: any[] = [];
