@@ -58,11 +58,11 @@ async function toCHWFloat32(
   H: number
 ): Promise<Float32Array> {
   const resized = await sharp(input, { unlimited: false })
-    .rotate()
-    .resize(W, H, { fit: "cover" })
-    .removeAlpha()
-    .toColourspace("rgb")
-    .raw()
+    .rotate() // honor EXIF
+    .resize(W, H, { fit: "cover" }) // center-crop/cover
+    .toColourspace("srgb") // ensure sRGB (3ch)
+    .removeAlpha() // drop alpha if present
+    .raw({ depth: "uchar" }) // H*W*3 bytes
     .toBuffer();
 
   if (resized.length !== W * H * 3) {
@@ -358,16 +358,15 @@ export async function embedImage(buffer: Buffer): Promise<Float32Array> {
   }
 
   let vec: Float32Array;
-  if ((tens as any).type === 'float16' || tens.data instanceof Uint16Array) {
-    const raw = tens.data as Uint16Array;
+  if (tens.data instanceof Uint16Array) {
     if (process.env.EMBED_LOG === '1') {
-      console.log('[embed] raw16 sample:', Array.from(raw.slice(0, 8)));
+      console.log('[embed] raw16 sample:', Array.from(tens.data.slice(0, 8)));
     }
-    vec = fp16ToFloat32Array(raw);
+    vec = fp16ToFloat32Array(tens.data as Uint16Array);
   } else if (tens.data instanceof Float32Array) {
     vec = tens.data as Float32Array;
   } else {
-    throw new Error(`[embed] unexpected output type ${(tens as any).type}`);
+    throw new Error('[ort] unexpected output dtype');
   }
   if (process.env.EMBED_LOG === '1') {
     console.log('[embed] f32 sample:', Array.from(vec.slice(0, 8)));

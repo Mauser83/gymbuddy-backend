@@ -104,19 +104,18 @@ async function handleEMBED(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
   await embedInitPromise;
   const vecFloat = await embedImage(Buffer.from(bytes));
-    let nonZero = false;
-  for (let i = 0; i < vecFloat.length; i++) {
-    if (vecFloat[i] !== 0) {
-      nonZero = true;
-      break;
-    }
+  let ss = 0;
+  for (let i = 0; i < vecFloat.length; i++) ss += vecFloat[i] * vecFloat[i];
+  const norm = Math.sqrt(ss);
+  if (!(norm > 0)) {
+    throw new Error('[embed] zero/invalid norm — refusing to insert');
   }
-  if (!nonZero) throw new Error('[db] embed is all zeros — aborting');
-  const vecModel = Array.from(vecFloat); // 512 by default
+  const vecNorm = new Float32Array(vecFloat.length);
+  for (let i = 0; i < vecFloat.length; i++) vecNorm[i] = vecFloat[i] / norm;
   if (process.env.EMBED_LOG === '1') {
-    console.log('[db] writing embed sample:', vecModel.slice(0, 8));
+    console.log('[db] writing embed sample:', Array.from(vecNorm.slice(0, 8)));
   }
-  const vec = adaptToDbDim(vecModel); // 1536 for DB
+  const vec = adaptToDbDim(Array.from(vecNorm)); // 1536 for DB
   const vectorParam = `[${vec
     .map((v) => (Number.isFinite(v) ? v : 0))
     .join(",")}]`;
