@@ -24,30 +24,23 @@ let INPUT_NAME = 'pixel_values';
 let OUTPUT_NAME = 'image_embeds';
 let INIT_PROMISE: Promise<void> | null = null;
 
-// Track model-required spatial size; default to 224
-let TARGET_H = 224;
-let TARGET_W = 224;
+// Use fixed spatial size expected by MobileCLIP
+const TARGET_H = 256;
+const TARGET_W = 256;
 
 // CLIP normalization (OpenAI/MobileCLIP/TinyCLIP share these)
 const MEAN = Float32Array.from([0.48145466, 0.4578275, 0.40821073]);
 const STD  = Float32Array.from([0.26862954, 0.26130258, 0.27577711]);
 
-// Minimal metadata type for input/output tensors
-type Metadata = { dimensions?: readonly number[] };
-
-// Preprocess Buffer -> Float32 CHW tensor of given size
-async function toCHWFloat32(
-  input: Buffer,
-  w: number,
-  h: number,
-): Promise<Float32Array> {
+// Preprocess Buffer -> Float32 CHW tensor of fixed size
+async function toCHWFloat32(input: Buffer): Promise<Float32Array> {
   const { data } = await sharp(input)
-    .resize(w, h, { fit: 'cover' })
+    .resize(TARGET_W, TARGET_H, { fit: 'cover' })
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const hw = w * h;
+  const hw = TARGET_W * TARGET_H;
   const out = new Float32Array(3 * hw);
   for (let i = 0; i < hw; i++) {
     const r = data[i * 3] / 255;
@@ -121,22 +114,6 @@ export async function initLocalOpenCLIP(): Promise<void> {
       ? 'image_embeds'
       : sess.outputNames[0];
 
-    // Read expected input dims (e.g., [1,3,256,256])
-    const inputs = sess.inputMetadata as unknown as Record<string, Metadata>;
-    const idm = inputs[INPUT_NAME];
-    const idims = idm?.dimensions ?? [];
-    const H = Number(idims[idims.length - 2] ?? 224);
-    const W = Number(idims[idims.length - 1] ?? 224);
-    TARGET_H = Number.isFinite(H) && H > 0 ? H : 224;
-    TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
-
-    // Ensure output dim is 512
-    const outputs = sess.outputMetadata as unknown as Record<string, Metadata>;
-    const odm = outputs[OUTPUT_NAME];
-    const odims = odm?.dimensions ?? [];
-    const D = Number(odims[odims.length - 1] ?? 512);
-    if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
-
     CLIP_SESS = sess;
     console.log(
       `[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME} size=${TARGET_W}x${TARGET_H}`,
@@ -149,7 +126,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
 export async function embedImage(buffer: Buffer): Promise<Float32Array> {
   await initLocalOpenCLIP();
   if (!CLIP_SESS) throw new Error('CLIP session not initialized');
-  const chw = await toCHWFloat32(buffer, TARGET_W, TARGET_H);
+  const chw = await toCHWFloat32(buffer);
   const tensor = new ort.Tensor('float32', chw, [1, 3, TARGET_H, TARGET_W]);
   const outputs = await CLIP_SESS.run({ [INPUT_NAME]: tensor });
   const outAny = outputs[OUTPUT_NAME];
