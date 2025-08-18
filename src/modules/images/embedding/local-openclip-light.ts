@@ -6,7 +6,7 @@ import { ensureModelFile } from '../models.ensure';
 // Ensure sharp doesn't blow up memory on large inputs
 sharp.concurrency(1);
 sharp.cache(false);
-sharp.limitInputPixels(2048 * 2048); // we downscale to model size anyway
+(sharp as any).limitInputPixels?.(2048 * 2048); // we downscale to model size anyway
 
 // --- Runtime & memory knobs (MUST set env threads=1 too) ---
 function mkSessionOptions(): ort.InferenceSession.SessionOptions {
@@ -30,6 +30,9 @@ let TARGET_W = 224;
 // CLIP normalization (OpenAI/MobileCLIP/TinyCLIP share these)
 const MEAN = Float32Array.from([0.48145466, 0.4578275, 0.40821073]);
 const STD  = Float32Array.from([0.26862954, 0.26130258, 0.27577711]);
+
+// Minimal metadata type for input/output tensors
+type Metadata = { dimensions?: readonly number[] };
 
 // Preprocess Buffer -> Float32 CHW tensor of given size
 async function toCHWFloat32(
@@ -116,7 +119,8 @@ export async function initLocalOpenCLIP() {
     : CLIP_SESS.outputNames[0];
 
   // Read expected input dims (e.g., [1,3,256,256])
-  const idm = CLIP_SESS.inputMetadata[INPUT_NAME];
+  const inputs = CLIP_SESS.inputMetadata as unknown as Record<string, Metadata>;
+  const idm = inputs[INPUT_NAME];
   const idims = idm?.dimensions ?? [];
   const H = Number(idims[idims.length - 2] ?? 224);
   const W = Number(idims[idims.length - 1] ?? 224);
@@ -124,7 +128,8 @@ export async function initLocalOpenCLIP() {
   TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
 
   // Ensure output dim is 512
-  const odm = CLIP_SESS.outputMetadata[OUTPUT_NAME];
+  const outputs = CLIP_SESS.outputMetadata as unknown as Record<string, Metadata>;
+  const odm = outputs[OUTPUT_NAME];
   const odims = odm?.dimensions ?? [];
   const D = Number(odims[odims.length - 1] ?? 512);
   if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
