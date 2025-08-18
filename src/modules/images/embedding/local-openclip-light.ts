@@ -22,6 +22,7 @@ function mkSessionOptions(): ort.InferenceSession.SessionOptions {
 let CLIP_SESS: ort.InferenceSession | null = null;
 let INPUT_NAME = 'pixel_values';
 let OUTPUT_NAME = 'image_embeds';
+let INIT_PROMISE: Promise<void> | null = null;
 
 // Track model-required spatial size; default to 224
 let TARGET_H = 224;
@@ -80,66 +81,73 @@ function fp16ToFloat32(u16: Uint16Array): Float32Array {
   return out;
 }
 
-export async function initLocalOpenCLIP() {
+export async function initLocalOpenCLIP(): Promise<void> {
   if (CLIP_SESS) return;
+  if (INIT_PROMISE) return INIT_PROMISE;
 
-  const r2Key = process.env.EMBED_MODEL_R2_KEY;
-  const url = process.env.EMBED_MODEL_URL;
-  const sha = process.env.EMBED_MODEL_SHA256;
-  const localDir = process.env.MODEL_DIR ?? '/opt/models';
-  let modelPath =
-    process.env.EMBED_MODEL_PATH || join(localDir, 'embed_model.onnx');
+  INIT_PROMISE = (async () => {
+    const r2Key = process.env.EMBED_MODEL_R2_KEY;
+    const url = process.env.EMBED_MODEL_URL;
+    const sha = process.env.EMBED_MODEL_SHA256;
+    const localDir = process.env.MODEL_DIR ?? '/opt/models';
+    let modelPath =
+      process.env.EMBED_MODEL_PATH || join(localDir, 'embed_model.onnx');
 
-  modelPath = resolve(modelPath);
+    modelPath = resolve(modelPath);
 
-  if (r2Key && url) {
-    const src = process.env.R2_BUCKET
-      ? ({ kind: 'r2', bucket: process.env.R2_BUCKET!, key: r2Key } as const)
-      : ({ kind: 'url', url } as const);
-    await ensureModelFile(modelPath, src, sha);
-  } else if (url && !process.env.EMBED_MODEL_PATH) {
-    await ensureModelFile(modelPath, { kind: 'url', url } as const, sha);
-  }
+    if (r2Key && url) {
+      const src = process.env.R2_BUCKET
+        ? ({ kind: 'r2', bucket: process.env.R2_BUCKET!, key: r2Key } as const)
+        : ({ kind: 'url', url } as const);
+      await ensureModelFile(modelPath, src, sha);
+    } else if (url && !process.env.EMBED_MODEL_PATH) {
+      await ensureModelFile(modelPath, { kind: 'url', url } as const, sha);
+    }
 
-  if (!modelPath) {
-    throw new Error(
-      'No model path. Set EMBED_MODEL_R2_KEY + EMBED_MODEL_URL (preferred) or EMBED_MODEL_PATH.'
+    if (!modelPath) {
+      throw new Error(
+        'No model path. Set EMBED_MODEL_R2_KEY + EMBED_MODEL_URL (preferred) or EMBED_MODEL_PATH.'
+      );
+    }
+
+    const so = mkSessionOptions();
+    const sess = await ort.InferenceSession.create(modelPath, so);
+
+    // Resolve IO names
+    INPUT_NAME = sess.inputNames.includes('pixel_values')
+      ? 'pixel_values'
+      : sess.inputNames[0];
+    OUTPUT_NAME = sess.outputNames.includes('image_embeds')
+      ? 'image_embeds'
+      : sess.outputNames[0];
+
+    // Read expected input dims (e.g., [1,3,256,256])
+    const inputs = sess.inputMetadata as unknown as Record<string, Metadata>;
+    const idm = inputs[INPUT_NAME];
+    const idims = idm?.dimensions ?? [];
+    const H = Number(idims[idims.length - 2] ?? 224);
+    const W = Number(idims[idims.length - 1] ?? 224);
+    TARGET_H = Number.isFinite(H) && H > 0 ? H : 224;
+    TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
+
+    // Ensure output dim is 512
+    const outputs = sess.outputMetadata as unknown as Record<string, Metadata>;
+    const odm = outputs[OUTPUT_NAME];
+    const odims = odm?.dimensions ?? [];
+    const D = Number(odims[odims.length - 1] ?? 512);
+    if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
+
+    CLIP_SESS = sess;
+    console.log(
+      `[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME} size=${TARGET_W}x${TARGET_H}`,
     );
-  }
+  })();
 
-  const so = mkSessionOptions();
-  CLIP_SESS = await ort.InferenceSession.create(modelPath, so);
-
-  // Resolve IO names
-  INPUT_NAME = CLIP_SESS.inputNames.includes('pixel_values')
-    ? 'pixel_values'
-    : CLIP_SESS.inputNames[0];
-  OUTPUT_NAME = CLIP_SESS.outputNames.includes('image_embeds')
-    ? 'image_embeds'
-    : CLIP_SESS.outputNames[0];
-
-  // Read expected input dims (e.g., [1,3,256,256])
-  const inputs = CLIP_SESS.inputMetadata as unknown as Record<string, Metadata>;
-  const idm = inputs[INPUT_NAME];
-  const idims = idm?.dimensions ?? [];
-  const H = Number(idims[idims.length - 2] ?? 224);
-  const W = Number(idims[idims.length - 1] ?? 224);
-  TARGET_H = Number.isFinite(H) && H > 0 ? H : 224;
-  TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
-
-  // Ensure output dim is 512
-  const outputs = CLIP_SESS.outputMetadata as unknown as Record<string, Metadata>;
-  const odm = outputs[OUTPUT_NAME];
-  const odims = odm?.dimensions ?? [];
-  const D = Number(odims[odims.length - 1] ?? 512);
-  if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
-
-  console.log(
-    `[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME} size=${TARGET_W}x${TARGET_H}`,
-  );
+  return INIT_PROMISE;
 }
 
 export async function embedImage(buffer: Buffer): Promise<Float32Array> {
+  await initLocalOpenCLIP();
   if (!CLIP_SESS) throw new Error('CLIP session not initialized');
   const chw = await toCHWFloat32(buffer, TARGET_W, TARGET_H);
   const tensor = new ort.Tensor('float32', chw, [1, 3, TARGET_H, TARGET_W]);
