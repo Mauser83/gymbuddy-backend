@@ -83,6 +83,28 @@ function l2normalize(v: Float32Array): Float32Array {
 
 type Metadata = { dimensions: (number | string | null)[] };
 
+function parseStaticHW(dims: readonly (number | string)[]) {
+  const rawH = dims?.[dims.length - 2];
+  const rawW = dims?.[dims.length - 1];
+
+  const asNum = (v: number | string | undefined): number | undefined => {
+    if (typeof v === 'number') return v > 0 ? v : undefined;
+    if (typeof v === 'string') {
+      const m = v.match(/^\d+$/);
+      if (m) {
+        const n = parseInt(v, 10);
+        return n > 0 ? n : undefined;
+      }
+    }
+    return undefined;
+  };
+
+  const H = asNum(rawH);
+  const W = asNum(rawW);
+
+  return { H, W };
+}
+
 export async function initLocalOpenCLIP(): Promise<void> {
   if (CLIP_SESS) return;
   if (INIT_PROMISE) return INIT_PROMISE;
@@ -123,13 +145,57 @@ export async function initLocalOpenCLIP(): Promise<void> {
       ? 'image_embeds'
       : sess.outputNames[0];
 
+
     const md = sess.inputMetadata as unknown as Record<string, Metadata>;
-    const idm = md[INPUT_NAME];
-    const dims = idm?.dimensions ?? [];
-    const H = Number(dims[dims.length - 2] ?? 224);
-    const W = Number(dims[dims.length - 1] ?? 224);
-    TARGET_H = Number.isFinite(H) && H > 0 ? H : 224;
-    TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
+    const meta = md[INPUT_NAME];
+    const dimsRaw = meta?.dimensions ?? [];
+    console.log('[openclip] input dims raw:', JSON.stringify(dimsRaw));
+
+    const ENV_SIZE = Number(
+      process.env.EMBED_IMAGE_SIZE ?? process.env.CLIP_IMAGE_SIZE,
+    );
+    let targetH: number | undefined;
+    let targetW: number | undefined;
+
+    if (Number.isFinite(ENV_SIZE) && ENV_SIZE > 0) {
+      targetH = ENV_SIZE;
+      targetW = ENV_SIZE;
+    } else {
+      const { H, W } = parseStaticHW(
+        dimsRaw.filter((d): d is number | string => d != null),
+      );
+      targetH = H;
+      targetW = W;
+
+      if (!Number.isFinite(targetH) || !Number.isFinite(targetW)) {
+        for (const s of [256, 224]) {
+          try {
+            const dummy = new ort.Tensor(
+              'float32',
+              new Float32Array(1 * 3 * s * s),
+              [1, 3, s, s],
+            );
+            await sess.run({ [INPUT_NAME]: dummy });
+            targetH = s;
+            targetW = s;
+            console.log(`[openclip] size autodetected by probe: ${s}x${s}`);
+            break;
+          } catch {
+            // try next
+          }
+        }
+      }
+    }
+
+    if (!Number.isFinite(targetH) || !Number.isFinite(targetW)) {
+      targetH = 224;
+      targetW = 224;
+    }
+
+    TARGET_H = targetH!;
+    TARGET_W = targetW!;
+    console.log(`[openclip] resolved input size: ${TARGET_H}x${TARGET_W}`);
+
 
     const oMd = sess.outputMetadata as unknown as Record<string, Metadata>;
     const odm = oMd[OUTPUT_NAME];
