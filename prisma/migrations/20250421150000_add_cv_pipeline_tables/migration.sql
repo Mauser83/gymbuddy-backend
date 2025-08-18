@@ -9,7 +9,6 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 CREATE TABLE "EquipmentImage" (
     "id" TEXT NOT NULL,
     "equipmentId" INTEGER NOT NULL,
-    "gymEquipmentId" INTEGER NOT NULL,
     "uploadedByUserId" INTEGER,
     "storageKey" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
