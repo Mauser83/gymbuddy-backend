@@ -60,7 +60,7 @@ async function toCHWFloat32(
   const resized = await sharp(input, { unlimited: false })
     .rotate() // honor EXIF
     .resize(W, H, { fit: "cover" }) // center-crop/cover
-    .toColourspace("srgb") // ensure sRGB (3ch)
+    // .toColourspace("srgb") // ensure sRGB (3ch)
     .removeAlpha() // drop alpha if present
     .raw({ depth: "uchar" }) // H*W*3 bytes
     .toBuffer();
