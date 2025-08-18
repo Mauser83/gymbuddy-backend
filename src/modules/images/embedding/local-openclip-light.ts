@@ -3,6 +3,11 @@ import sharp from 'sharp';
 import { join, resolve } from 'path';
 import { ensureModelFile } from '../models.ensure';
 
+// Ensure sharp doesn't blow up memory on large inputs
+sharp.concurrency(1);
+sharp.cache(false);
+sharp.limitInputPixels(2048 * 2048); // we downscale to model size anyway
+
 // --- Runtime & memory knobs (MUST set env threads=1 too) ---
 function mkSessionOptions(): ort.InferenceSession.SessionOptions {
   const so: Partial<ort.InferenceSession.SessionOptions> = {};
@@ -18,37 +23,57 @@ let CLIP_SESS: ort.InferenceSession | null = null;
 let INPUT_NAME = 'pixel_values';
 let OUTPUT_NAME = 'image_embeds';
 
+// Track model-required spatial size; default to 224
+let TARGET_H = 224;
+let TARGET_W = 224;
+
 // CLIP normalization (OpenAI/MobileCLIP/TinyCLIP share these)
 const MEAN = Float32Array.from([0.48145466, 0.4578275, 0.40821073]);
 const STD  = Float32Array.from([0.26862954, 0.26130258, 0.27577711]);
 
-// Preprocess Buffer -> Float32 CHW tensor (224x224)
-async function toCHWFloat32(input: Buffer): Promise<Float32Array> {
+// Preprocess Buffer -> Float32 CHW tensor of given size
+async function toCHWFloat32(
+  input: Buffer,
+  w: number,
+  h: number,
+): Promise<Float32Array> {
   const { data } = await sharp(input)
-    .resize(224, 224, { fit: 'cover' })
+    .resize(w, h, { fit: 'cover' })
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const hw = 224 * 224;
+  const hw = w * h;
   const out = new Float32Array(3 * hw);
   for (let i = 0; i < hw; i++) {
     const r = data[i * 3] / 255;
     const g = data[i * 3 + 1] / 255;
     const b = data[i * 3 + 2] / 255;
-    out[i] = (r - MEAN[0]) / STD[0];            // R plane
-    out[hw + i] = (g - MEAN[1]) / STD[1];       // G plane
-    out[2 * hw + i] = (b - MEAN[2]) / STD[2];   // B plane
+    out[i] = (r - MEAN[0]) / STD[0];            // R
+    out[hw + i] = (g - MEAN[1]) / STD[1];       // G
+    out[2 * hw + i] = (b - MEAN[2]) / STD[2];   // B
   }
   return out;
 }
 
-function l2normalize(v: Float32Array): Float32Array {
-  let s = 0;
-  for (let i = 0; i < v.length; i++) s += v[i]*v[i];
-  const inv = 1 / (Math.sqrt(s) + 1e-12);
-  const out = new Float32Array(v.length);
-  for (let i = 0; i < v.length; i++) out[i] = v[i] * inv;
+// Convert fp16 tensor data to fp32
+function fp16ToFloat32(u16: Uint16Array): Float32Array {
+  const out = new Float32Array(u16.length);
+  for (let i = 0; i < u16.length; i++) {
+    const x = u16[i];
+    const s = (x & 0x8000) >> 15;
+    const e = (x & 0x7c00) >> 10;
+    const f = x & 0x03ff;
+    let val: number;
+    if (e === 0) {
+      val = f * 5.960464477539063e-8; // 2^-24
+    } else if (e === 0x1f) {
+      val = f ? NaN : Infinity;
+    } else {
+      val = (1 + f / 1024) * Math.pow(2, e - 15);
+    }
+    out[i] = s ? -val : val;
+  }
   return out;
 }
 
@@ -82,33 +107,54 @@ export async function initLocalOpenCLIP() {
   const so = mkSessionOptions();
   CLIP_SESS = await ort.InferenceSession.create(modelPath, so);
 
-  const inputs = CLIP_SESS.inputNames;
-  const outputs = CLIP_SESS.outputNames;
-  INPUT_NAME = inputs.includes('pixel_values') ? 'pixel_values' : inputs[0];
-  OUTPUT_NAME = outputs.includes('image_embeds') ? 'image_embeds' : outputs[0];
+  // Resolve IO names
+  INPUT_NAME = CLIP_SESS.inputNames.includes('pixel_values')
+    ? 'pixel_values'
+    : CLIP_SESS.inputNames[0];
+  OUTPUT_NAME = CLIP_SESS.outputNames.includes('image_embeds')
+    ? 'image_embeds'
+    : CLIP_SESS.outputNames[0];
 
-  const meta = CLIP_SESS.outputMetadata as unknown as Record<string, {
-    dimensions: readonly number[] | null;
-  }>;
-  const dims = meta[OUTPUT_NAME]?.dimensions ?? [];
-  const dim = dims[dims.length - 1];
-  if (dim && dim !== 512) {
-    throw new Error(`Unexpected embedding dim ${dim}. Expected 512.`);
-  }
+  // Read expected input dims (e.g., [1,3,256,256])
+  const idm = CLIP_SESS.inputMetadata[INPUT_NAME];
+  const idims = idm?.dimensions ?? [];
+  const H = Number(idims[idims.length - 2] ?? 224);
+  const W = Number(idims[idims.length - 1] ?? 224);
+  TARGET_H = Number.isFinite(H) && H > 0 ? H : 224;
+  TARGET_W = Number.isFinite(W) && W > 0 ? W : 224;
 
-  console.log(`[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME}`);
+  // Ensure output dim is 512
+  const odm = CLIP_SESS.outputMetadata[OUTPUT_NAME];
+  const odims = odm?.dimensions ?? [];
+  const D = Number(odims[odims.length - 1] ?? 512);
+  if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
+
+  console.log(
+    `[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME} size=${TARGET_W}x${TARGET_H}`,
+  );
 }
 
 export async function embedImage(buffer: Buffer): Promise<Float32Array> {
   if (!CLIP_SESS) throw new Error('CLIP session not initialized');
-  const chw = await toCHWFloat32(buffer);
-  const tensor = new ort.Tensor('float32', chw, [1, 3, 224, 224]);
+  const chw = await toCHWFloat32(buffer, TARGET_W, TARGET_H);
+  const tensor = new ort.Tensor('float32', chw, [1, 3, TARGET_H, TARGET_W]);
+  const outputs = await CLIP_SESS.run({ [INPUT_NAME]: tensor });
+  const outAny = outputs[OUTPUT_NAME];
+  let vec: Float32Array;
+  if (outAny.data instanceof Float32Array) {
+    vec = outAny.data as Float32Array;
+  } else if ((outAny as any).type === 'float16' || outAny.data instanceof Uint16Array) {
+    vec = fp16ToFloat32(outAny.data as Uint16Array);
+  } else {
+    vec = Float32Array.from(outAny.data as Iterable<number>);
+  }
 
-  const outputs = (await CLIP_SESS.run({
-    [INPUT_NAME]: tensor,
-  })) as Record<string, ort.Tensor>;
-  const vec = outputs[OUTPUT_NAME].data as Float32Array; // [1,512]
-  return l2normalize(vec);
+  let s = 0;
+  for (let i = 0; i < vec.length; i++) s += vec[i] * vec[i];
+  const inv = 1 / (Math.sqrt(s) + 1e-12);
+  const out = new Float32Array(vec.length);
+  for (let i = 0; i < vec.length; i++) out[i] = vec[i] * inv;
+  return out;
 }
 
 // Optional: typed dim if you need it elsewhere
