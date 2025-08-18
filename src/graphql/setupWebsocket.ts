@@ -9,6 +9,7 @@ import { PrismaClient } from "../lib/prisma";
 import { PermissionService } from "../modules/core/permission.service";
 import { MediaService } from "../modules/media/media.service";
 import { ImageIntakeService } from "../modules/images/image-intake.service";
+import { ImagePromotionService } from "../modules/images/image-promotion.service";
 import { JWT_SECRET } from "../server";
 
 export function setupWebSocket(
@@ -16,7 +17,8 @@ export function setupWebSocket(
   prisma: PrismaClient,
   permissionService: PermissionService,
   mediaService: MediaService,
-  imageIntakeService: ImageIntakeService
+  imageIntakeService: ImageIntakeService,
+  imagePromotionService: ImagePromotionService
 ) {
   const wsServer = new WebSocketServer({
     server,
@@ -83,6 +85,7 @@ export function setupWebSocket(
             permissionService,
             mediaService,
             imageIntakeService,
+            imagePromotionService,
           };
         }
 
@@ -115,6 +118,7 @@ export function setupWebSocket(
           permissionService,
           mediaService,
           imageIntakeService,
+          imagePromotionService,
         };
       },
     },

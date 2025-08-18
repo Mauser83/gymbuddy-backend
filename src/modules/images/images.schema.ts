@@ -20,7 +20,20 @@ export const imagesTypeDefs = `
     queuedJobs: [String!]!
   }
 
+  input PromoteGymImageInput {
+    id: ID!
+    splitId: Int
+    force: Boolean = false
+  }
+
+  type PromoteGymImagePayload {
+    equipmentImage: EquipmentImage!
+    gymImage: GymEquipmentImage!
+    destinationKey: String!
+  }
+
   extend type Mutation {
     finalizeGymImage(input: FinalizeGymImageInput!): FinalizeGymImageResult!
+    promoteGymImageToGlobal(input: PromoteGymImageInput!): PromoteGymImagePayload!
   }
 `;

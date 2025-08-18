@@ -10,6 +10,7 @@ import { PermissionService } from "./modules/core/permission.service";
 import { DIContainer } from "./modules/core/di.container";
 import { MediaService } from "./modules/media/media.service";
 import { ImageIntakeService } from "./modules/images/image-intake.service";
+import { ImagePromotionService } from "./modules/images/image-promotion.service";
 import { initLocalOpenCLIP } from "./modules/images/embedding/local-openclip-light";
 
 import { errorHandler } from "./middlewares/errorHandler";
@@ -73,6 +74,7 @@ const permissionService =
   container.resolve<PermissionService>("PermissionService");
 const mediaService = container.resolve<MediaService>("MediaService");
 const imageIntakeService = new ImageIntakeService(prisma);
+const imagePromotionService = new ImagePromotionService(prisma);
 
 // === Health & Metrics ===
 app.get("/health", (_req, res) => {
@@ -96,12 +98,12 @@ app.get("/metrics", async (_req, res) => {
 async function startApolloServer() {
   console.log("Starting Apollo Server...");
   await initLocalOpenCLIP();
-  await setupApollo(app, prisma, permissionService, mediaService, imageIntakeService);
+  await setupApollo(app, prisma, permissionService, mediaService, imageIntakeService, imagePromotionService);
   console.log("Apollo ready.");
 
   const httpServer = http.createServer(app);
 
-  setupWebSocket(httpServer, prisma, permissionService, mediaService, imageIntakeService);
+  setupWebSocket(httpServer, prisma, permissionService, mediaService, imageIntakeService, imagePromotionService);
 
   httpServer.listen(PORT, () => {
     type Stage = "development" | "staging" | "production";

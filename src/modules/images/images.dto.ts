@@ -1,4 +1,7 @@
-import { IsInt, IsOptional, IsString, Matches, Min } from "class-validator";
++14
+-1
+
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, Min } from "class-validator";
 
 export class FinalizeGymImageDto {
   @IsString() storageKey!: string;
@@ -19,4 +22,17 @@ export class FinalizeGymImageDto {
   @IsOptional() @IsInt() distanceId?: number;
   @IsOptional() @IsInt() sourceId?: number;
   @IsOptional() @IsInt() splitId?: number;
+}
+
+export class PromoteGymImageDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsInt()
+  splitId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
 }
