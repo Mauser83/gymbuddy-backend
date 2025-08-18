@@ -12,6 +12,7 @@ import { GraphQLScalarType, Kind } from "graphql";
 import { EmbeddingResolvers } from "../modules/cv/embedding.resolvers";
 import { QueueResolvers } from "../modules/cv/queue.resolvers";
 import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
+import { KnnResolvers } from "../modules/cv/knn.resolvers";
 import { MediaResolvers } from "../modules/media/media.resolvers";
 import { ImagesResolvers } from "../modules/images/images.resolvers";
 import { WorkerResolvers } from "../modules/worker/worker.resolvers";
@@ -48,6 +49,7 @@ const resolvers = {
   ...EmbeddingResolvers,
   ...QueueResolvers,
   ...TaxonomyResolvers,
+  ...KnnResolvers,
   ...MediaResolvers,
   ...ImagesResolvers,
   ...WorkerResolvers,
@@ -62,6 +64,7 @@ const resolvers = {
     ...EmbeddingResolvers.Query,
     ...QueueResolvers.Query,
     ...TaxonomyResolvers.Query,
+    ...KnnResolvers.Query,
   },
   Mutation: {
     ...EquipmentResolvers.Mutation,
