@@ -1,4 +1,13 @@
-import { IsInt, IsOptional, IsString, Matches, Min } from "class-validator";
+import {
+  ArrayMinSize,
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+} from "class-validator";
 
 export class GetImageUploadUrlDto {
   @IsInt() @Min(1) gymId!: number;
@@ -12,4 +21,27 @@ export class GetImageUploadUrlDto {
   @IsOptional() @IsString() filename?: string;
 
   @IsOptional() @IsInt() @Min(30) ttlSec?: number; // clamp later (30..604800)
+}
+
+export class CreateUploadSessionDto {
+  @IsInt() @Min(1) gymId!: number;
+  @IsInt() @Min(1) count!: number;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @Matches(/^image\//i, { each: true })
+  contentTypes!: string[];
+
+  @IsOptional() @IsString() filenamePrefix?: string;
+  @IsOptional() @IsInt() equipmentId?: number;
+}
+
+export class ImageUrlManyDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  storageKeys!: string[];
+
+  @IsOptional() @IsInt() ttlSec?: number;
 }

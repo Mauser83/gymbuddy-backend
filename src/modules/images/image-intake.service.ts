@@ -3,7 +3,11 @@ import type { Prisma } from "../../generated/prisma";
 import { ImageJobStatus } from "../../generated/prisma";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { parseKey } from "../../utils/makeKey";
-import { FinalizeGymImageDto } from "../images/images.dto";
+import {
+  FinalizeGymImageDto,
+  FinalizeGymImagesDto,
+  ApplyTaxonomiesDto,
+} from "../images/images.dto";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -85,5 +89,48 @@ export class ImageIntakeService {
     await this.prisma.imageQueue.createMany({ data: jobs });
 
     return { image, queuedJobs: jobs.map(j => j.jobType) };
+  }
+
+  async finalizeGymImages(input: FinalizeGymImagesDto) {
+    const images = [] as any[];
+    let queued = 0;
+    for (const item of input.items) {
+      const dto: FinalizeGymImageDto = {
+        storageKey: item.storageKey,
+        gymId: input.defaults.gymId,
+        equipmentId: input.defaults.equipmentId,
+        sha256: item.sha256,
+        angleId: item.angleId,
+        heightId: item.heightId,
+        distanceId: item.distanceId,
+        mirrorId: item.mirrorId,
+        lightingId: item.lightingId ?? input.defaults.lightingId,
+        splitId: item.splitId ?? input.defaults.splitId,
+        sourceId: item.sourceId ?? input.defaults.sourceId,
+      } as FinalizeGymImageDto;
+      const res = await this.finalizeGymImage(dto);
+      images.push(res.image);
+      queued += res.queuedJobs.length;
+    }
+    return { images, queuedJobs: queued };
+  }
+
+  async applyTaxonomiesToGymImages(input: ApplyTaxonomiesDto) {
+    // Use the unchecked variant so we can update taxonomy foreign keys in bulk
+    // via their scalar IDs. The regular UpdateMany type omits relation columns.
+    const data: Prisma.GymEquipmentImageUncheckedUpdateManyInput = {};
+    if (input.angleId !== undefined) data.angleId = input.angleId;
+    if (input.heightId !== undefined) data.heightId = input.heightId;
+    if (input.distanceId !== undefined) data.distanceId = input.distanceId;
+    if (input.lightingId !== undefined) data.lightingId = input.lightingId;
+    if (input.mirrorId !== undefined) data.mirrorId = input.mirrorId;
+    if (input.splitId !== undefined) data.splitId = input.splitId;
+    if (input.sourceId !== undefined) data.sourceId = input.sourceId;
+
+    const out = await this.prisma.gymEquipmentImage.updateMany({
+      where: { id: { in: input.imageIds } },
+      data,
+    });
+    return { updatedCount: out.count };
   }
 }

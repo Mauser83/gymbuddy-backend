@@ -1,5 +1,6 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
 import { makeKey, parseKey } from "../../utils/makeKey";
 
 const BUCKET = process.env.R2_BUCKET!;
@@ -115,5 +116,54 @@ export class MediaService {
       expiresAt,
       requiredHeaders: [{ name: "Content-Type", value: input.contentType }],
     };
+  }
+
+  async createUploadSession(input: {
+    gymId: number;
+    count: number;
+    contentTypes: string[];
+    filenamePrefix?: string;
+    equipmentId?: number;
+  }) {
+    if (input.count < 1 || input.count > 10)
+      throw new Error("count must be between 1 and 10");
+    if (input.contentTypes.length !== input.count)
+      throw new Error("contentTypes length must equal count");
+
+    const ttl = 900; // ~15 minutes
+    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+    const items = await Promise.all(
+      input.contentTypes.map(async (ct) => {
+        const presign = await this.getImageUploadUrl({
+          gymId: input.gymId,
+          contentType: ct,
+          filename: input.filenamePrefix,
+          ttlSec: ttl,
+        });
+        return {
+          url: presign.url,
+          storageKey: presign.key,
+          expiresAt: presign.expiresAt,
+          requiredHeaders: presign.requiredHeaders,
+        };
+      })
+    );
+
+    return {
+      sessionId: randomUUID(),
+      items,
+      expiresAt,
+    };
+  }
+
+  async imageUrlMany(storageKeys: string[], ttlSec = 600) {
+    return Promise.all(
+      storageKeys.map(async (key) => {
+        const url = await this.presignGetForKey(key, ttlSec);
+        const expiresAt = new Date(Date.now() + clampTtl(ttlSec) * 1000).toISOString();
+        return { storageKey: key, url, expiresAt };
+      })
+    );
   }
 }

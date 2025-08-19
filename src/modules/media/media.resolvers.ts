@@ -1,5 +1,9 @@
 import { validateOrReject } from "class-validator";
-import { GetImageUploadUrlDto } from "./media.dto";
+import {
+  GetImageUploadUrlDto,
+  CreateUploadSessionDto,
+  ImageUrlManyDto,
+} from "./media.dto";
 import { AuthContext } from "../auth/auth.types";
 
 export const MediaResolvers = {
@@ -9,7 +13,6 @@ export const MediaResolvers = {
       { input }: { input: GetImageUploadUrlDto },
       ctx: AuthContext
     ) => {
-      // Authorization checks could be added here
       const dto = Object.assign(new GetImageUploadUrlDto(), input);
       await validateOrReject(dto);
 
@@ -19,6 +22,28 @@ export const MediaResolvers = {
         filename: dto.filename,
         ttlSec: dto.ttlSec,
       });
+    },
+  
+    createUploadSession: async (
+      _: unknown,
+      { input }: { input: CreateUploadSessionDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new CreateUploadSessionDto(), input);
+      await validateOrReject(dto);
+      return ctx.mediaService.createUploadSession(dto);
+    },
+  },
+
+  Query: {
+    imageUrlMany: async (
+      _: unknown,
+      args: ImageUrlManyDto,
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ImageUrlManyDto(), args);
+      await validateOrReject(dto);
+      return ctx.mediaService.imageUrlMany(dto.storageKeys, dto.ttlSec);
     },
   },
 };

@@ -1,6 +1,8 @@
 import { validateOrReject } from "class-validator";
 import {
   FinalizeGymImageDto,
+  FinalizeGymImagesDto,
+  ApplyTaxonomiesDto,
   PromoteGymImageDto,
   ApproveGymImageDto,
   RejectGymImageDto,
@@ -18,6 +20,26 @@ export const ImagesResolvers = {
       const dto = Object.assign(new FinalizeGymImageDto(), input);
       await validateOrReject(dto);
       return ctx.imageIntakeService.finalizeGymImage(dto);
+    },
+
+    finalizeGymImages: async (
+      _parent: unknown,
+      { input }: { input: FinalizeGymImagesDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new FinalizeGymImagesDto(), input);
+      await validateOrReject(dto);
+      return ctx.imageIntakeService.finalizeGymImages(dto);
+    },
+
+    applyTaxonomiesToGymImages: async (
+      _parent: unknown,
+      { input }: { input: ApplyTaxonomiesDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ApplyTaxonomiesDto(), input);
+      await validateOrReject(dto);
+      return ctx.imageIntakeService.applyTaxonomiesToGymImages(dto);
     },
 
     promoteGymImageToGlobal: async (
