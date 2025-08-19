@@ -1,6 +1,3 @@
-+14
--1
-
 import { IsBoolean, IsInt, IsOptional, IsString, Matches, Min } from "class-validator";
 
 export class FinalizeGymImageDto {
@@ -35,4 +32,39 @@ export class PromoteGymImageDto {
   @IsOptional()
   @IsBoolean()
   force?: boolean;
+}
+
+export class ApproveGymImageDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsInt()
+  splitId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
+}
+
+export class RejectGymImageDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleteObject?: boolean;
+}
+
+export class CandidateGlobalImagesDto {
+  @IsInt()
+  equipmentId!: number;
+
+  @IsOptional()
+  @IsInt()
+  limit?: number;
 }

@@ -50,6 +50,7 @@ describe("promoteGymImageToGlobal", () => {
     mediaService: {} as any,
     imageIntakeService: {} as any,
     imagePromotionService: {} as any,
+    imageModerationService: {} as any,
   };
 
   it("copies object and creates equipment image", async () => {

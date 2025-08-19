@@ -10,6 +10,7 @@ import { PermissionService } from "../modules/core/permission.service";
 import { MediaService } from "../modules/media/media.service";
 import { ImageIntakeService } from "../modules/images/image-intake.service";
 import { ImagePromotionService } from "../modules/images/image-promotion.service";
+import { ImageModerationService } from "../modules/images/image-moderation.service";
 import { JWT_SECRET } from "../server";
 
 export function setupWebSocket(
@@ -18,7 +19,8 @@ export function setupWebSocket(
   permissionService: PermissionService,
   mediaService: MediaService,
   imageIntakeService: ImageIntakeService,
-  imagePromotionService: ImagePromotionService
+  imagePromotionService: ImagePromotionService,
+  imageModerationService: ImageModerationService
 ) {
   const wsServer = new WebSocketServer({
     server,
@@ -86,6 +88,7 @@ export function setupWebSocket(
             mediaService,
             imageIntakeService,
             imagePromotionService,
+            imageModerationService,
           };
         }
 
@@ -119,6 +122,7 @@ export function setupWebSocket(
           mediaService,
           imageIntakeService,
           imagePromotionService,
+          imageModerationService,
         };
       },
     },

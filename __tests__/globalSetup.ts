@@ -15,6 +15,7 @@ import { AuthContext, UserRole } from "../src/modules/auth/auth.types";
 import { MediaService } from '../src/modules/media/media.service';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
 import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
+import { ImageModerationService } from '../src/modules/images/image-moderation.service';
 import { getPort } from "get-port-please";
 
 async function cleanDatabase() {
@@ -67,6 +68,7 @@ export default async function () {
           mediaService: {} as MediaService,
           imageIntakeService: {} as ImageIntakeService,
           imagePromotionService: {} as ImagePromotionService,
+          imageModerationService: {} as ImageModerationService,
           userId: 1,
           userRole: UserRole.USER,
           isPremium: true,
