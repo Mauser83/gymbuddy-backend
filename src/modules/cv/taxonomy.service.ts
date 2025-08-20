@@ -38,7 +38,16 @@ export class TaxonomyService {
     return row ? { ...row, kind: k } : null;
   }
 
-  async create(
+  private async nextDisplayOrder(kind: TaxonomyKind) {
+    const { d } = this.delegate(kind)!;
+    const last = await d.findFirst({
+      select: { displayOrder: true },
+      orderBy: { displayOrder: "desc" },
+    });
+    return (last?.displayOrder ?? 0) + 1;
+  }
+
+    async create(
     kind: TaxonomyKind,
     input: {
       key: string;
@@ -49,18 +58,18 @@ export class TaxonomyService {
     },
   ) {
     const { d, kind: k } = this.delegate(kind)!;
-    try {
-      const row = await d.create({ data: { ...input } });
-      return { ...row, kind: k };
-    } catch (e: any) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === "P2002"
-      ) {
-        throw new Error("Key already exists");
-      }
-      throw e;
-    }
+    const displayOrder =
+      input.displayOrder ?? (await this.nextDisplayOrder(kind));
+    const row = await d.create({
+      data: {
+        key: input.key,
+        label: input.label.trim(),
+        description: input.description,
+        active: input.active ?? true,
+        displayOrder,
+      },
+    });
+    return { ...row, kind: k };
   }
 
   async update(

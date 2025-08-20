@@ -1,5 +1,6 @@
 import type { AuthContext } from "../auth/auth.types";
 import { TaxonomyService } from "./taxonomy.service";
+import { GraphQLError } from "graphql";
 import {
   CreateTaxonomyInputDto,
   CreateTaxonomyDto,
@@ -40,7 +41,17 @@ export const TaxonomyResolvers = {
       });
       await validateInput(dto, CreateTaxonomyDto);
       const service = new TaxonomyService(context.prisma);
-      return service.create(args.kind, args.input);
+      try {
+        return await service.create(args.kind, args.input);
+      } catch (e: any) {
+        console.error(e);
+        if (e.code === "P2002" || /unique/i.test(e.message)) {
+          throw new GraphQLError("Key already exists for this taxonomy kind", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        throw e;
+      }
     },
     updateTaxonomyType: async (
       _: unknown,
