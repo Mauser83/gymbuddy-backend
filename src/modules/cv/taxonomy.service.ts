@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from "../../lib/prisma";
 import { TaxonomyKind } from "./taxonomy.types";
+import { CreateTaxonomyInputDto } from "./taxonomy.dto";
 
 export class TaxonomyService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -47,31 +48,29 @@ export class TaxonomyService {
     return (last?.displayOrder ?? 0) + 1;
   }
 
-  async create(
-    kind: TaxonomyKind,
-    input: {
-      key: string;
-      label: string;
-      description?: string;
-      active?: boolean;
-      displayOrder?: number;
-    },
-  ) {
-    const { d, kind: k } = this.delegate(kind)!;
-    const displayOrder =
-      input.displayOrder ?? (await this.nextDisplayOrder(kind));
-
+async create(kind: TaxonomyKind, input: CreateTaxonomyInputDto) {
+  const { d, kind: k } = this.delegate(kind)!;
+  const displayOrder =
+    input.displayOrder ??
+    (await d.count({ where: { active: true } })) + 1;
+  try {
     const row = await d.create({
       data: {
         key: input.key,
-        label: input.label.trim(),
+        label: input.label,
         description: input.description,
         active: input.active ?? true,
         displayOrder,
       },
     });
     return { ...row, kind: k };
+  } catch (e: any) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new Error("Key already exists");
+    }
+    throw e;
   }
+}
 
   async update(
     kind: TaxonomyKind,
