@@ -79,6 +79,7 @@ const resolvers = {
     ...MediaResolvers.Mutation,
     ...ImagesResolvers.Mutation,
     ...WorkerResolvers.Mutation,
+    ...TaxonomyResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,
