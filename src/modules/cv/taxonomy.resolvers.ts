@@ -42,7 +42,19 @@ export const TaxonomyResolvers = {
       await validateInput(dto, CreateTaxonomyDto);
       const service = new TaxonomyService(context.prisma);
       try {
-        return await service.create(args.kind, args.input);
+        const row = await service.create(args.kind, args.input);
+        if (
+          row == null ||
+          row.id == null ||
+          row.key == null ||
+          row.label == null ||
+          row.active == null ||
+          row.displayOrder == null ||
+          row.kind == null
+        ) {
+          throw new Error("Service returned incomplete taxonomy row");
+        }
+        return row;
       } catch (e: any) {
         console.error(e);
         if (e.code === "P2002" || /unique/i.test(e.message)) {

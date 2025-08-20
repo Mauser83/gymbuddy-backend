@@ -28,12 +28,12 @@ export class CreateTaxonomyInputDto {
 
   @IsOptional()
   @IsBoolean()
-  active?: boolean = true;
+  active?: boolean;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  displayOrder?: number = 0;
+  displayOrder?: number;
 }
 
 export class CreateTaxonomyDto extends CreateTaxonomyInputDto {

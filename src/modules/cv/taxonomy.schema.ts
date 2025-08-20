@@ -15,8 +15,8 @@ export const taxonomyTypeDefs = `
     key: String!
     label: String!
     description: String
-    active: Boolean = true
-    displayOrder: Int = 0
+    active: Boolean
+    displayOrder: Int
   }
 
   input UpdateTaxonomyInput {
