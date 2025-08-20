@@ -36,11 +36,9 @@ export const TaxonomyResolvers = {
       args: { kind: TaxonomyKind; input: CreateTaxonomyInputDto },
       context: AuthContext,
     ) => {
-      console.log("createTaxonomyType called");
       const dto = Object.assign(new CreateTaxonomyDto(), args.input, {
         kind: args.kind,
       });
-      console.log("createTaxonomyType dto:", dto)
       await validateInput(dto, CreateTaxonomyDto);
       const service = new TaxonomyService(context.prisma);
       try {
