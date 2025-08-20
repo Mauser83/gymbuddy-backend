@@ -59,10 +59,8 @@ export class TaxonomyService {
   ) {
     const { d, kind: k } = this.delegate(kind)!;
     const displayOrder =
-      input.displayOrder ??
-      (await d
-        .aggregate({ _max: { displayOrder: true } })
-        .then((r: any) => (r._max.displayOrder ?? 0) + 1));
+      input.displayOrder ?? (await this.nextDisplayOrder(kind));
+
     const row = await d.create({
       data: {
         key: input.key,
@@ -70,14 +68,6 @@ export class TaxonomyService {
         description: input.description,
         active: input.active ?? true,
         displayOrder,
-      },
-      select: {
-        id: true,
-        key: true,
-        label: true,
-        description: true,
-        active: true,
-        displayOrder: true,
       },
     });
     return { ...row, kind: k };
