@@ -36,6 +36,7 @@ export const TaxonomyResolvers = {
       args: { kind: TaxonomyKind; input: CreateTaxonomyInputDto },
       context: AuthContext,
     ) => {
+      console.log("createTaxonomyType args:", args)
       const dto = Object.assign(new CreateTaxonomyDto(), args.input, {
         kind: args.kind,
       });
