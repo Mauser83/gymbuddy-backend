@@ -14,7 +14,8 @@ export const queueTypeDefs = `
 
   type ImageQueue {
     id: ID!
-    imageId: ID!
+    imageId: ID
+    storageKey: String
     jobType: String!
     status: ImageJobStatus!
     priority: Int!
