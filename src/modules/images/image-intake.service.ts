@@ -30,7 +30,7 @@ export class ImageIntakeService {
     },
   });
 
- private defaultTaxonomyIds:
+private defaultTaxonomyIds:
     | {
         sourceId: number | null;
         splitId: number | null;
@@ -46,36 +46,37 @@ export class ImageIntakeService {
     if (!this.defaultTaxonomyIds) {
       const [source, split, angle, height, distance, lighting, mirror] =
         await Promise.all([
-          this.prisma.sourceType.findUnique({
-            where: { key: "MOBILE_APP" },
+          this.prisma.sourceType.findFirst({
+            where: { key: { equals: "mobile_app", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.splitType.findUnique({
-            where: { key: "TRAINING" },
+          this.prisma.splitType.findFirst({
+            where: { key: { equals: "training", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.angleType.findUnique({
-            where: { key: "UNKNOWN" },
+          this.prisma.angleType.findFirst({
+            where: { key: { equals: "unknown", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.heightType.findUnique({
-            where: { key: "UNKNOWN" },
+          this.prisma.heightType.findFirst({
+            where: { key: { equals: "unknown", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.distanceType.findUnique({
-            where: { key: "UNKNOWN" },
+          this.prisma.distanceType.findFirst({
+            where: { key: { equals: "unknown", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.lightingType.findUnique({
-            where: { key: "UNKNOWN" },
+          this.prisma.lightingType.findFirst({
+            where: { key: { equals: "unknown", mode: "insensitive" } },
             select: { id: true },
           }),
-          this.prisma.mirrorType.findUnique({
-            where: { key: "UNKNOWN" },
+          this.prisma.mirrorType.findFirst({
+            where: { key: { equals: "unknown", mode: "insensitive" } },
             select: { id: true },
           }),
         ]);
-      this.defaultTaxonomyIds = {
+
+      const ids = {
         sourceId: source?.id ?? null,
         splitId: split?.id ?? null,
         angleId: angle?.id ?? null,
@@ -83,6 +84,26 @@ export class ImageIntakeService {
         distanceId: distance?.id ?? null,
         lightingId: lighting?.id ?? null,
         mirrorId: mirror?.id ?? null,
+      };
+
+      const missing = Object.entries(ids)
+        .filter(([, v]) => !v)
+        .map(([k]) => k);
+
+      if (missing.length) {
+        throw new Error(
+          `Missing default taxonomy IDs: ${missing.join(", ")}. Seed keys must exist (mobile_app, training, unknown for angle/height/distance/lighting/mirror).`
+        );
+      }
+
+      this.defaultTaxonomyIds = ids as {
+        sourceId: number;
+        splitId: number;
+        angleId: number;
+        heightId: number;
+        distanceId: number;
+        lightingId: number;
+        mirrorId: number;
       };
     }
     return this.defaultTaxonomyIds;
