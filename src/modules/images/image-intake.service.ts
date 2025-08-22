@@ -30,6 +30,64 @@ export class ImageIntakeService {
     },
   });
 
+ private defaultTaxonomyIds:
+    | {
+        sourceId: number | null;
+        splitId: number | null;
+        angleId: number | null;
+        heightId: number | null;
+        distanceId: number | null;
+        lightingId: number | null;
+        mirrorId: number | null;
+      }
+    | null = null;
+
+  private async getDefaultTaxonomyIds() {
+    if (!this.defaultTaxonomyIds) {
+      const [source, split, angle, height, distance, lighting, mirror] =
+        await Promise.all([
+          this.prisma.sourceType.findUnique({
+            where: { key: "MOBILE_APP" },
+            select: { id: true },
+          }),
+          this.prisma.splitType.findUnique({
+            where: { key: "TRAINING" },
+            select: { id: true },
+          }),
+          this.prisma.angleType.findUnique({
+            where: { key: "UNKNOWN" },
+            select: { id: true },
+          }),
+          this.prisma.heightType.findUnique({
+            where: { key: "UNKNOWN" },
+            select: { id: true },
+          }),
+          this.prisma.distanceType.findUnique({
+            where: { key: "UNKNOWN" },
+            select: { id: true },
+          }),
+          this.prisma.lightingType.findUnique({
+            where: { key: "UNKNOWN" },
+            select: { id: true },
+          }),
+          this.prisma.mirrorType.findUnique({
+            where: { key: "UNKNOWN" },
+            select: { id: true },
+          }),
+        ]);
+      this.defaultTaxonomyIds = {
+        sourceId: source?.id ?? null,
+        splitId: split?.id ?? null,
+        angleId: angle?.id ?? null,
+        heightId: height?.id ?? null,
+        distanceId: distance?.id ?? null,
+        lightingId: lighting?.id ?? null,
+        mirrorId: mirror?.id ?? null,
+      };
+    }
+    return this.defaultTaxonomyIds;
+  }
+  
   async finalizeGymImage(input: FinalizeGymImageDto) {
     // 1) Validate key & gymId
     const parsed = parseKey(input.storageKey);
@@ -91,26 +149,60 @@ export class ImageIntakeService {
     return { image, queuedJobs: jobs.map(j => j.jobType) };
   }
 
-  async finalizeGymImages(input: FinalizeGymImagesDto) {
-    const images = [] as any[];
+    async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
+    const defaults = await this.getDefaultTaxonomyIds();
+    const d = input.defaults;
+    const join = await this.prisma.gymEquipment.upsert({
+      where: { gymId_equipmentId: { gymId: d.gymId, equipmentId: d.equipmentId } },
+      update: {},
+      create: { gymId: d.gymId, equipmentId: d.equipmentId },
+    });
+
+    const images: any[] = [];
     let queued = 0;
-    for (const item of input.items) {
-      const dto: FinalizeGymImageDto = {
-        storageKey: item.storageKey,
-        gymId: input.defaults.gymId,
-        equipmentId: input.defaults.equipmentId,
-        sha256: item.sha256,
-        angleId: item.angleId,
-        heightId: item.heightId,
-        distanceId: item.distanceId,
-        mirrorId: item.mirrorId,
-        lightingId: item.lightingId ?? input.defaults.lightingId,
-        splitId: item.splitId ?? input.defaults.splitId,
-        sourceId: item.sourceId ?? input.defaults.sourceId,
-      } as FinalizeGymImageDto;
-      const res = await this.finalizeGymImage(dto);
-      images.push(res.image);
-      queued += res.queuedJobs.length;
+    for (const it of input.items) {
+      const parsed = parseKey(it.storageKey);
+      if (!parsed || parsed.kind !== "upload" || parsed.gymId !== d.gymId) {
+        throw new Error("storageKey must be under private/uploads/... and match gymId");
+      }
+      const objectUuid = parsed.uuid;
+      const image = await this.prisma.gymEquipmentImage.create({
+        data: {
+          gymId: d.gymId,
+          equipmentId: d.equipmentId,
+          gymEquipmentId: join.id,
+          storageKey: it.storageKey,
+          objectUuid,
+          sha256: it.sha256 ?? null,
+          capturedByUserId: userId ?? null,
+          capturedAt: new Date(),
+          sourceId: it.sourceId ?? d.sourceId ?? defaults.sourceId,
+          splitId: it.splitId ?? d.splitId ?? defaults.splitId,
+          angleId: it.angleId ?? defaults.angleId,
+          heightId: it.heightId ?? defaults.heightId,
+          distanceId: it.distanceId ?? defaults.distanceId,
+          lightingId: it.lightingId ?? d.lightingId ?? defaults.lightingId,
+          mirrorId: it.mirrorId ?? defaults.mirrorId,
+          status: "PENDING",
+          isSafe: false,
+        },
+      });
+
+      const jobs: Prisma.ImageQueueCreateManyInput[] = [
+        ...(it.sha256
+          ? []
+          : [{
+              jobType: "HASH",
+              status: ImageJobStatus.pending,
+              priority: 0,
+              storageKey: it.storageKey,
+            }]),
+        { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: it.storageKey },
+        { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: it.storageKey },
+      ];
+      await this.prisma.imageQueue.createMany({ data: jobs });
+      images.push(image);
+      queued += jobs.length;
     }
     return { images, queuedJobs: queued };
   }

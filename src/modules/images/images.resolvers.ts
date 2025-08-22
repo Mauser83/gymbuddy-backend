@@ -29,7 +29,7 @@ export const ImagesResolvers = {
     ) => {
       const dto = Object.assign(new FinalizeGymImagesDto(), input);
       await validateOrReject(dto);
-      return ctx.imageIntakeService.finalizeGymImages(dto);
+      return ctx.imageIntakeService.finalizeGymImages(dto, ctx.userId);
     },
 
     applyTaxonomiesToGymImages: async (

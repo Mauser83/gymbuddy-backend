@@ -730,6 +730,7 @@ model GymEquipmentImage {
   candidateForGlobal   Boolean        @default(false)
   recognitionScoreAtCapture Float?
   storageKey       String?
+  objectUuid       String?
   sha256           String? @unique
   isSafe           Boolean?
   nsfwScore        Float?

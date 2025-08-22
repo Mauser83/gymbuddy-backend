@@ -1,0 +1,1 @@
+ALTER TABLE "GymEquipmentImage" ADD COLUMN IF NOT EXISTS "objectUuid" TEXT;

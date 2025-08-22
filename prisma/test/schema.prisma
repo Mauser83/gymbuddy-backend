@@ -730,8 +730,12 @@ model GymEquipmentImage {
   candidateForGlobal   Boolean        @default(false)
   recognitionScoreAtCapture Float?
   storageKey       String?
+  objectUuid       String?
   sha256           String? @unique
-
+  isSafe           Boolean?
+  nsfwScore        Float?
+  hasPerson        Boolean?
+  
   // relations
   gymEquipment   GymEquipment?   @relation(fields: [gymEquipmentId], references: [id])
   gym            Gym            @relation(fields: [gymId], references: [id])
