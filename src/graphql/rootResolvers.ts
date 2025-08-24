@@ -65,6 +65,7 @@ const resolvers = {
     ...QueueResolvers.Query,
     ...TaxonomyResolvers.Query,
     ...KnnResolvers.Query,
+    ...MediaResolvers.Query
   },
   Mutation: {
     ...EquipmentResolvers.Mutation,
