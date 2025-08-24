@@ -1,5 +1,5 @@
 export const queueTypeDefs = `
-  enum ImageJobStatus { pending running failed done }
+  enum ImageJobStatus { pending processing succeeded failed }
 
   extend type Query {
     imageJob(id: ID!): ImageQueue
