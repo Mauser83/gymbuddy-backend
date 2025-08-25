@@ -33,7 +33,7 @@ export class KnnService {
             FROM "ImageEmbedding" ie
             WHERE (
                   ie."gymImageId" = ${id}
-              OR (${idIsNumeric} AND ie."equipmentImageId" = ${numericId})
+              OR (${idIsNumeric} AND ie."imageId" = ${numericId})
             )
               AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
               AND ie."modelName"   = ${ACTIVE_MODEL.name}
@@ -53,7 +53,7 @@ export class KnnService {
            AND ie."modelName"   = ${ACTIVE_MODEL.name}
            AND ie."modelVersion"= ${ACTIVE_MODEL.version}
           JOIN "EquipmentImage" ei
-            ON ei.id = ie."equipmentImageId"
+            ON ei.id = ie."imageId"
           ORDER BY ie."embeddingVec" <=> seed.qvec
           LIMIT ${limit};
         `;
@@ -66,7 +66,7 @@ export class KnnService {
             FROM "ImageEmbedding" ie
             WHERE (
                   ie."gymImageId" = ${id}
-              OR (${idIsNumeric} AND ie."equipmentImageId" = ${numericId})
+              OR (${idIsNumeric} AND ie."imageId" = ${numericId})
             )
               AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
               AND ie."modelName"   = ${ACTIVE_MODEL.name}
@@ -106,7 +106,7 @@ export class KnnService {
             1.0 - (ie."embeddingVec" <=> ${vectorParam}::vector) AS score,
             ei."storageKey"  AS storage_key
           FROM "ImageEmbedding" ie
-          JOIN "EquipmentImage" ei ON ei.id = ie."equipmentImageId"
+          JOIN "EquipmentImage" ei ON ei.id = ie."imageId"
           WHERE ie."scope_type" = 'GLOBAL'
             AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
             AND ie."modelName"   = ${ACTIVE_MODEL.name}
