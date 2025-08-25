@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../lib/prisma";
+import { Prisma, PrismaClient } from "../../lib/prisma";
 import {
   GetImageEmbeddingsByImageDto,
   UpsertImageEmbeddingDto,
@@ -26,19 +26,23 @@ export class EmbeddingService {
     });
   }
 
-    async getLatestEmbeddedImage(gymId?: number) {
-    const gymParam = gymId ?? null;
+  async getLatestEmbeddedImage(gymId?: number) {
+    const whereGym =
+      gymId == null ? Prisma.sql`` : Prisma.sql`AND gi."gymId" = ${gymId}`;
+
     const rows = await this.prisma.$queryRaw<
       { imageId: string; createdAt: Date }[]
-    >`
-      SELECT gi.id AS "imageId", emb."createdAt"
-      FROM "ImageEmbedding" emb
-      JOIN "GymEquipmentImage" gi ON gi.id = emb."gymImageId"
-      WHERE emb."embeddingVec" IS NOT NULL
-        AND (${gymParam} IS NULL OR gi."gymId" = ${gymParam})
-      ORDER BY emb."createdAt" DESC
-      LIMIT 1;
-    `;
+    >(
+      Prisma.sql`
+        SELECT gi.id AS "imageId", emb."createdAt"
+        FROM "ImageEmbedding" emb
+        JOIN "GymEquipmentImage" gi ON gi.id = emb."gymImageId"
+        WHERE emb."embeddingVec" IS NOT NULL
+        ${whereGym}
+        ORDER BY emb."createdAt" DESC
+        LIMIT 1;
+      `
+    );
     return rows[0] ?? null;
   }
 
