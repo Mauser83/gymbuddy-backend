@@ -777,8 +777,8 @@ model ImageEmbedding {
   // NEW (gym):
   gymImageId   String?               // FK -> GymEquipmentImage.id (GYM embeddings)
 
-  scopeType    EmbeddingScopeType?
-  gymId        Int?
+  scopeType    EmbeddingScopeType? @map("scope_type")
+  gymId        Int?                @map("gym_id")
 
   scope        String                // e.g. 'GLOBAL' or 'GYM:<gymId>'
   modelVendor  String
@@ -800,8 +800,8 @@ model ImageEmbedding {
   @@unique([gymImageId, scope, modelVendor, modelName, modelVersion])
 
   @@index([scope, modelVendor, modelName, modelVersion])
-  @@index([scopeType])
-  @@index([gymId])
+  @@index([scopeType], map: "ImageEmbedding_scope_type_idx")
+  @@index([gymId], map: "ImageEmbedding_gym_id_idx")
   @@index([createdAt])
 }
 
