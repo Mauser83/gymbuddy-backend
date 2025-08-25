@@ -2,6 +2,7 @@ export const embeddingTypeDefs = `
   extend type Query {
     imageEmbeddings(imageId: ID!, scope: String): [ImageEmbedding!]!
     imageEmbedding(id: ID!): ImageEmbedding
+    latestEmbeddedImage(gymId: Int): LatestEmbeddedImage
   }
 
   extend type Mutation {
@@ -20,6 +21,11 @@ export const embeddingTypeDefs = `
     dim: Int!
     createdAt: DateTime!
     # vector NOT exposed on the public API
+  }
+
+  type LatestEmbeddedImage {
+    imageId: ID!
+    createdAt: DateTime!
   }
 
   input UpsertImageEmbeddingInput {

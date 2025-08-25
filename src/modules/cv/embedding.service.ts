@@ -26,6 +26,22 @@ export class EmbeddingService {
     });
   }
 
+    async getLatestEmbeddedImage(gymId?: number) {
+    const gymParam = gymId ?? null;
+    const rows = await this.prisma.$queryRaw<
+      { imageId: string; createdAt: Date }[]
+    >`
+      SELECT gi.id AS "imageId", emb."createdAt"
+      FROM "ImageEmbedding" emb
+      JOIN "GymEquipmentImage" gi ON gi.id = emb."gymImageId"
+      WHERE emb."embeddingVec" IS NOT NULL
+        AND (${gymParam} IS NULL OR gi."gymId" = ${gymParam})
+      ORDER BY emb."createdAt" DESC
+      LIMIT 1;
+    `;
+    return rows[0] ?? null;
+  }
+
   async upsert(input: UpsertImageEmbeddingDto, vector?: number[]) {
     await validateInput(input, UpsertImageEmbeddingDto);
     const whereUnique = {
