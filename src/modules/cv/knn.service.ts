@@ -21,24 +21,8 @@ export class KnnService {
     let hits;
     if (input.imageId) {
       const id = input.imageId;
-      const isIdNumeric = isNumeric(id);
-      const numericId = isIdNumeric ? Number(id) : null;
-
-      const seedRows = await this.prisma.$queryRaw<{ seed_gym_id: number | null }[]>`
-        SELECT ie."gymId" AS seed_gym_id
-        FROM "ImageEmbedding" ie
-        WHERE (
-              ie."gymImageId" = ${id}
-          OR (${isIdNumeric} AND ie."imageId" = ${numericId})
-        )
-          AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
-          AND ie."modelName"   = ${ACTIVE_MODEL.name}
-          AND ie."modelVersion"= ${ACTIVE_MODEL.version}
-        ORDER BY ie."createdAt" DESC
-        LIMIT 1
-      `;
-      if (!seedRows.length) throw new Error(`No embedding found for imageId "${id}".`);
-      const seedGymId = seedRows[0].seed_gym_id;
+      const idIsNumeric = isNumeric(id);
+      const numericId = idIsNumeric ? Number(id) : null;
 
       if (input.scope === "GLOBAL") {
         hits = await this.prisma.$queryRaw<
@@ -49,7 +33,7 @@ export class KnnService {
             FROM "ImageEmbedding" ie
             WHERE (
                   ie."gymImageId" = ${id}
-              OR (${isIdNumeric} AND ie."imageId" = ${numericId})
+              OR (${idIsNumeric} AND ie."equipmentImageId" = ${numericId})
             )
               AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
               AND ie."modelName"   = ${ACTIVE_MODEL.name}
@@ -58,33 +42,31 @@ export class KnnService {
             LIMIT 1
           )
           SELECT
-            ei.id AS image_id,
+            ei.id            AS image_id,
             ei."equipmentId" AS equipment_id,
             1.0 - (ie."embeddingVec" <=> seed.qvec) AS score,
-            ei."storageKey" AS storage_key
+            ei."storageKey"  AS storage_key
           FROM seed
           JOIN "ImageEmbedding" ie
             ON ie."scope_type" = 'GLOBAL'
            AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
            AND ie."modelName"   = ${ACTIVE_MODEL.name}
            AND ie."modelVersion"= ${ACTIVE_MODEL.version}
-          JOIN "EquipmentImage" ei ON ei.id = ie."imageId"
+          JOIN "EquipmentImage" ei
+            ON ei.id = ie."equipmentImageId"
           ORDER BY ie."embeddingVec" <=> seed.qvec
-          LIMIT ${limit}
+          LIMIT ${limit};
         `;
       } else {
-        if (seedGymId == null) {
-          throw new Error("Seed image must belong to a gym for GYM scope search");
-        }
         hits = await this.prisma.$queryRaw<
           { image_id: string; equipment_id: number; score: number; storage_key: string }[]
         >`
           WITH seed AS (
-            SELECT ie."embeddingVec" AS qvec
+            SELECT ie."embeddingVec" AS qvec, ie."gym_id" AS seed_gym_id
             FROM "ImageEmbedding" ie
             WHERE (
                   ie."gymImageId" = ${id}
-              OR (${isIdNumeric} AND ie."imageId" = ${numericId})
+              OR (${idIsNumeric} AND ie."equipmentImageId" = ${numericId})
             )
               AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
               AND ie."modelName"   = ${ACTIVE_MODEL.name}
@@ -93,20 +75,21 @@ export class KnnService {
             LIMIT 1
           )
           SELECT
-            gi.id AS image_id,
+            gi.id            AS image_id,
             gi."equipmentId" AS equipment_id,
             1.0 - (ie."embeddingVec" <=> seed.qvec) AS score,
-            gi."storageKey" AS storage_key
+            gi."storageKey"  AS storage_key
           FROM seed
           JOIN "ImageEmbedding" ie
             ON ie."scope_type" = 'GYM'
-           AND ie."gym_id" = ${seedGymId}
+           AND ie."gym_id"     = seed.seed_gym_id
            AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
            AND ie."modelName"   = ${ACTIVE_MODEL.name}
            AND ie."modelVersion"= ${ACTIVE_MODEL.version}
-          JOIN "GymEquipmentImage" gi ON gi.id = ie."gymImageId"
+          JOIN "GymEquipmentImage" gi
+            ON gi.id = ie."gymImageId"
           ORDER BY ie."embeddingVec" <=> seed.qvec
-          LIMIT ${limit}
+          LIMIT ${limit};
         `;
       }
     } else if (input.vector) {
@@ -118,12 +101,12 @@ export class KnnService {
           { image_id: string; equipment_id: number; score: number; storage_key: string }[]
         >`
           SELECT
-            ei.id AS image_id,
+            ei.id            AS image_id,
             ei."equipmentId" AS equipment_id,
             1.0 - (ie."embeddingVec" <=> ${vectorParam}::vector) AS score,
-            ei."storageKey" AS storage_key
+            ei."storageKey"  AS storage_key
           FROM "ImageEmbedding" ie
-          JOIN "EquipmentImage" ei ON ei.id = ie."imageId"
+          JOIN "EquipmentImage" ei ON ei.id = ie."equipmentImageId"
           WHERE ie."scope_type" = 'GLOBAL'
             AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
             AND ie."modelName"   = ${ACTIVE_MODEL.name}
