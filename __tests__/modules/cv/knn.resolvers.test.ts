@@ -34,7 +34,12 @@ beforeAll(async () => {
     data: { name: subName, slug: subName, categoryId: category.id },
   });
   const eq = await prisma.equipment.create({
-    data: { name: `eq-${randomUUID()}`, brand: "brand", categoryId: category.id, subcategoryId: sub.id },
+    data: {
+      name: `eq-${randomUUID()}`,
+      brand: "brand",
+      categoryId: category.id,
+      subcategoryId: sub.id,
+    },
   });
 
   const gym = await prisma.gym.create({
@@ -49,19 +54,21 @@ beforeAll(async () => {
     data: { gymId: gym.id, equipmentId: eq.id, quantity: 1 },
   });
 
-    async function createImage(storageKey: string, sha: string, isGym = false) {
-    const id = randomUUID();
+  async function createImage(storageKey: string, sha: string, isGym = false) {
+    const imageId = randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "EquipmentImage" ("id","equipmentId","storageKey","mimeType","width","height","sha256")
-      VALUES (${id}, ${eq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha})
+      VALUES (${imageId}, ${eq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha})
     `;
     if (isGym) {
+      const gymImageId = randomUUID();
       await prisma.$executeRaw`
         INSERT INTO "GymEquipmentImage" ("id","gymId","equipmentId","gymEquipmentId","imageId","storageKey","sha256")
-        VALUES (${randomUUID()}, ${gym.id}, ${eq.id}, ${gymEq.id}, ${id}, ${storageKey}, ${sha})
+        VALUES (${gymImageId}, ${gym.id}, ${eq.id}, ${gymEq.id}, ${imageId}, ${storageKey}, ${sha})
       `;
+      return { id: imageId, gymImageId, gymId: gym.id };
     }
-    return { id };
+    return { id: imageId };
   }
 
   globalImg1 = await createImage("g1", "sha1");
@@ -75,19 +82,34 @@ beforeAll(async () => {
     extras.push(await createImage(`e${i}`, `ex${i}`));
   }
 
-  async function insertEmbedding(image: any, scope: string, vec: number[]) {
+  async function insertEmbedding(img: any, scope: string, vec: number[]) {
     const padded = padVec(vec);
     const vectorParam = `[${padded.join(",")}]`;
-    await prisma.$executeRaw`
-      INSERT INTO "ImageEmbedding" ("id","imageId","scope","modelVendor","modelName","modelVersion","dim","embeddingVec")
-      VALUES (${randomUUID()}, ${image.id}, ${scope}, 'openai','mobileclip-s0','fp32', ${DIM}, ${vectorParam}::vector)
-    `;
+    if (scope === "GLOBAL") {
+      await prisma.$executeRaw`
+        INSERT INTO "ImageEmbedding" ("id","imageId","scope","scope_type","modelVendor","modelName","modelVersion","dim","embeddingVec")
+        VALUES (${randomUUID()}, ${
+        img.id
+      }, ${scope}, 'GLOBAL', 'local','mobileCLIP-S0','1.0', ${DIM}, ${vectorParam}::vector)
+      `;
+    } else {
+      await prisma.$executeRaw`
+        INSERT INTO "ImageEmbedding" ("id","gymImageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
+        VALUES (${randomUUID()}, ${img.gymImageId}, ${scope}, 'GYM', ${
+        img.gymId
+      }, 'local','mobileCLIP-S0','1.0', ${DIM}, ${vectorParam}::vector)
+      `;
+    }
   }
 
   await insertEmbedding(globalImg1, "GLOBAL", [1, 0, 0]);
   await insertEmbedding(globalImg2, "GLOBAL", [0.8, 0.1, 0]);
   for (const img of extras) {
-    await insertEmbedding(img, "GLOBAL", [Math.random() * 0.1, Math.random(), Math.random()]);
+    await insertEmbedding(img, "GLOBAL", [
+      Math.random() * 0.1,
+      Math.random(),
+      Math.random(),
+    ]);
   }
   await insertEmbedding(gymImg1, "GYM", [0.1, 0.2, 0]);
   await insertEmbedding(gymImg2, "GYM", [0.01, 0.2, 0]);
@@ -97,7 +119,9 @@ describe("knnSearch", () => {
   it("returns deterministic results", async () => {
     const res = await executeOperation({
       query: QUERY,
-      variables: { input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 5 } },
+      variables: {
+        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 5 },
+      },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits[0].imageId).toBe(globalImg1.id);
@@ -108,10 +132,15 @@ describe("knnSearch", () => {
   it("filters by scope", async () => {
     const res = await executeOperation({
       query: QUERY,
-      variables: { input: { vector: padVec([1, 0, 0]), scope: "GYM", limit: 10 } },
+      variables: {
+        input: { imageId: gymImg1.gymImageId, scope: "GYM", limit: 10 },
+      },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
-    expect(hits.map((h: any) => h.imageId)).toEqual([gymImg1.id, gymImg2.id]);
+    expect(hits.map((h: any) => h.imageId)).toEqual([
+      gymImg1.gymImageId,
+      gymImg2.gymImageId,
+    ]);
   });
 
   it("guards vector dimension", async () => {
@@ -126,7 +155,9 @@ describe("knnSearch", () => {
   it("clamps limit", async () => {
     const res = await executeOperation({
       query: QUERY,
-      variables: { input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 100 } },
+      variables: {
+        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 100 },
+      },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits).toHaveLength(50);
@@ -136,7 +167,9 @@ describe("knnSearch", () => {
     const start = Date.now();
     await executeOperation({
       query: QUERY,
-      variables: { input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 10 } },
+      variables: {
+        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 10 },
+      },
     });
     const duration = Date.now() - start;
     expect(duration).toBeLessThan(500);

@@ -44,6 +44,11 @@ enum GymImageStatus {
   REJECTED
 }
 
+enum EmbeddingScopeType {
+  GLOBAL
+  GYM
+}
+
 // --- Models ---
 
 model User {
@@ -418,7 +423,8 @@ model Gym {
   chatMembers       GymChatMember[]
   gymEquipment      GymEquipment[]
   GymEquipmentImage GymEquipmentImage[]
-
+  imageEmbeddings   ImageEmbedding[]
+  
   @@index([name])
   @@index([city])
   @@index([country])
@@ -771,6 +777,9 @@ model ImageEmbedding {
   // NEW (gym):
   gymImageId   String?               // FK -> GymEquipmentImage.id (GYM embeddings)
 
+  scopeType    EmbeddingScopeType?
+  gymId        Int?
+
   scope        String                // e.g. 'GLOBAL' or 'GYM:<gymId>'
   modelVendor  String
   modelName    String
@@ -783,6 +792,7 @@ model ImageEmbedding {
 
   equipmentImage EquipmentImage?     @relation(fields: [imageId], references: [id], onDelete: Cascade)
   gymImage       GymEquipmentImage?  @relation(fields: [gymImageId], references: [id], onDelete: Cascade)
+  gym           Gym?                 @relation(fields: [gymId], references: [id])
 
   // Keep existing unique for global…
   @@unique([imageId, scope, modelVendor, modelName, modelVersion])
@@ -790,6 +800,8 @@ model ImageEmbedding {
   @@unique([gymImageId, scope, modelVendor, modelName, modelVersion])
 
   @@index([scope, modelVendor, modelName, modelVersion])
+  @@index([scopeType])
+  @@index([gymId])
   @@index([createdAt])
 }
 

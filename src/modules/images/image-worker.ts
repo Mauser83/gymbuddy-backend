@@ -25,7 +25,7 @@ const s3 = new S3Client({
 });
 
 const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
-const EMBED_MODEL = process.env.EMBED_MODEL ?? "clip-vit-b32";
+const EMBED_MODEL = process.env.EMBED_MODEL ?? "mobileCLIP-S0";
 const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
 const MODEL_DIM = Number(process.env.EMBED_DIM ?? EMBEDDING_DIM);
 const DB_VECTOR_DIM = Number(process.env.EMBED_DB_DIM ?? MODEL_DIM);
@@ -89,18 +89,26 @@ async function handleSAFETY(storageKey: string) {
     },
   });
 }
+
 async function handleEMBED(storageKey: string) {
-  // 1) locate the gym image row for this object
+  // 1) locate image rows for this object
   const gymImg = await prisma.gymEquipmentImage.findFirst({
     where: { storageKey },
     select: { id: true, gymId: true },
   });
-  if (!gymImg) throw new Error("GymEquipmentImage not found for storageKey");
+  const eqImg = gymImg
+    ? null
+    : await prisma.equipmentImage.findFirst({
+        where: { storageKey },
+        select: { id: true },
+      });
+  if (!gymImg && !eqImg) throw new Error("Image not found for storageKey");
 
-  // 2) scope is gym-specific
-  const scope = `GYM:${gymImg.gymId}`;
+  const scopeType = gymImg ? "GYM" : "GLOBAL";
+  const gymId = gymImg?.gymId ?? null;
+  const scope = gymImg ? `GYM:${gymId}` : "GLOBAL";
 
-  // 3) compute vector and upsert row with embedding
+  // 2) compute vector and upsert row with embedding
   const bytes = await downloadBytes(storageKey);
   await embedInitPromise;
   const vecFloat = await embedImage(Buffer.from(bytes));
@@ -119,18 +127,33 @@ async function handleEMBED(storageKey: string) {
   const vectorParam = `[${vec
     .map((v) => (Number.isFinite(v) ? v : 0))
     .join(",")}]`;
-  await prisma.$executeRaw`
-    INSERT INTO "ImageEmbedding"
-      ("id","gymImageId","scope","modelVendor","modelName","modelVersion","dim","embeddingVec")
-    VALUES
-      (${randomUUID()}, ${
-    gymImg.id
-  }, ${scope}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
-    ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
-    DO UPDATE SET
-      "dim" = EXCLUDED."dim",
-      "embeddingVec" = ${vectorParam}::vector
-  `;
+  if (scopeType === "GYM" && gymImg) {
+    await prisma.$executeRaw`
+      INSERT INTO "ImageEmbedding"
+        ("id","gymImageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
+      VALUES
+        (${randomUUID()}, ${gymImg.id}, ${scope}, ${scopeType}, ${gymId}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
+      ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
+      DO UPDATE SET
+        "dim" = EXCLUDED."dim",
+        "scope_type" = EXCLUDED."scope_type",
+        "gym_id" = EXCLUDED."gym_id",
+        "embeddingVec" = ${vectorParam}::vector
+    `;
+  } else if (scopeType === "GLOBAL" && eqImg) {
+    await prisma.$executeRaw`
+      INSERT INTO "ImageEmbedding"
+        ("id","imageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
+      VALUES
+        (${randomUUID()}, ${eqImg.id}, ${scope}, ${scopeType}, NULL, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
+      ON CONFLICT ("imageId","scope","modelVendor","modelName","modelVersion")
+      DO UPDATE SET
+        "dim" = EXCLUDED."dim",
+        "scope_type" = EXCLUDED."scope_type",
+        "gym_id" = EXCLUDED."gym_id",
+        "embeddingVec" = ${vectorParam}::vector
+    `;
+  }
 }
 
 export async function processOnce() {

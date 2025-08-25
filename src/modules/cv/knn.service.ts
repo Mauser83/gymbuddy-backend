@@ -7,7 +7,10 @@ export type KnnSearchInput = {
   limit?: number;
 };
 
-const ACTIVE_MODEL = { vendor: "local", name: "mobileCLIP-S0", version: "1.0" };
+const MODEL_VENDOR = process.env.EMBED_VENDOR ?? "local";
+const MODEL_NAME = process.env.EMBED_MODEL ?? "mobileCLIP-S0";
+const MODEL_VERSION = process.env.EMBED_VERSION ?? "1.0";
+const ACTIVE_MODEL = { vendor: MODEL_VENDOR, name: MODEL_NAME, version: MODEL_VERSION };
 const isNumeric = (v: string) => /^\d+$/.test(v);
 
 export class KnnService {
@@ -18,44 +21,47 @@ export class KnnService {
 
     // Materialize query vector
     let queryVec: number[];
+    let seedGymId: number | null = null;
     if (input.imageId) {
-      // Try GYM cuid first (gymImageId), then GLOBAL int (imageId)
-      const metaRow = await this.prisma.imageEmbedding.findFirst({
+      let seed = await this.prisma.imageEmbedding.findFirst({
         where: {
-          OR: [
-            { gymImageId: input.imageId },
-            isNumeric(input.imageId) ? { imageId: input.imageId } : (undefined as any),
-          ].filter(Boolean) as any,
-          scope: input.scope,
+          gymImageId: input.imageId,
           modelVendor: ACTIVE_MODEL.vendor,
           modelName: ACTIVE_MODEL.name,
           modelVersion: ACTIVE_MODEL.version,
         },
-        select: { dim: true },
+        select: { id: true, dim: true, scopeType: true, gymId: true, scope: true },
       });
-      if (!metaRow)
-        throw new Error(`No embedding found for imageId "${input.imageId}" in scope ${input.scope}.`);
-
-      // Pull the vector from either column
-      const result = await this.prisma.$queryRawUnsafe<{ embedding_vec: any }[]>(
-        `SELECT "embeddingVec" AS embedding_vec FROM "ImageEmbedding"
-     WHERE ( "gymImageId" = $1 OR "imageId" = $1 )
-       AND scope = $2 AND "modelVendor" = $3 AND "modelName" = $4 AND "modelVersion" = $5
-     LIMIT 1`,
-        input.imageId,
-        input.scope,
-        ACTIVE_MODEL.vendor,
-        ACTIVE_MODEL.name,
-        ACTIVE_MODEL.version,
-      );
-      if (!result.length) throw new Error("Embedding vector not found");
-      queryVec = Array.isArray(result[0].embedding_vec)
-        ? result[0].embedding_vec
-        : JSON.parse(result[0].embedding_vec);
-
-      if (queryVec.length !== metaRow.dim) {
-        throw new Error(`Vector dimension mismatch: expected ${metaRow.dim}, got ${queryVec.length}`);
+      if (!seed && isNumeric(input.imageId)) {
+        seed = await this.prisma.imageEmbedding.findFirst({
+          where: {
+            imageId: input.imageId,
+            modelVendor: ACTIVE_MODEL.vendor,
+            modelName: ACTIVE_MODEL.name,
+            modelVersion: ACTIVE_MODEL.version,
+          },
+          select: { id: true, dim: true, scopeType: true, gymId: true, scope: true },
+        });
       }
+      if (!seed) throw new Error(`No embedding found for imageId "${input.imageId}".`);
+
+      const vecRow = await this.prisma.$queryRawUnsafe<{ embedding_vec: any }[]>(
+        `SELECT "embeddingVec" AS embedding_vec FROM "ImageEmbedding" WHERE id = $1 LIMIT 1`,
+        seed.id,
+      );
+      if (!vecRow.length) throw new Error("Embedding vector not found");
+      queryVec = Array.isArray(vecRow[0].embedding_vec)
+        ? vecRow[0].embedding_vec
+        : JSON.parse(vecRow[0].embedding_vec);
+
+      if (queryVec.length !== seed.dim) {
+        throw new Error(`Vector dimension mismatch: expected ${seed.dim}, got ${queryVec.length}`);
+      }
+      seedGymId =
+        seed.gymId ??
+        (seed.scopeType == null && seed.scope?.startsWith("GYM:")
+          ? parseInt(seed.scope.split(":")[1])
+          : null);
     } else if (input.vector) {
       queryVec = input.vector;
     } else {
@@ -77,7 +83,10 @@ export class KnnService {
           ei."storageKey" AS storage_key
         FROM "ImageEmbedding" ie
         JOIN "EquipmentImage" ei ON ei.id = ie."imageId"
-        WHERE ie.scope = ${input.scope}
+        WHERE (
+            ie."scope_type" = 'GLOBAL'
+            OR (ie."scope_type" IS NULL AND ie."scope" = 'GLOBAL')
+          )
           AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
           AND ie."modelName" = ${ACTIVE_MODEL.name}
           AND ie."modelVersion" = ${ACTIVE_MODEL.version}
@@ -85,7 +94,9 @@ export class KnnService {
         LIMIT ${limit}
       `;
     } else {
-      // GYM scope → join gym images
+      if (seedGymId == null) {
+        throw new Error("Seed image must belong to a gym for GYM scope search");
+      }
       hits = await this.prisma.$queryRaw<
         { image_id: string; equipment_id: number; score: number; storage_key: string }[]
       >`
@@ -96,7 +107,10 @@ export class KnnService {
           gi."storageKey" AS storage_key
         FROM "ImageEmbedding" ie
         JOIN "GymEquipmentImage" gi ON gi.id = ie."gymImageId"
-        WHERE ie.scope = ${input.scope}
+        WHERE (
+            (ie."scope_type" = 'GYM' AND ie."gym_id" = ${seedGymId})
+            OR (ie."scope_type" IS NULL AND ie."scope" = ${`GYM:${seedGymId}`})
+          )
           AND ie."modelVendor" = ${ACTIVE_MODEL.vendor}
           AND ie."modelName" = ${ACTIVE_MODEL.name}
           AND ie."modelVersion" = ${ACTIVE_MODEL.version}
