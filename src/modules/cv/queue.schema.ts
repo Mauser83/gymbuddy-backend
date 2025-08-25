@@ -4,6 +4,7 @@ export const queueTypeDefs = `
   extend type Query {
     imageJob(id: ID!): ImageQueue
     imageJobs(status: ImageJobStatus, limit: Int = 50): [ImageQueue!]!
+          # Returns only ImageJobs that have not finished yet
   }
 
   extend type Mutation {

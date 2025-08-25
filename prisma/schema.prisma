@@ -811,6 +811,7 @@ model ImageQueue {
 
   image EquipmentImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
 
+  @@index([finishedAt, status])
   @@index([status, priority, scheduledAt])
   @@index([jobType, status])
   @@index([imageId])

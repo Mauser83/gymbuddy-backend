@@ -15,7 +15,10 @@ export class QueueService {
 
   list(status?: string, limit = 50) {
     return this.prisma.imageQueue.findMany({
-      where: { ...(status ? { status: status as any } : {}) },
+      where: {
+        finishedAt: null,
+        ...(status ? { status: status as any } : {}),
+      },
       orderBy: [
         { priority: "desc" },
         { scheduledAt: "asc" },
@@ -32,7 +35,9 @@ export class QueueService {
         imageId: input.imageId,
         jobType: input.jobType,
         priority: input.priority ?? 0,
-        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
+        scheduledAt: input.scheduledAt
+          ? new Date(input.scheduledAt)
+          : undefined,
       },
     });
   }
