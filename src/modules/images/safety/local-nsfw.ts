@@ -40,7 +40,6 @@ async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  // order: [B,G,R] or [R,G,B] depending on SAFETY_COLOR
   const out = new Float32Array(1 * 3 * SIZE * SIZE);
   let oB = 0 * SIZE * SIZE; // channel 0
   let oG = 1 * SIZE * SIZE; // channel 1
@@ -59,7 +58,7 @@ async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
         out[oG++] = g - 117;
         out[oR++] = (SAFETY_COLOR === "bgr" ? r : b) - 123;
       } else {
-        // ImageNet normalization
+        // ImageNet normalization (RGB)
         out[oR++] = (r / 255 - 0.485) / 0.229;
         out[oG++] = (g / 255 - 0.456) / 0.224;
         out[oB++] = (b / 255 - 0.406) / 0.225;
@@ -68,6 +67,42 @@ async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
   }
 
   return new ort.Tensor("float32", out, [1, 3, SIZE, SIZE]);
+}
+
+// NHWC [1,H,W,3]
+async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
+  const { data, info } = await sharp(bytes)
+    .removeAlpha()
+    .resize(SIZE, SIZE, { fit: "cover" })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const out = new Float32Array(1 * SIZE * SIZE * 3);
+  let i = 0;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const p = (y * info.width + x) * info.channels;
+      const r = data[p],
+        g = data[p + 1],
+        b = data[p + 2];
+
+      if (SAFETY_PREPROC === "vgg") {
+        const c0 = SAFETY_COLOR === "bgr" ? b : r;
+        const c1 = g;
+        const c2 = SAFETY_COLOR === "bgr" ? r : b;
+        out[i++] = c0 - 104;
+        out[i++] = c1 - 117;
+        out[i++] = c2 - 123;
+      } else {
+        // ImageNet normalization (RGB)
+        out[i++] = (r / 255 - 0.485) / 0.229;
+        out[i++] = (g / 255 - 0.456) / 0.224;
+        out[i++] = (b / 255 - 0.406) / 0.225;
+      }
+    }
+  }
+
+  return new ort.Tensor("float32", out, [1, SIZE, SIZE, 3]);
 }
 
 function softmax(v: Float32Array): Float32Array {
@@ -90,8 +125,18 @@ export class LocalNSFW implements SafetyProvider {
   async check(bytes: Uint8Array): Promise<SafetyResult> {
     const session = await this.sessionPromise;
     const inputName = session.inputNames?.[0] ?? "input";
-    const input = await toTensorNCHW(bytes);
-    const out = await session.run({ [inputName]: input });
+    const meta = (
+      session.inputMetadata as unknown as
+        | Record<string, { dimensions: readonly number[] }>
+        | undefined
+    )?.[inputName];
+    const dims = meta?.dimensions;
+    const nchw = dims?.[1] === 3;
+    const input = nchw ? await toTensorNCHW(bytes) : await toTensorNHWC(bytes);
+    const out = (await session.run({ [inputName]: input })) as Record<
+      string,
+      ort.Tensor
+    >;
     const firstKey = session.outputNames?.[0] ?? Object.keys(out)[0];
     const logits = out[firstKey].data as Float32Array;
 
