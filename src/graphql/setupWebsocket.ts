@@ -36,7 +36,7 @@ export function setupWebSocket(
 
       // ✅ **THE FIX:** Add your Render URL to this list.
       const allowedOrigins = [
-        "https://gymbuddy-backend-cv-dev.onrender.com",
+        "https://gymbuddy-backend-i9je.onrender.com/",
         // You might also want your frontend's URL here for web clients
         // 'https://your-frontend-app.onrender.com'
       ];
