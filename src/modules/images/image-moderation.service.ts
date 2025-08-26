@@ -74,19 +74,23 @@ export class ImageModerationService {
 
   async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
-    return this.prisma.$queryRaw<any[]>`
-      SELECT g.id, g."gymId", g."equipmentId", g."storageKey", g.sha256, g.status
-      FROM "GymEquipmentImage" g
-      WHERE g."equipmentId" = ${input.equipmentId}
-        AND (g.status IN ('PENDING','APPROVED'))
-        AND (
-          g.sha256 IS NULL OR NOT EXISTS (
-            SELECT 1 FROM "EquipmentImage" e
-            WHERE e."equipmentId" = g."equipmentId" AND e.sha256 = g.sha256
-          )
-        )
-      ORDER BY g."capturedAt" DESC
-      LIMIT ${limit}
-    `;
+
+    const existing = await this.prisma.equipmentImage.findMany({
+      where: { equipmentId: input.equipmentId },
+      select: { sha256: true },
+    });
+    const existingSet = new Set(existing.map((e) => e.sha256));
+
+    const candidates = await this.prisma.gymEquipmentImage.findMany({
+      where: {
+        equipmentId: input.equipmentId,
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+      orderBy: { capturedAt: "desc" },
+    });
+
+    return candidates
+      .filter((c) => c.sha256 == null || !existingSet.has(c.sha256))
+      .slice(0, limit);
   }
 }
