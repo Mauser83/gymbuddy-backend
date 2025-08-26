@@ -24,7 +24,7 @@ const LABELS = (process.env.SAFETY_OUTPUT_LABELS ?? "")
 const NSFW_LABELS = new Set(
   (process.env.SAFETY_NSFW_CLASSES ?? "porn,hentai,soft,sexy,nsfw")
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
 );
 
@@ -32,16 +32,20 @@ const SIZE = 224;
 const SAFETY_PREPROC = (process.env.SAFETY_PREPROC ?? "vgg").toLowerCase();
 const SAFETY_COLOR = (process.env.SAFETY_COLOR ?? "bgr").toLowerCase();
 
-// NHWC [1,H,W,3]
-async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
+// NCHW [1,3,H,W]
+async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
   const { data, info } = await sharp(bytes)
     .removeAlpha()
     .resize(SIZE, SIZE, { fit: "cover" })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const out = new Float32Array(1 * SIZE * SIZE * 3);
-  let i = 0;
+  // order: [B,G,R] or [R,G,B] depending on SAFETY_COLOR
+  const out = new Float32Array(1 * 3 * SIZE * SIZE);
+  let oB = 0 * SIZE * SIZE; // channel 0
+  let oG = 1 * SIZE * SIZE; // channel 1
+  let oR = 2 * SIZE * SIZE; // channel 2
+
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
       const p = (y * info.width + x) * info.channels;
@@ -50,22 +54,20 @@ async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
         b = data[p + 2];
 
       if (SAFETY_PREPROC === "vgg") {
-        // OpenNSFW-style: float32 in 0..255 then minus BGR means
-        const c0 = SAFETY_COLOR === "bgr" ? b : r;
-        const c1 = SAFETY_COLOR === "bgr" ? g : g;
-        const c2 = SAFETY_COLOR === "bgr" ? r : b;
-        out[i++] = c0 - 104;
-        out[i++] = c1 - 117;
-        out[i++] = c2 - 123;
+        // Caffe/OpenNSFW: BGR 0..255 minus mean values
+        out[oB++] = (SAFETY_COLOR === "bgr" ? b : r) - 104;
+        out[oG++] = g - 117;
+        out[oR++] = (SAFETY_COLOR === "bgr" ? r : b) - 123;
       } else {
-        // ImageNet-style normalization (RGB 0..1 → mean/std)
-        out[i++] = (r / 255 - 0.485) / 0.229;
-        out[i++] = (g / 255 - 0.456) / 0.224;
-        out[i++] = (b / 255 - 0.406) / 0.225;
+        // ImageNet normalization
+        out[oR++] = (r / 255 - 0.485) / 0.229;
+        out[oG++] = (g / 255 - 0.456) / 0.224;
+        out[oB++] = (b / 255 - 0.406) / 0.225;
       }
     }
   }
-  return new ort.Tensor("float32", out, [1, SIZE, SIZE, 3]);
+
+  return new ort.Tensor("float32", out, [1, 3, SIZE, SIZE]);
 }
 
 function softmax(v: Float32Array): Float32Array {
@@ -88,14 +90,16 @@ export class LocalNSFW implements SafetyProvider {
   async check(bytes: Uint8Array): Promise<SafetyResult> {
     const session = await this.sessionPromise;
     const inputName = session.inputNames?.[0] ?? "input";
-    const input = await toTensorNHWC(bytes);
+    const input = await toTensorNCHW(bytes);
     const out = await session.run({ [inputName]: input });
     const firstKey = session.outputNames?.[0] ?? Object.keys(out)[0];
     const logits = out[firstKey].data as Float32Array;
 
     // Heuristics:
     // - If single output -> already a probability (0..1)
-    // - Else apply softmax and aggregate NSFW labels if provided; otherwise take 1 - neutral/drawings if present; else max(prob)
+    // - Else apply softmax and aggregate NSFW labels if provided
+    // - Else if two outputs -> assume [SFW, NSFW]
+    // - Else fall back to conservative 0
     let nsfwScore = 0;
     if (logits.length === 1) {
       nsfwScore = Math.min(1, Math.max(0, logits[0]));
@@ -106,12 +110,15 @@ export class LocalNSFW implements SafetyProvider {
           neutral = 0;
         LABELS.forEach((lab, i) => {
           const p = probs[i];
-          if (NSFW_LABELS.has(lab)) nsfw += p;
-          if (lab === "neutral" || lab === "drawings") neutral += p;
+          if (NSFW_LABELS.has(lab.toLowerCase())) nsfw += p;
+          if (lab.toLowerCase() === "neutral" || lab.toLowerCase() === "drawings")
+            neutral += p;
         });
         nsfwScore = nsfw || Math.max(0, 1 - neutral);
+      } else if (probs.length === 2) {
+        nsfwScore = probs[1];
       } else {
-        nsfwScore = Math.max(...probs);
+        nsfwScore = 0;
       }
     }
 
