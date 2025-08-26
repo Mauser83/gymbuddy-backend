@@ -101,52 +101,38 @@ function nms(boxes: number[][], scores: number[], iouThr: number) {
   return picked;
 }
 
-function clampBoxToImage(
+function clampBoxToImageInt(
   x1: number,
   y1: number,
   x2: number,
   y2: number,
   iw: number,
-  ih: number,
-  minSize = 1
+  ih: number
 ) {
-  // clip to bounds first
-  x1 = Math.max(0, Math.min(iw, x1));
-  y1 = Math.max(0, Math.min(ih, y1));
-  x2 = Math.max(0, Math.min(iw, x2));
-  y2 = Math.max(0, Math.min(ih, y2));
-
-  // normalize order
+  // Normalize order
   let left = Math.min(x1, x2);
   let top = Math.min(y1, y2);
   let right = Math.max(x1, x2);
   let bottom = Math.max(y1, y2);
 
-  // round outward so we *gain* area, then enforce min size
+  // Clip to image bounds
+  left = Math.max(0, Math.min(iw, left));
+  top = Math.max(0, Math.min(ih, top));
+  right = Math.max(0, Math.min(iw, right));
+  bottom = Math.max(0, Math.min(ih, bottom));
+
+  // Round to ints (inwards where needed)
   left = Math.floor(left);
   top = Math.floor(top);
   right = Math.ceil(right);
   bottom = Math.ceil(bottom);
 
-  let width = right - left;
-  let height = bottom - top;
+  // Ensure non-empty after rounding
+  if (right <= left) right = Math.min(iw, left + 1);
+  if (bottom <= top) bottom = Math.min(ih, top + 1);
 
-  if (width < minSize) {
-    const grow = minSize - width;
-    left = Math.max(0, left - Math.floor(grow / 2));
-    right = Math.min(iw, right + Math.ceil(grow / 2));
-    width = right - left;
-  }
-  if (height < minSize) {
-    const grow = minSize - height;
-    top = Math.max(0, top - Math.floor(grow / 2));
-    bottom = Math.min(ih, bottom + Math.ceil(grow / 2));
-    height = bottom - top;
-  }
-
-  // final safety
-  width = Math.max(minSize, Math.min(iw - left, width));
-  height = Math.max(minSize, Math.min(ih - top, height));
+  const width = right - left;
+  const height = bottom - top;
 
   return { left, top, width, height };
 }
@@ -206,7 +192,7 @@ export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
   const boxes = keep
     .map((i) => {
       const [x1, y1, x2, y2] = boxesXYXY[i];
-      const b = clampBoxToImage(x1, y1, x2, y2, prep.iw, prep.ih, MIN_BOX);
+      const b = clampBoxToImageInt(x1, y1, x2, y2, prep.iw, prep.ih);
       return { ...b, score: scores[i] };
     })
     .filter((b) => b.width >= MIN_BOX && b.height >= MIN_BOX);

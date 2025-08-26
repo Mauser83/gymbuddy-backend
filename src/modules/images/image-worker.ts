@@ -57,23 +57,29 @@ function isValidRegion(b: any) {
   );
 }
 
+function clampRegionToMeta(b: any, iw: number, ih: number) {
+  let left = Math.max(0, Math.min(iw, b.left | 0));
+  let top = Math.max(0, Math.min(ih, b.top | 0));
+  let width = Math.max(1, Math.min(iw - left, b.width | 0));
+  let height = Math.max(1, Math.min(ih - top, b.height | 0));
+  return { left, top, width, height };
+}
+
 async function safeExtract(
   bytes: Buffer,
-  r: { left: number; top: number; width: number; height: number }
+  r: { left: number; top: number; width: number; height: number },
+  iw: number,
+  ih: number
 ) {
-  if (!isValidRegion(r)) return null;
+  const region = clampRegionToMeta(r, iw, ih);
+  if (!isValidRegion(region)) return null;
   try {
     return await sharp(bytes)
-      .extract({
-        left: r.left,
-        top: r.top,
-        width: r.width,
-        height: r.height,
-      })
+      .extract(region)
       .jpeg()
       .toBuffer();
   } catch (e) {
-    console.warn("[PERSON_CROP] extract skipped", r, e);
+    console.warn("[PERSON_CROP] extract skipped", region, e);
     return null;
   }
 }
@@ -120,6 +126,9 @@ async function handleSAFETY(storageKey: string) {
   const buf = Buffer.from(bytes);
   const baseSafety = await safetyProvider.check(bytes);
   const person = await detectPersons(buf);
+  const meta = await sharp(buf).metadata();
+  const iw = meta.width!;
+  const ih = meta.height!;
 
   let nsfwScore = baseSafety.nsfwScore;
   if (person.hasPerson) {
@@ -133,7 +142,7 @@ async function handleSAFETY(storageKey: string) {
 
     const crops: Buffer[] = [];
     for (const b of person.boxes ?? []) {
-      const bufCrop = await safeExtract(buf, b);
+      const bufCrop = await safeExtract(buf, b, iw, ih);
       if (bufCrop) crops.push(bufCrop);
     }
     const scores = await Promise.all(
