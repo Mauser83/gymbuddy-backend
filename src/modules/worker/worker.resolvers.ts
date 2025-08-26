@@ -17,8 +17,6 @@ export const WorkerResolvers = {
         ],
       });
 
-      const max = Math.max(1, Math.min(1000, Number(args?.max ?? 100)));
-
       if (isRunning) {
         return { ok: true, status: "already-running" };
       }
@@ -27,7 +25,7 @@ export const WorkerResolvers = {
       setImmediate(async () => {
         try {
           const { runOnce } = await import("../images/image-worker.js");
-          await runOnce(max);
+          await runOnce();
         } catch (err) {
           console.error("[image-worker] runOnce error:", err);
         } finally {
