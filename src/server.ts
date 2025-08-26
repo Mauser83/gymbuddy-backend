@@ -23,6 +23,7 @@ import { conditionalCsrf, csrfTokenRoute } from "./middlewares/csrf";
 import { setupApollo } from "./graphql/setupApollo";
 import { setupWebSocket } from "./graphql/setupWebsocket";
 import apiRouter from "./api/apiRouter";
+import { startMemoryLogger } from "./utils/memoryTracker";
 
 export const app = express();
 
@@ -133,6 +134,7 @@ app.use(errorHandler);
 
 // === Boot (skip for tests) ===
 if (process.env.NODE_ENV !== "test") {
+  startMemoryLogger();
   startApolloServer().catch((err) => {
     console.error("❌ Failed to start server:", err);
     process.exit(1);
