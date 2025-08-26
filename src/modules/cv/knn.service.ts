@@ -102,9 +102,12 @@ export class KnnService {
         hits = await this.prisma.$queryRawUnsafe(gymQuery);
       }
     } else if (input.vector) {
-      const vectorParam = `[${input.vector
-        .map((v) => (Number.isFinite(v) ? v : 0))
-        .join(",")}]`;
+      const vec = input.vector.map((v) => (Number.isFinite(v) ? v : 0));
+      const dim = Number(process.env.EMBED_DIM ?? 512);
+      if (vec.length !== dim) {
+        throw new Error(`Expected vector dimension ${dim}`);
+      }
+      const vectorParam = `'[${vec.join(",")}]'`;
       if (input.scope === "GLOBAL") {
         const vecQuery = `SELECT
             ei.id AS image_id,
