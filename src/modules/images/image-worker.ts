@@ -8,6 +8,8 @@ import {
   EMBEDDING_DIM,
 } from "./embedding/local-openclip-light";
 import { createSafetyProvider } from "./safety";
+import sharp from "sharp";
+import { detectPersons } from "./safety/local-person";
 
 const queue = new QueueRunnerService(prisma);
 
@@ -25,7 +27,7 @@ const s3 = new S3Client({
 });
 
 const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
-const EMBED_MODEL = process.env.EMBED_MODEL ?? "mobileCLIP-S0";
+const EMBED_MODEL = process.env.EMBED_MODEL ?? "openclip-vit-b32.onnx";
 const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
 const MODEL_DIM = Number(process.env.EMBED_DIM ?? EMBEDDING_DIM);
 const DB_VECTOR_DIM = Number(process.env.EMBED_DB_DIM ?? MODEL_DIM);
@@ -79,13 +81,40 @@ async function handleHASH(storageKey: string) {
 // --- SAFETY ---
 async function handleSAFETY(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
-  const res = await safetyProvider.check(bytes);
+  const buf = Buffer.from(bytes);
+  const baseSafety = await safetyProvider.check(bytes);
+  const person = await detectPersons(buf);
+
+  let nsfwScore = baseSafety.nsfwScore;
+  if (person.hasPerson) {
+    const crops = await Promise.all(
+      person.boxes.map(async (b) => {
+        const crop = await sharp(buf)
+          .extract({
+            left: Math.round(b.x),
+            top: Math.round(b.y),
+            width: Math.round(b.w),
+            height: Math.round(b.h),
+          })
+          .jpeg()
+          .toBuffer();
+        const s = await safetyProvider.check(crop);
+        return s.nsfwScore;
+      })
+    );
+    const personMax = crops.length ? Math.max(...crops) : 0;
+    nsfwScore = Math.max(nsfwScore, personMax);
+  }
+  const isSafe = nsfwScore < 0.85;
+
   await prisma.gymEquipmentImage.updateMany({
     where: { storageKey },
     data: {
-      isSafe: res.isSafe,
-      nsfwScore: res.nsfwScore,
-      hasPerson: res.hasPerson ?? null,
+      isSafe,
+      nsfwScore,
+      hasPerson: person.hasPerson,
+      personCount: person.personCount,
+      personBoxes: person.boxes,
     },
   });
 }

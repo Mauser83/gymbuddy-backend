@@ -681,6 +681,8 @@ model EquipmentImage {
   cdnUrl           String?
   phash            String?
   hasPerson        Boolean?
+  personCount      Int?
+  personBoxes      Json?
   modelVersion     String?
   // optional annotations
   note             String?
@@ -741,6 +743,8 @@ model GymEquipmentImage {
   isSafe           Boolean?
   nsfwScore        Float?
   hasPerson        Boolean?
+  personCount      Int?
+  personBoxes      Json?
   
   // relations
   gymEquipment   GymEquipment?   @relation(fields: [gymEquipmentId], references: [id])
