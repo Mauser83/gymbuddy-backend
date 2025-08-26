@@ -20,10 +20,13 @@ export const equipmentTypeDefs = `
   }
 
   type EquipmentImage {
-    id: Int!
+    id: ID!
     equipmentId: Int!
-    url: String!
+    storageKey: String!
+    sha256: String
     createdAt: String!
+    updatedAt: String
+    thumbUrl(ttlSec: Int = 300): String
   }
 
   type EquipmentCategory {
@@ -61,7 +64,8 @@ export const equipmentTypeDefs = `
 
   input UploadEquipmentImageInput {
     equipmentId: Int!
-    url: String!
+    storageKey: String!
+    sha256: String
   }
 
   input CreateEquipmentCategoryInput {
@@ -92,6 +96,8 @@ export const equipmentTypeDefs = `
     equipmentSubcategories(categoryId: ID): [EquipmentSubcategory!]!
 
     gymEquipmentByGymId(gymId: Int!): [GymEquipment!]!
+    equipmentImagesByEquipmentId(equipmentId: Int!): [EquipmentImage!]!
+    equipmentImage(id: ID!): EquipmentImage
   }
 
   extend type Mutation {
@@ -100,7 +106,7 @@ export const equipmentTypeDefs = `
     deleteEquipment(id: Int!): Boolean!
 
     uploadEquipmentImage(input: UploadEquipmentImageInput!): EquipmentImage!
-    deleteEquipmentImage(imageId: Int!): Boolean!
+    deleteEquipmentImage(imageId: ID!): Boolean!
 
     createEquipmentCategory(input: CreateEquipmentCategoryInput!): EquipmentCategory!
     updateEquipmentCategory(id: Int!, input: UpdateEquipmentCategoryInput!): EquipmentCategory!

@@ -67,11 +67,20 @@ export class UpdateEquipmentDto {
 // --- Equipment Image DTO ---
 
 export class UploadEquipmentImageDto {
-  @IsInt({ message: 'Equipment ID must be an integer' })
+  @IsInt({ message: "equipmentId must be an integer" })
   equipmentId!: number;
 
-  @IsUrl({}, { message: 'URL must be valid' })
-  url!: string;
+  @IsString({ message: "storageKey must be a string" })
+  storageKey!: string;
+
+  @IsOptional()
+  @IsString({ message: "sha256 must be a string" })
+  sha256?: string;
+}
+
+export class DeleteEquipmentImageDto {
+  @IsString({ message: "imageId must be a string cuid" })
+  imageId!: string;
 }
 
 // --- Category DTOs ---

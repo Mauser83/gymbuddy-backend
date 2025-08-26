@@ -126,12 +126,12 @@ describe("WorkoutPlanService", () => {
     expect(res).toEqual({ id: 2 });
   });
 
-  test("getWorkoutPlans returns all for admin", async () => {
-    permission.getUserRoles.mockResolvedValue({ appRoles: ["ADMIN"] } as any);
-    permission.verifyAppRoles.mockReturnValue(true);
+  test("getWorkoutPlans filters by user", async () => {
     prisma.workoutPlan.findMany.mockResolvedValue([{ id: 1 }] as any);
     const res = await service.getWorkoutPlans(1);
-    expect(prisma.workoutPlan.findMany).toHaveBeenCalledWith();
+    expect(prisma.workoutPlan.findMany).toHaveBeenCalledWith({
+      where: { userId: 1, deletedAt: null },
+    });
     expect(res).toEqual([{ id: 1 }]);
   });
 

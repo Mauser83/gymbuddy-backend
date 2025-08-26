@@ -31,6 +31,24 @@ enum AssignmentStatus {
   MISSED
 }
 
+enum ImageJobStatus {
+  pending
+  processing
+  succeeded
+  failed
+}
+
+enum GymImageStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EmbeddingScopeType {
+  GLOBAL
+  GYM
+}
+
 // --- Models ---
 
 model User {
@@ -66,9 +84,11 @@ model User {
   UserWorkoutPreferences     UserWorkoutPreferences?
 
   experienceLevelId Int?
-  experienceLevel   ExperienceLevel? @relation(fields: [experienceLevelId], references: [id])
+  experienceLevel   ExperienceLevel?    @relation(fields: [experienceLevelId], references: [id])
   trainingGoalId    Int?
-  trainingGoal      TrainingGoal?    @relation(fields: [trainingGoalId], references: [id])
+  trainingGoal      TrainingGoal?       @relation(fields: [trainingGoalId], references: [id])
+  EquipmentImage    EquipmentImage[]
+  GymEquipmentImage GymEquipmentImage[]
 }
 
 model WorkoutPlan {
@@ -341,8 +361,9 @@ model Equipment {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  images EquipmentImage[]
-  gyms   GymEquipment[]
+  images            EquipmentImage[]
+  gyms              GymEquipment[]
+  GymEquipmentImage GymEquipmentImage[]
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -398,10 +419,12 @@ model Gym {
 
   gymRoles GymManagementRole[]
 
-  trainers     GymTrainer[]
-  chatMembers  GymChatMember[]
-  gymEquipment GymEquipment[]
-
+  trainers          GymTrainer[]
+  chatMembers       GymChatMember[]
+  gymEquipment      GymEquipment[]
+  GymEquipmentImage GymEquipmentImage[]
+  imageEmbeddings   ImageEmbedding[]
+  
   @@index([name])
   @@index([city])
   @@index([country])
@@ -459,16 +482,6 @@ model GymChatMember {
   @@unique([userId, gymId])
 }
 
-model EquipmentImage {
-  id          Int       @id @default(autoincrement())
-  url         String    @db.VarChar(300)
-  equipment   Equipment @relation(fields: [equipmentId], references: [id])
-  equipmentId Int
-  createdAt   DateTime  @default(now())
-
-  @@index([equipmentId])
-}
-
 model GymEquipment {
   id          Int       @id @default(autoincrement())
   gym         Gym       @relation(fields: [gymId], references: [id])
@@ -489,16 +502,6 @@ model GymEquipment {
   @@index([equipmentId])
 }
 
-model GymEquipmentImage {
-  id             Int          @id @default(autoincrement())
-  url            String       @db.VarChar(300)
-  gymEquipment   GymEquipment @relation(fields: [gymEquipmentId], references: [id])
-  gymEquipmentId Int
-  createdAt      DateTime     @default(now())
-
-  @@index([gymEquipmentId])
-}
-
 model TrainingGoal {
   id           Int               @id @default(autoincrement())
   name         String
@@ -511,10 +514,10 @@ model TrainingGoal {
 }
 
 model IntensityPreset {
-  id                Int             @id @default(autoincrement())
-  trainingGoal      TrainingGoal    @relation(fields: [trainingGoalId], references: [id])
+  id                Int                      @id @default(autoincrement())
+  trainingGoal      TrainingGoal             @relation(fields: [trainingGoalId], references: [id])
   trainingGoalId    Int
-  experienceLevel   ExperienceLevel @relation(fields: [experienceLevelId], references: [id])
+  experienceLevel   ExperienceLevel          @relation(fields: [experienceLevelId], references: [id])
   experienceLevelId Int
   metricDefaults    IntensityMetricDefault[]
 
@@ -660,4 +663,267 @@ model ExerciseTypeMetric {
   order          Int
 
   @@id([exerciseTypeId, metricId]) // composite key
+}
+
+/// --- NEW + PATCHED TABLES FOR CV PIPELINE ---
+
+// Images uploaded for any equipment (originals, crops, etc.)
+model EquipmentImage {
+  id               String   @id @default(cuid())
+  equipmentId      Int
+  uploadedByUserId Int?
+  // storage + metadata
+  storageKey       String
+  mimeType         String
+  width            Int
+  height           Int
+  sha256           String   @unique
+  cdnUrl           String?
+  phash            String?
+  hasPerson        Boolean?
+  modelVersion     String?
+  // optional annotations
+  note             String?
+  angleId          Int? @db.SmallInt
+  heightId         Int? @db.SmallInt
+  lightingId       Int? @db.SmallInt
+  mirrorId         Int? @db.SmallInt
+  distanceId       Int? @db.SmallInt
+  sourceId         Int? @db.SmallInt
+  splitId          Int? @db.SmallInt
+  createdAt        DateTime @default(now())
+
+  // relations
+  equipment      Equipment @relation(fields: [equipmentId], references: [id])
+  uploadedByUser User?     @relation(fields: [uploadedByUserId], references: [id])
+  angle          AngleType?    @relation(fields: [angleId], references: [id])
+  heightType     HeightType?   @relation(fields: [heightId], references: [id])
+  lighting       LightingType? @relation(fields: [lightingId], references: [id])
+  mirror         MirrorType?   @relation(fields: [mirrorId], references: [id])
+  distance       DistanceType? @relation(fields: [distanceId], references: [id])
+  source         SourceType?   @relation(fields: [sourceId], references: [id])
+  split          SplitType?    @relation(fields: [splitId], references: [id])
+
+  // reverse
+  embeddings ImageEmbedding[]
+  links      GymEquipmentImage[]
+  ImageQueue ImageQueue[]
+
+  @@index([equipmentId, createdAt])
+  @@index([uploadedByUserId])
+  @@index([splitId])
+  @@index([angleId, heightId, lightingId])
+  @@index([cdnUrl])
+}
+
+// Image ↔ Gym+Equipment join (what gym this image was captured at)
+model GymEquipmentImage {
+  id               String   @id @default(cuid())
+  gymEquipmentId   Int?
+  gymId            Int
+  equipmentId      Int
+  imageId          String?
+  capturedByUserId Int?
+  capturedAt       DateTime @default(now())
+  angleId          Int? @db.SmallInt
+  heightId         Int? @db.SmallInt
+  lightingId       Int? @db.SmallInt
+  mirrorId         Int? @db.SmallInt
+  distanceId       Int? @db.SmallInt
+  sourceId         Int? @db.SmallInt
+  splitId          Int? @db.SmallInt
+  status               GymImageStatus @default(PENDING)
+  candidateForGlobal   Boolean        @default(false)
+  recognitionScoreAtCapture Float?
+  storageKey       String?
+  objectUuid       String?
+  sha256           String? @unique
+  isSafe           Boolean?
+  nsfwScore        Float?
+  hasPerson        Boolean?
+  
+  // relations
+  gymEquipment   GymEquipment?   @relation(fields: [gymEquipmentId], references: [id])
+  gym            Gym            @relation(fields: [gymId], references: [id])
+  equipment      Equipment      @relation(fields: [equipmentId], references: [id])
+  image          EquipmentImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  capturedByUser User?          @relation(fields: [capturedByUserId], references: [id])
+  angle          AngleType?    @relation(fields: [angleId], references: [id])
+  heightType     HeightType?   @relation(fields: [heightId], references: [id])
+  lighting       LightingType? @relation(fields: [lightingId], references: [id])
+  mirror         MirrorType?   @relation(fields: [mirrorId], references: [id])
+  distance       DistanceType? @relation(fields: [distanceId], references: [id])
+  source         SourceType?   @relation(fields: [sourceId], references: [id])
+  split          SplitType?    @relation(fields: [splitId], references: [id])
+  embeddings     ImageEmbedding[]
+
+  @@unique([gymId, equipmentId, imageId])
+  @@index([gymId, equipmentId])
+  @@index([imageId])
+  @@index([gymEquipmentId])
+  @@index([splitId])
+  @@index([status])
+  @@index([angleId, heightId, lightingId])
+  @@index([sha256])
+}
+
+// Vector embeddings (one row per image/model/scope)
+model ImageEmbedding {
+  id           String                @id @default(cuid())
+
+  // EXISTING (global):
+  imageId      String?               // FK -> EquipmentImage.id (GLOBAL embeddings)
+
+  // NEW (gym):
+  gymImageId   String?               // FK -> GymEquipmentImage.id (GYM embeddings)
+
+  scopeType    EmbeddingScopeType? @map("scope_type")
+  gymId        Int?                @map("gym_id")
+
+  scope        String                // e.g. 'GLOBAL' or 'GYM:<gymId>'
+  modelVendor  String
+  modelName    String
+  modelVersion String
+  dim          Int
+  // Prisma does not (yet) have a native pgvector type.
+  // Use Unsupported("vector"); final type/ops tuned in SQL migrations.
+  embeddingVec Unsupported("vector")?
+  createdAt    DateTime              @default(now())
+
+  equipmentImage EquipmentImage?     @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  gymImage       GymEquipmentImage?  @relation(fields: [gymImageId], references: [id], onDelete: Cascade)
+  gym           Gym?                 @relation(fields: [gymId], references: [id])
+
+  // Keep existing unique for global…
+  @@unique([imageId, scope, modelVendor, modelName, modelVersion])
+  // …and add one for gym
+  @@unique([gymImageId, scope, modelVendor, modelName, modelVersion])
+
+  @@index([scope, modelVendor, modelName, modelVersion])
+  @@index([scopeType], map: "ImageEmbedding_scope_type_idx")
+  @@index([gymId], map: "ImageEmbedding_gym_id_idx")
+  @@index([createdAt])
+}
+
+// Light-weight work queue for (re)processing images (crop, embed, etc.)
+model ImageQueue {
+  id          String         @id @default(cuid())
+  imageId     String?        // for GLOBAL jobs (promotion)
+  storageKey  String?        // for GYM jobs (finalize)
+  jobType     String
+  status      ImageJobStatus @default(pending)
+  priority    Int            @default(0)
+  attempts    Int            @default(0)
+  lastError   String?
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  image EquipmentImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([finishedAt, status])
+  @@index([status, priority, scheduledAt])
+  @@index([jobType, status])
+  @@index([imageId])
+  @@index([storageKey])
+}
+
+model AngleType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model HeightType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model LightingType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model MirrorType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model DistanceType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model SourceType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
+}
+
+model SplitType {
+  id           Int      @id @default(autoincrement()) @db.SmallInt
+  key          String   @unique
+  label        String
+  description  String?
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  equipmentImages    EquipmentImage[]
+  gymEquipmentImages GymEquipmentImage[]
 }

@@ -57,6 +57,20 @@ export const EquipmentResolvers = {
       }),
   },
 
+  EquipmentImage: {
+    thumbUrl: async (
+      src: { storageKey: string },
+      args: { ttlSec?: number },
+      context: AuthContext
+    ) => {
+      if (!src.storageKey) return null;
+      return context.mediaService.presignGetForKey(
+        src.storageKey,
+        args.ttlSec ?? 300
+      );
+    },
+  },
+
   Query: {
     equipment: async (
       _: unknown,
@@ -108,6 +122,30 @@ export const EquipmentResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getGymEquipmentByGymId(args.gymId);
+    },
+
+    equipmentImagesByEquipmentId: async (
+      _: unknown,
+      args: { equipmentId: number },
+      context: AuthContext
+    ) => {
+      const service = new EquipmentService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getEquipmentImages(args.equipmentId);
+    },
+
+    equipmentImage: async (
+      _: unknown,
+      args: { id: string },
+      context: AuthContext
+    ) => {
+      const service = new EquipmentService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getEquipmentImageById(args.id);
     },
   },
 
@@ -162,7 +200,7 @@ export const EquipmentResolvers = {
 
     deleteEquipmentImage: async (
       _: any,
-      args: { imageId: number },
+      args: { imageId: string },
       context: AuthContext
     ) => {
       const service = new EquipmentService(

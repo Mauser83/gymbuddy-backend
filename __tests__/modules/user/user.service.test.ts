@@ -115,13 +115,13 @@ describe('UserService', () => {
     });
   });
 
-  test('updateTrainingPreferences updates provided fields', async () => {
+    test('updateTrainingPreferences updates provided fields', async () => {
     prisma.user.update.mockResolvedValue({ id: 1 } as any);
-    await service.updateTrainingPreferences(1, { trainingGoalId: 3, experienceLevel: 'BEGINNER' as any });
+    await service.updateTrainingPreferences(1, { trainingGoalId: 3, experienceLevelId: 2 } as any);
     expect(mockedValidate).toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { trainingGoalId: 3, experienceLevel: 'BEGINNER' },
+      data: { trainingGoalId: 3, experienceLevelId: 2 },
       include: { trainingGoal: true },
     });
   });
@@ -131,7 +131,7 @@ describe('UserService', () => {
     await service.updateTrainingPreferences(1, {} as any);
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { trainingGoalId: undefined, experienceLevel: undefined },
+      data: { trainingGoalId: undefined, experienceLevelId: undefined },
       include: { trainingGoal: true },
     });
   });

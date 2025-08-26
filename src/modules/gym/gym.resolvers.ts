@@ -6,8 +6,8 @@ import {
   UpdateGymInput,
   AssignEquipmentToGymInput,
   UpdateGymEquipmentInput,
-  UploadGymEquipmentImageInput,
 } from "./gym.types";
+import { UploadGymImageDto } from "./gym.dto";
 
 export const GymResolvers = {
   Gym: {
@@ -48,6 +48,30 @@ export const GymResolvers = {
 
       return logs.map((r) => r.exerciseLog);
     },
+    images: (parent: any, _args: any, context: AuthContext) => {
+      return context.prisma.gymEquipmentImage.findMany({
+        where: { gymId: parent.id },
+        include: { image: true },
+        orderBy: { capturedAt: "desc" },
+      });
+    },
+  },
+
+  GymEquipmentImage: {
+    thumbUrl: async (
+      src: { storageKey: string },
+      args: { ttlSec?: number },
+      context: AuthContext
+    ) => {
+      if (!src.storageKey) return null;
+      if (src.storageKey.startsWith("private/uploads/")) {
+        // potential auth check can go here
+      }
+      return context.mediaService.presignGetForKey(
+        src.storageKey,
+        args.ttlSec ?? 300
+      );
+    },
   },
 
   Query: {
@@ -63,7 +87,7 @@ export const GymResolvers = {
       return service.getGyms(context.userId ?? undefined, args.search);
     },
 
-    gymById: async (_: unknown, args: { id: number }, context: AuthContext) => {
+    gym: async (_: unknown, args: { id: number }, context: AuthContext) => {
       if (!context.userId) throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
@@ -103,6 +127,30 @@ export const GymResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getGymEquipmentDetail(args.gymEquipmentId);
+    },
+
+    gymImagesByGymId: async (
+      _: unknown,
+      args: { gymId: number },
+      context: AuthContext
+    ) => {
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getGymImagesByGymId(args.gymId);
+    },
+
+    gymImage: async (
+      _: unknown,
+      args: { id: string },
+      context: AuthContext
+    ) => {
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getGymImageById(args.id);
     },
   },
 
@@ -222,28 +270,28 @@ export const GymResolvers = {
       return service.removeGymEquipment(args.gymEquipmentId);
     },
 
-    uploadGymEquipmentImage: async (
+    uploadGymImage: async (
       _: any,
-      args: { input: UploadGymEquipmentImageInput },
+      args: { input: UploadGymImageDto },
       context: AuthContext
     ) => {
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.uploadGymEquipmentImage(args.input);
+      return service.uploadGymImage(args.input);
     },
 
-    deleteGymEquipmentImage: async (
+    deleteGymImage: async (
       _: any,
-      args: { imageId: number },
+      args: { imageId: string },
       context: AuthContext
     ) => {
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.deleteGymEquipmentImage(args.imageId);
+      return service.deleteGymImage(args.imageId);
     },
   },
 };

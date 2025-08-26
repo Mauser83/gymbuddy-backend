@@ -25,6 +25,9 @@ prisma/dev.db-journal
 # Ignore generated code in src
 src/generated/
 
+# Local models
+models/*
+
 # Build output
 dist/
 build/
