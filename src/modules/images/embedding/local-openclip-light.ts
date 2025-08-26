@@ -178,7 +178,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
     const sha = process.env.EMBED_MODEL_SHA256;
     const localDir = process.env.MODEL_DIR ?? "./models";
     let modelPath =
-      process.env.EMBED_MODEL_PATH || join(localDir, "/models/vision-model.onnx");
+      process.env.EMBED_MODEL_PATH || join(localDir, "/models/openclip-vit-b32.onnx");
 
     modelPath = resolve(modelPath);
 
