@@ -9,10 +9,12 @@ const PERSON_MODEL_SRC = {
   key: process.env.PERSON_MODEL_R2_KEY || "models/yolov5n.onnx",
 };
 const PERSON_MODEL_SHA = process.env.PERSON_MODEL_SHA256;
-const PERSON_INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640); // 320 or 640
+const PERSON_INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640);
 const PERSON_CONF = Number(process.env.PERSON_CONF || 0.25);
 const PERSON_IOU = Number(process.env.PERSON_IOU || 0.45);
-const MIN_BOX = Number(process.env.PERSON_MIN_BOX || 4); // px
+const PERSON_TOPK = Number(process.env.PERSON_TOPK || 5);
+const PERSON_MIN_SHORT = Number(process.env.PERSON_MIN_SHORT || 2);
+const PERSON_MIN_AREA = Number(process.env.PERSON_MIN_AREA || 64);
 
 let session: ort.InferenceSession | null = null;
 async function getSession() {
@@ -20,21 +22,21 @@ async function getSession() {
     await ensureModelFile(PERSON_MODEL_PATH, PERSON_MODEL_SRC, PERSON_MODEL_SHA);
     session = await ort.InferenceSession.create(PERSON_MODEL_PATH, {
       graphOptimizationLevel: "all",
-      interOpNumThreads: 1,
       intraOpNumThreads: 1,
+      interOpNumThreads: 1,
       enableCpuMemArena: false,
     } as any);
   }
   return session;
 }
 
-// Letterbox to square (114 padding), keep scale & padding to map boxes back
+// Deterministic letterbox to square with 114 bg
 async function letterbox(bytes: Buffer, size: number) {
   const meta = await sharp(bytes).metadata();
   const iw = meta.width!, ih = meta.height!;
   const scale = Math.min(size / iw, size / ih);
-  const nw = Math.max(1, Math.round(iw * scale));
-  const nh = Math.max(1, Math.round(ih * scale));
+  let nw = Math.max(1, Math.round(iw * scale));
+  let nh = Math.max(1, Math.round(ih * scale));
   const padw = Math.max(0, Math.floor((size - nw) / 2));
   const padh = Math.max(0, Math.floor((size - nh) / 2));
 
@@ -51,31 +53,21 @@ async function letterbox(bytes: Buffer, size: number) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  // Build NCHW float32 0..1
   const out = new Float32Array(3 * size * size);
   const hw = size * size;
   for (let i = 0, p = 0; i < hw; i++, p += 3) {
-    out[0 * hw + i] = data[p] / 255; // R
-    out[1 * hw + i] = data[p + 1] / 255; // G
-    out[2 * hw + i] = data[p + 2] / 255; // B
+    out[0 * hw + i] = data[p] / 255;
+    out[1 * hw + i] = data[p + 1] / 255;
+    out[2 * hw + i] = data[p + 2] / 255;
   }
 
-  return {
-    tensor: new ort.Tensor("float32", out, [1, 3, size, size]),
-    size,
-    iw,
-    ih,
-    scale,
-    padw,
-    padh,
-  };
+  return { tensor: new ort.Tensor("float32", out, [1, 3, size, size]), iw, ih, size, scale, padw, padh };
 }
 
 function sigmoid(x: number) {
   return 1 / (1 + Math.exp(-x));
 }
 
-// Non-max suppression (hard NMS)
 function nms(boxes: number[][], scores: number[], iouThr: number) {
   const order = scores
     .map((s, i) => [s, i] as [number, number])
@@ -101,39 +93,34 @@ function nms(boxes: number[][], scores: number[], iouThr: number) {
   return picked;
 }
 
-function clampBoxToImageInt(
+function clampToImageInt(
   x1: number,
   y1: number,
   x2: number,
   y2: number,
   iw: number,
-  ih: number
+  ih: number,
 ) {
-  // Normalize order
   let left = Math.min(x1, x2);
   let top = Math.min(y1, y2);
   let right = Math.max(x1, x2);
   let bottom = Math.max(y1, y2);
 
-  // Clip to image bounds
   left = Math.max(0, Math.min(iw, left));
   top = Math.max(0, Math.min(ih, top));
   right = Math.max(0, Math.min(iw, right));
   bottom = Math.max(0, Math.min(ih, bottom));
 
-  // Round to ints (inwards where needed)
   left = Math.floor(left);
   top = Math.floor(top);
   right = Math.ceil(right);
   bottom = Math.ceil(bottom);
 
-  // Ensure non-empty after rounding
   if (right <= left) right = Math.min(iw, left + 1);
   if (bottom <= top) bottom = Math.min(ih, top + 1);
 
   const width = right - left;
   const height = bottom - top;
-
   return { left, top, width, height };
 }
 
@@ -145,18 +132,17 @@ export type PersonDetection = {
 
 export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
   const sess = await getSession();
-  const inputName = sess.inputNames[0];
-  const outputName = sess.outputNames[0];
+  const inName = sess.inputNames[0];
+  const outName = sess.outputNames[0];
 
   const prep = await letterbox(bytes, PERSON_INPUT_SIZE);
-  const out = await sess.run({ [inputName]: prep.tensor });
-  // YOLOv5 ONNX: [1, N, 85] with (cx,cy,w,h,obj,80 classes)
-  const data = out[outputName].data as Float32Array;
+  const out = await sess.run({ [inName]: prep.tensor });
+  const data = out[outName].data as Float32Array; // [1, N, 85]
   const n = data.length / 85;
 
   const boxesXYXY: number[][] = [];
   const scores: number[] = [];
-  const kPerson = 0; // COCO class 0
+  const kPerson = 0;
 
   for (let i = 0; i < n; i++) {
     const off = i * 85;
@@ -169,33 +155,32 @@ export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
     const score = obj * cls;
     if (score < PERSON_CONF) continue;
 
-    // Convert center xywh -> xyxy in letterboxed space
-    let x1 = cx - w / 2;
-    let y1 = cy - h / 2;
-    let x2 = cx + w / 2;
-    let y2 = cy + h / 2;
-
-    // Map back to original image
-    x1 = (x1 - prep.padw) / prep.scale;
-    y1 = (y1 - prep.padh) / prep.scale;
-    x2 = (x2 - prep.padw) / prep.scale;
-    y2 = (y2 - prep.padh) / prep.scale;
-
-    if (x2 > x1 && y2 > y1) {
-      boxesXYXY.push([x1, y1, x2, y2]);
-      scores.push(score);
-    }
+    const x1 = cx - w / 2;
+    const y1 = cy - h / 2;
+    const x2 = cx + w / 2;
+    const y2 = cy + h / 2;
+    boxesXYXY.push([x1, y1, x2, y2]);
+    scores.push(score);
   }
 
-  // NMS
-  const keep = nms(boxesXYXY, scores, PERSON_IOU);
-  const boxes = keep
-    .map((i) => {
-      const [x1, y1, x2, y2] = boxesXYXY[i];
-      const b = clampBoxToImageInt(x1, y1, x2, y2, prep.iw, prep.ih);
-      return { ...b, score: scores[i] };
-    })
-    .filter((b) => b.width >= MIN_BOX && b.height >= MIN_BOX);
+  if (!scores.length)
+    return { hasPerson: false, personCount: 0, boxes: [] };
+
+  const keepIdx = nms(boxesXYXY, scores, PERSON_IOU);
+  let boxes = keepIdx.map((i) => {
+    const [x1, y1, x2, y2] = boxesXYXY[i];
+    const ox1 = (x1 - prep.padw) / prep.scale;
+    const oy1 = (y1 - prep.padh) / prep.scale;
+    const ox2 = (x2 - prep.padw) / prep.scale;
+    const oy2 = (y2 - prep.padh) / prep.scale;
+    const b = clampToImageInt(ox1, oy1, ox2, oy2, prep.iw, prep.ih);
+    return { ...b, score: scores[i] };
+  });
+
+  boxes = boxes
+    .filter((b) => Math.min(b.width, b.height) >= PERSON_MIN_SHORT && b.width * b.height >= PERSON_MIN_AREA)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, PERSON_TOPK);
 
   return { hasPerson: boxes.length > 0, personCount: boxes.length, boxes };
 }
