@@ -12,6 +12,7 @@ const PERSON_MODEL_SHA = process.env.PERSON_MODEL_SHA256;
 const PERSON_INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640); // 320 or 640
 const PERSON_CONF = Number(process.env.PERSON_CONF || 0.25);
 const PERSON_IOU = Number(process.env.PERSON_IOU || 0.45);
+const MIN_BOX = Number(process.env.PERSON_MIN_BOX || 4); // px
 
 let session: ort.InferenceSession | null = null;
 async function getSession() {
@@ -32,10 +33,10 @@ async function letterbox(bytes: Buffer, size: number) {
   const meta = await sharp(bytes).metadata();
   const iw = meta.width!, ih = meta.height!;
   const scale = Math.min(size / iw, size / ih);
-  const nw = Math.round(iw * scale);
-  const nh = Math.round(ih * scale);
-  const padw = Math.floor((size - nw) / 2);
-  const padh = Math.floor((size - nh) / 2);
+  const nw = Math.max(1, Math.round(iw * scale));
+  const nh = Math.max(1, Math.round(ih * scale));
+  const padw = Math.max(0, Math.floor((size - nw) / 2));
+  const padh = Math.max(0, Math.floor((size - nh) / 2));
 
   const { data } = await sharp(bytes)
     .resize(nw, nh, { fit: "fill" })
@@ -100,10 +101,60 @@ function nms(boxes: number[][], scores: number[], iouThr: number) {
   return picked;
 }
 
+function clampBoxToImage(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  iw: number,
+  ih: number,
+  minSize = 1
+) {
+  // clip to bounds first
+  x1 = Math.max(0, Math.min(iw, x1));
+  y1 = Math.max(0, Math.min(ih, y1));
+  x2 = Math.max(0, Math.min(iw, x2));
+  y2 = Math.max(0, Math.min(ih, y2));
+
+  // normalize order
+  let left = Math.min(x1, x2);
+  let top = Math.min(y1, y2);
+  let right = Math.max(x1, x2);
+  let bottom = Math.max(y1, y2);
+
+  // round outward so we *gain* area, then enforce min size
+  left = Math.floor(left);
+  top = Math.floor(top);
+  right = Math.ceil(right);
+  bottom = Math.ceil(bottom);
+
+  let width = right - left;
+  let height = bottom - top;
+
+  if (width < minSize) {
+    const grow = minSize - width;
+    left = Math.max(0, left - Math.floor(grow / 2));
+    right = Math.min(iw, right + Math.ceil(grow / 2));
+    width = right - left;
+  }
+  if (height < minSize) {
+    const grow = minSize - height;
+    top = Math.max(0, top - Math.floor(grow / 2));
+    bottom = Math.min(ih, bottom + Math.ceil(grow / 2));
+    height = bottom - top;
+  }
+
+  // final safety
+  width = Math.max(minSize, Math.min(iw - left, width));
+  height = Math.max(minSize, Math.min(ih - top, height));
+
+  return { left, top, width, height };
+}
+
 export type PersonDetection = {
   hasPerson: boolean;
   personCount: number;
-  boxes: Array<{ x: number; y: number; w: number; h: number; score: number }>;
+  boxes: Array<{ left: number; top: number; width: number; height: number; score: number }>;
 };
 
 export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
@@ -144,12 +195,6 @@ export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
     x2 = (x2 - prep.padw) / prep.scale;
     y2 = (y2 - prep.padh) / prep.scale;
 
-    // Clip
-    x1 = Math.max(0, Math.min(prep.iw - 1, x1));
-    y1 = Math.max(0, Math.min(prep.ih - 1, y1));
-    x2 = Math.max(0, Math.min(prep.iw - 1, x2));
-    y2 = Math.max(0, Math.min(prep.ih - 1, y2));
-
     if (x2 > x1 && y2 > y1) {
       boxesXYXY.push([x1, y1, x2, y2]);
       scores.push(score);
@@ -158,10 +203,13 @@ export async function detectPersons(bytes: Buffer): Promise<PersonDetection> {
 
   // NMS
   const keep = nms(boxesXYXY, scores, PERSON_IOU);
-  const boxes = keep.map((i) => {
-    const [x1, y1, x2, y2] = boxesXYXY[i];
-    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1, score: scores[i] };
-  });
+  const boxes = keep
+    .map((i) => {
+      const [x1, y1, x2, y2] = boxesXYXY[i];
+      const b = clampBoxToImage(x1, y1, x2, y2, prep.iw, prep.ih, MIN_BOX);
+      return { ...b, score: scores[i] };
+    })
+    .filter((b) => b.width >= MIN_BOX && b.height >= MIN_BOX);
 
   return { hasPerson: boxes.length > 0, personCount: boxes.length, boxes };
 }

@@ -42,6 +42,42 @@ function adaptToDbDim(vec: number[]): number[] {
 const embedInitPromise = initLocalOpenCLIP();
 const safetyProvider = createSafetyProvider();
 
+function isFiniteInt(n: any) {
+  return Number.isInteger(n) && Number.isFinite(n);
+}
+function isValidRegion(b: any) {
+  return (
+    b &&
+    isFiniteInt(b.left) &&
+    isFiniteInt(b.top) &&
+    isFiniteInt(b.width) &&
+    isFiniteInt(b.height) &&
+    b.width > 0 &&
+    b.height > 0
+  );
+}
+
+async function safeExtract(
+  bytes: Buffer,
+  r: { left: number; top: number; width: number; height: number }
+) {
+  if (!isValidRegion(r)) return null;
+  try {
+    return await sharp(bytes)
+      .extract({
+        left: r.left,
+        top: r.top,
+        width: r.width,
+        height: r.height,
+      })
+      .jpeg()
+      .toBuffer();
+  } catch (e) {
+    console.warn("[PERSON_CROP] extract skipped", r, e);
+    return null;
+  }
+}
+
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
   const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
@@ -87,22 +123,26 @@ async function handleSAFETY(storageKey: string) {
 
   let nsfwScore = baseSafety.nsfwScore;
   if (person.hasPerson) {
-    const crops = await Promise.all(
-      person.boxes.map(async (b) => {
-        const crop = await sharp(buf)
-          .extract({
-            left: Math.round(b.x),
-            top: Math.round(b.y),
-            width: Math.round(b.w),
-            height: Math.round(b.h),
-          })
-          .jpeg()
-          .toBuffer();
-        const s = await safetyProvider.check(crop);
+    if (person.boxes?.length) {
+      const sample = person.boxes.slice(0, 3);
+      console.log("[PERSON] boxes sample", sample);
+      for (const b of sample) {
+        if (!isValidRegion(b)) console.warn("[PERSON] invalid region", b);
+      }
+    }
+
+    const crops: Buffer[] = [];
+    for (const b of person.boxes ?? []) {
+      const bufCrop = await safeExtract(buf, b);
+      if (bufCrop) crops.push(bufCrop);
+    }
+    const scores = await Promise.all(
+      crops.map(async (c) => {
+        const s = await safetyProvider.check(c);
         return s.nsfwScore;
       })
     );
-    const personMax = crops.length ? Math.max(...crops) : 0;
+    const personMax = scores.length ? Math.max(...scores) : 0;
     nsfwScore = Math.max(nsfwScore, personMax);
   }
   const isSafe = nsfwScore < 0.85;
