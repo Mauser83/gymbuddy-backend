@@ -7,6 +7,7 @@ const QUERY = `
       imageId
       equipmentId
       score
+      storageKey
     }
   }
 `;
@@ -112,6 +113,7 @@ describe("knnSearch", () => {
     expect(errors).toBeUndefined();
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits[0].imageId).toBe(globalImg2.id);
+    expect(hits[0].storageKey).toBe("g2");
   });
 
   it("filters by scope", async () => {
@@ -130,6 +132,7 @@ describe("knnSearch", () => {
     expect(errors).toBeUndefined();
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits.map((h: any) => h.imageId)).toEqual([gymImg2.id]);
+    expect(hits.map((h: any) => h.storageKey)).toEqual(["gy2"]);
   });
 
   it("requires gymId for GYM scope", async () => {

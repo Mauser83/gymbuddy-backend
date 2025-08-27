@@ -475,6 +475,7 @@ query Knn($input: KnnSearchInput!) {
     imageId
     equipmentId
     score
+    storageKey
   }
 }
 ```

@@ -17,6 +17,7 @@ export const knnTypeDefs = `
     imageId: ID!
     equipmentId: Int
     score: Float!
+    storageKey: String!
   }
 
   extend type Query {

@@ -2,7 +2,7 @@ import { prisma } from "../../lib/prisma";
 
 type Scope = "GLOBAL" | "GYM" | "AUTO";
 
-type Row = { id: string; equipmentId: number | null; score: number };
+type Row = { id: string; equipmentId: number | null; score: number; storageKey: string };
 
 export async function knnSearchService(input: {
   imageId: string;
@@ -65,6 +65,7 @@ async function searchGlobalFromSourceId(opts: {
     )
     SELECT ei.id,
            ei."equipmentId",
+           ei."storageKey",
            1 - (ei.embedding <=> src.embedding) AS score
       FROM "EquipmentImage" ei
       CROSS JOIN src
@@ -107,6 +108,7 @@ async function searchGymFromSourceId(opts: {
     )
     SELECT ge.id,
            ge."equipmentId",
+           ge."storageKey",
            1 - (ge.embedding <=> src.embedding) AS score
       FROM "GymEquipmentImage" ge
       CROSS JOIN src

@@ -21,6 +21,7 @@ export const KnnResolvers = {
         imageId: r.id,
         equipmentId: r.equipmentId ?? null,
         score: r.score,
+        storageKey: r.storageKey,
       }));
     },
   },
