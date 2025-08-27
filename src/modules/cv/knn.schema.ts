@@ -1,19 +1,23 @@
 export const knnTypeDefs = `
-  input KnnSearchInput {
-    imageId: ID
-    vector: [Float!]
-    scope: String!
-    limit: Int = 10
+  enum KnnScope {
+    GLOBAL
+    GYM
   }
 
-  type KnnHit {
+  input KnnSearchInput {
     imageId: ID!
-    equipmentId: Int!
+    scope: KnnScope!
+    limit: Int = 10
+    gymId: Int
+  }
+
+  type KnnNeighbor {
+    imageId: ID!
+    equipmentId: Int
     score: Float!
-    storageKey: String!
   }
 
   extend type Query {
-    knnSearch(input: KnnSearchInput!): [KnnHit!]!
+    knnSearch(input: KnnSearchInput!): [KnnNeighbor!]!
   }
 `;

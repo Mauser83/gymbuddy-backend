@@ -7,7 +7,6 @@ const QUERY = `
       imageId
       equipmentId
       score
-      storageKey
     }
   }
 `;
@@ -16,6 +15,7 @@ let globalImg1: any;
 let globalImg2: any;
 let gymImg1: any;
 let gymImg2: any;
+let gym: any;
 
 const DIM = 512;
 function padVec(seed: number[]) {
@@ -42,7 +42,7 @@ beforeAll(async () => {
     },
   });
 
-  const gym = await prisma.gym.create({
+  gym = await prisma.gym.create({
     data: {
       name: "gym",
       country: "US",
@@ -54,65 +54,45 @@ beforeAll(async () => {
     data: { gymId: gym.id, equipmentId: eq.id, quantity: 1 },
   });
 
-  async function createImage(storageKey: string, sha: string, isGym = false) {
+  async function createImage(
+    storageKey: string,
+    sha: string,
+    vec: number[],
+    isGym = false
+  ) {
+    const padded = padVec(vec);
+    const vectorParam = `[${padded.join(",")}]`;
     const imageId = randomUUID();
     await prisma.$executeRaw`
-      INSERT INTO "EquipmentImage" ("id","equipmentId","storageKey","mimeType","width","height","sha256")
-      VALUES (${imageId}, ${eq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha})
+      INSERT INTO "EquipmentImage" ("id","equipmentId","storageKey","mimeType","width","height","sha256","embedding")
+      VALUES (${imageId}, ${eq.id}, ${storageKey}, 'image/jpeg', 0, 0, ${sha}, ${vectorParam}::vector)
     `;
     if (isGym) {
       const gymImageId = randomUUID();
       await prisma.$executeRaw`
-        INSERT INTO "GymEquipmentImage" ("id","gymId","equipmentId","gymEquipmentId","imageId","storageKey","sha256")
-        VALUES (${gymImageId}, ${gym.id}, ${eq.id}, ${gymEq.id}, ${imageId}, ${storageKey}, ${sha})
+        INSERT INTO "GymEquipmentImage" ("id","gymId","equipmentId","gymEquipmentId","imageId","storageKey","sha256","embedding")
+        VALUES (${gymImageId}, ${gym.id}, ${eq.id}, ${gymEq.id}, ${imageId}, ${storageKey}, ${sha}, ${vectorParam}::vector)
       `;
-      return { id: imageId, gymImageId, gymId: gym.id };
+      return { id: gymImageId };
     }
     return { id: imageId };
   }
 
-  globalImg1 = await createImage("g1", "sha1");
-  globalImg2 = await createImage("g2", "sha2");
-  gymImg1 = await createImage("gy1", "sha3", true);
-  gymImg2 = await createImage("gy2", "sha4", true);
+  globalImg1 = await createImage("g1", "sha1", [1, 0, 0]);
+  globalImg2 = await createImage("g2", "sha2", [0.8, 0.1, 0]);
+  gymImg1 = await createImage("gy1", "sha3", [0.1, 0.2, 0], true);
+  gymImg2 = await createImage("gy2", "sha4", [0.01, 0.2, 0], true);
 
-  // extra global images for limit/latency tests
   const extras: any[] = [];
   for (let i = 0; i < 100; i++) {
-    extras.push(await createImage(`e${i}`, `ex${i}`));
+    extras.push(
+      await createImage(`e${i}`, `ex${i}`, [
+        Math.random() * 0.1,
+        Math.random(),
+        Math.random(),
+      ])
+    );
   }
-
-  async function insertEmbedding(img: any, scope: string, vec: number[]) {
-    const padded = padVec(vec);
-    const vectorParam = `[${padded.join(",")}]`;
-    if (scope === "GLOBAL") {
-      await prisma.$executeRaw`
-        INSERT INTO "ImageEmbedding" ("id","imageId","scope","scope_type","modelVendor","modelName","modelVersion","dim","embeddingVec")
-        VALUES (${randomUUID()}, ${
-        img.id
-      }, ${scope}, 'GLOBAL', 'local','mobileCLIP-S0','1.0', ${DIM}, ${vectorParam}::vector)
-      `;
-    } else {
-      await prisma.$executeRaw`
-        INSERT INTO "ImageEmbedding" ("id","gymImageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
-        VALUES (${randomUUID()}, ${img.gymImageId}, ${scope}, 'GYM', ${
-        img.gymId
-      }, 'local','mobileCLIP-S0','1.0', ${DIM}, ${vectorParam}::vector)
-      `;
-    }
-  }
-
-  await insertEmbedding(globalImg1, "GLOBAL", [1, 0, 0]);
-  await insertEmbedding(globalImg2, "GLOBAL", [0.8, 0.1, 0]);
-  for (const img of extras) {
-    await insertEmbedding(img, "GLOBAL", [
-      Math.random() * 0.1,
-      Math.random(),
-      Math.random(),
-    ]);
-  }
-  await insertEmbedding(gymImg1, "GYM", [0.1, 0.2, 0]);
-  await insertEmbedding(gymImg2, "GYM", [0.01, 0.2, 0]);
 });
 
 describe("knnSearch", () => {
@@ -120,47 +100,49 @@ describe("knnSearch", () => {
     const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 5 },
+        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 5 },
       },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
-    expect(hits[0].imageId).toBe(globalImg1.id);
-    expect(hits[1].imageId).toBe(globalImg2.id);
-    expect(hits[0].score).toBeGreaterThan(hits[1].score);
+    expect(hits[0].imageId).toBe(globalImg2.id);
   });
 
   it("filters by scope", async () => {
     const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { imageId: gymImg1.gymImageId, scope: "GYM", limit: 10 },
+        input: {
+          imageId: gymImg1.id,
+          scope: "GYM",
+          gymId: gym.id,
+          limit: 10,
+        },
       },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
-    expect(hits.map((h: any) => h.imageId)).toEqual([
-      gymImg1.gymImageId,
-      gymImg2.gymImageId,
-    ]);
+    expect(hits.map((h: any) => h.imageId)).toEqual([gymImg2.id]);
   });
 
-  it("guards vector dimension", async () => {
+  it("requires gymId for GYM scope", async () => {
     const res = await executeOperation({
       query: QUERY,
-      variables: { input: { vector: [1, 0], scope: "GLOBAL" } },
+      variables: {
+        input: { imageId: gymImg1.id, scope: "GYM", limit: 5 },
+      },
     });
     const err = (res.body as any).singleResult.errors?.[0].message;
-    expect(err).toMatch(/dimension/i);
+    expect(err).toMatch(/gymId/);
   });
 
   it("clamps limit", async () => {
     const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 100 },
+        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 1000 },
       },
     });
     const hits = (res.body as any).singleResult.data.knnSearch;
-    expect(hits).toHaveLength(50);
+    expect(hits).toHaveLength(100);
   });
 
   it("meets latency budget", async () => {
@@ -168,7 +150,7 @@ describe("knnSearch", () => {
     await executeOperation({
       query: QUERY,
       variables: {
-        input: { vector: padVec([1, 0, 0]), scope: "GLOBAL", limit: 10 },
+        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 10 },
       },
     });
     const duration = Date.now() - start;

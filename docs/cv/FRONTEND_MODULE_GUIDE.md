@@ -458,18 +458,23 @@ Legacy/admin-internal endpoints. Prefer the batch session + finalize path and th
 The CV module exposes utilities for image search and metadata taxonomy.
 
 ```graphql
-input KnnSearchInput {
-  imageId: ID
-  vector: [Float!]
-  scope: String!  # "GLOBAL" | "GYM"
-  limit: Int = 10
+enum KnnScope {
+  GLOBAL
+  GYM
 }
+
+input KnnSearchInput {
+  imageId: ID!
+  scope: KnnScope!
+  limit: Int = 10
+  gymId: Int
+}
+
 query Knn($input: KnnSearchInput!) {
   knnSearch(input: $input) {
     imageId
     equipmentId
     score
-    storageKey
   }
 }
 ```
