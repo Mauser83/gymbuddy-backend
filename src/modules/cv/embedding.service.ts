@@ -121,12 +121,12 @@ export async function getLatestEmbeddedImageService(input: {
   if (scope === 'GYM') {
     const rows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
       `
-      SELECT id, "createdAt"
+      SELECT id, "capturedAt" AS "createdAt"
       FROM "GymEquipmentImage"
       WHERE embedding IS NOT NULL
         AND "gymId" = $1
       ${equipFilter}
-      ORDER BY "createdAt" DESC
+      ORDER BY "capturedAt" DESC
       LIMIT 1
       `,
       gymId
@@ -139,12 +139,12 @@ export async function getLatestEmbeddedImageService(input: {
 
   const gymRows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
     `
-    SELECT id, "createdAt"
+    SELECT id, "capturedAt" AS "createdAt"
     FROM "GymEquipmentImage"
     WHERE embedding IS NOT NULL
       AND "gymId" = $1
     ${equipFilter}
-    ORDER BY "createdAt" DESC
+    ORDER BY "capturedAt" DESC
     LIMIT 1
     `,
     gymId
