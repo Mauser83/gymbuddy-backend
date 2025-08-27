@@ -9,13 +9,13 @@ const MODEL_SHA = process.env.PERSON_MODEL_SHA256;
 const INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640);
 
 // Score gates (obj * cls)
-const CONF_MIN  = Number(process.env.PERSON_CONF || 0.55);
+const CONF_MIN  = Number(process.env.PERSON_CONF || 0.65);
 const OBJ_MIN   = Number(process.env.PERSON_OBJ_MIN || 0.45);
 
 // Shape gates in letterbox space (to avoid plush/mannequin FPs)
 const AREA_MIN  = Number(process.env.PERSON_AREA_MIN  || 0.015); // >= 1.5% of frame
 const AREA_MAX  = Number(process.env.PERSON_AREA_MAX  || 0.65);  // not almost full frame
-const ASP_MIN   = Number(process.env.PERSON_ASPECT_MIN || 1.10); // tall-ish: h/w >= 1.1
+const ASP_MIN   = Number(process.env.PERSON_ASPECT_MIN || 1.3); // tall-ish: h/w >= 1.1
 const ASP_MAX   = Number(process.env.PERSON_ASPECT_MAX || 5.0);
 
 let sess: ort.InferenceSession | null = null;
