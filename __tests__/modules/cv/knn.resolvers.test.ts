@@ -100,9 +100,16 @@ describe("knnSearch", () => {
     const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 5 },
+        input: {
+          imageId: globalImg1.id,
+          scope: "GLOBAL",
+          gymId: gym.id,
+          limit: 5,
+        },
       },
     });
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeUndefined();
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits[0].imageId).toBe(globalImg2.id);
   });
@@ -119,6 +126,8 @@ describe("knnSearch", () => {
         },
       },
     });
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeUndefined();
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits.map((h: any) => h.imageId)).toEqual([gymImg2.id]);
   });
@@ -138,21 +147,35 @@ describe("knnSearch", () => {
     const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 1000 },
+        input: {
+          imageId: globalImg1.id,
+          scope: "GLOBAL",
+          gymId: gym.id,
+          limit: 1000,
+        },
       },
     });
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeUndefined();
     const hits = (res.body as any).singleResult.data.knnSearch;
     expect(hits).toHaveLength(100);
   });
 
   it("meets latency budget", async () => {
     const start = Date.now();
-    await executeOperation({
+    const res = await executeOperation({
       query: QUERY,
       variables: {
-        input: { imageId: globalImg1.id, scope: "GLOBAL", limit: 10 },
+        input: {
+          imageId: globalImg1.id,
+          scope: "GLOBAL",
+          gymId: gym.id,
+          limit: 10,
+        },
       },
     });
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeUndefined();
     const duration = Date.now() - start;
     expect(duration).toBeLessThan(500);
   });
