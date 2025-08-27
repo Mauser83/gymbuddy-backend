@@ -1,8 +1,11 @@
 import * as ort from "onnxruntime-node";
 import sharp from "sharp";
+import { ensureModelFile } from "../models.ensure";
 
 // Tunables (env can override)
 const MODEL_PATH = process.env.PERSON_MODEL_PATH || "models/yolov5n.onnx";
+const MODEL_R2_KEY = process.env.PERSON_MODEL_R2_KEY;
+const MODEL_SHA = process.env.PERSON_MODEL_SHA256;
 const INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640);
 
 // Score gates (obj * cls)
@@ -18,6 +21,13 @@ const ASP_MAX   = Number(process.env.PERSON_ASPECT_MAX || 5.0);
 let sess: ort.InferenceSession | null = null;
 async function getSession() {
   if (!sess) {
+    if (MODEL_R2_KEY) {
+      await ensureModelFile(
+        MODEL_PATH,
+        { kind: "r2", bucket: process.env.R2_BUCKET!, key: MODEL_R2_KEY },
+        MODEL_SHA
+      );
+    }
     sess = await ort.InferenceSession.create(MODEL_PATH, {
       graphOptimizationLevel: "all",
       intraOpNumThreads: 1,
