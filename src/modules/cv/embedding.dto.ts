@@ -33,3 +33,22 @@ export class GetImageEmbeddingsByImageDto {
   @IsString()
   scope?: string;
 }
+
+export class LatestEmbeddedImageInputDTO {
+  @IsString()
+  scope!: 'GLOBAL' | 'GYM' | 'AUTO';
+
+  @IsOptional()
+  @IsInt()
+  gymId?: number;
+
+  @IsOptional()
+  @IsInt()
+  equipmentId?: number;
+}
+
+export class LatestEmbeddedImageDTO {
+  imageId!: string;
+  createdAt!: Date;
+  scope!: 'GLOBAL' | 'GYM';
+}

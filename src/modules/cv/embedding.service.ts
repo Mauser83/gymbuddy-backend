@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "../../lib/prisma";
+import { Prisma, PrismaClient, prisma } from "../../lib/prisma";
 import {
   GetImageEmbeddingsByImageDto,
   UpsertImageEmbeddingDto,
@@ -83,4 +83,94 @@ export class EmbeddingService {
     await this.prisma.imageEmbedding.delete({ where: { id } });
     return true;
   }
+}
+
+type Scope = 'GLOBAL' | 'GYM' | 'AUTO';
+
+export async function getLatestEmbeddedImageService(input: {
+  scope: Scope;
+  gymId?: number;
+  equipmentId?: number;
+}) {
+  const { scope, gymId, equipmentId } = input;
+
+  if ((scope === 'GYM' || scope === 'AUTO') && !gymId) {
+    throw new Error('gymId is required for this scope');
+  }
+
+  const equipFilter =
+    equipmentId != null ? `AND "equipmentId" = ${Number(equipmentId)}` : '';
+
+  if (scope === 'GLOBAL') {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
+      `
+      SELECT id, "createdAt"
+      FROM "EquipmentImage"
+      WHERE embedding IS NOT NULL
+      ${equipFilter}
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+      `
+    );
+    const row = rows[0];
+    return row
+      ? { imageId: row.id, createdAt: row.createdAt, scope: 'GLOBAL' as const }
+      : null;
+  }
+
+  if (scope === 'GYM') {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
+      `
+      SELECT id, "createdAt"
+      FROM "GymEquipmentImage"
+      WHERE embedding IS NOT NULL
+        AND "gymId" = $1
+      ${equipFilter}
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+      `,
+      gymId
+    );
+    const row = rows[0];
+    return row
+      ? { imageId: row.id, createdAt: row.createdAt, scope: 'GYM' as const }
+      : null;
+  }
+
+  const gymRows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
+    `
+    SELECT id, "createdAt"
+    FROM "GymEquipmentImage"
+    WHERE embedding IS NOT NULL
+      AND "gymId" = $1
+    ${equipFilter}
+    ORDER BY "createdAt" DESC
+    LIMIT 1
+    `,
+    gymId
+  );
+  if (gymRows[0]) {
+    return {
+      imageId: gymRows[0].id,
+      createdAt: gymRows[0].createdAt,
+      scope: 'GYM' as const,
+    };
+  }
+
+  const globalRows = await prisma.$queryRawUnsafe<
+    Array<{ id: string; createdAt: Date }>
+  >(
+    `
+    SELECT id, "createdAt"
+    FROM "EquipmentImage"
+    WHERE embedding IS NOT NULL
+    ${equipFilter}
+    ORDER BY "createdAt" DESC
+    LIMIT 1
+    `
+  );
+  const g = globalRows[0];
+  return g
+    ? { imageId: g.id, createdAt: g.createdAt, scope: 'GLOBAL' as const }
+    : null;
 }

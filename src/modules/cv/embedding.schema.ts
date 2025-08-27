@@ -2,7 +2,7 @@ export const embeddingTypeDefs = `
   extend type Query {
     imageEmbeddings(imageId: ID!, scope: String): [ImageEmbedding!]!
     imageEmbedding(id: ID!): ImageEmbedding
-    latestEmbeddedImage(gymId: Int): LatestEmbeddedImage
+    getLatestEmbeddedImage(input: LatestEmbeddedImageInput!): LatestEmbeddedImage
   }
 
   extend type Mutation {
@@ -23,9 +23,16 @@ export const embeddingTypeDefs = `
     # vector NOT exposed on the public API
   }
 
+  input LatestEmbeddedImageInput {
+    scope: KnnScope!
+    gymId: Int
+    equipmentId: Int
+  }
+
   type LatestEmbeddedImage {
     imageId: ID!
     createdAt: DateTime!
+    scope: KnnScope!
   }
 
   input UpsertImageEmbeddingInput {

@@ -1,8 +1,6 @@
 import type { AuthContext } from "../auth/auth.types";
-import { GymRole } from "../auth/auth.types";
-import { verifyGymScope } from "../auth/auth.roles";
 import { GraphQLError } from "graphql";
-import { EmbeddingService } from "./embedding.service";
+import { EmbeddingService, getLatestEmbeddedImageService } from "./embedding.service";
 import { UpsertImageEmbeddingDto } from "./embedding.dto";
 import { validateInput } from "../../middlewares/validation";
 
@@ -24,32 +22,19 @@ export const EmbeddingResolvers = {
       const service = new EmbeddingService(context.prisma);
       return service.getById(args.id);
     },
-    latestEmbeddedImage: async (
-      _: unknown,
-      args: { gymId?: number },
-      context: AuthContext
-    ) => {
-      let { gymId } = args;
-
-      if (!gymId) {
-        if (context.appRole !== "ADMIN") {
-          const adminRole = context.gymRoles.find(
-            (r) => r.role === GymRole.GYM_ADMIN
-          );
-          if (adminRole) {
-            gymId = adminRole.gymId;
-          } else {
-            throw new GraphQLError("gymId required");
-          }
-        }
-      } else {
-        verifyGymScope(context, context.permissionService, gymId, [
-          GymRole.GYM_ADMIN,
-        ]);
+    async getLatestEmbeddedImage(_: any, { input }: any) {
+      const { scope, gymId } = input || {};
+      if (!scope) {
+        throw new GraphQLError('scope is required', { extensions: { code: 'BAD_USER_INPUT' } });
+      }
+      if ((scope === 'GYM' || scope === 'AUTO') && !gymId) {
+        throw new GraphQLError('gymId is required for this scope', {
+          extensions: { code: 'BAD_USER_INPUT' },
+        });
       }
 
-      const service = new EmbeddingService(context.prisma);
-      return service.getLatestEmbeddedImage(gymId ?? undefined);
+      const row = await getLatestEmbeddedImageService(input);
+      return row;
     },
   },
   Mutation: {

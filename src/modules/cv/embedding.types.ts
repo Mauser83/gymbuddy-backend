@@ -10,3 +10,15 @@ export interface ImageEmbedding {
   dim: number;
   createdAt: string; // DateTime scalar mapping
 }
+
+export type LatestEmbeddedImageInput = {
+  scope: 'GLOBAL' | 'GYM' | 'AUTO';
+  gymId?: number;
+  equipmentId?: number;
+};
+
+export type LatestEmbeddedImage = {
+  imageId: string;
+  createdAt: string;
+  scope: 'GLOBAL' | 'GYM';
+};
