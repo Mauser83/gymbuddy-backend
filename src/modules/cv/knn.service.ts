@@ -1,5 +1,8 @@
 import { prisma } from "../../lib/prisma";
+
 type Scope = "GLOBAL" | "GYM" | "AUTO";
+
+type Row = { id: string; equipmentId: number | null; score: number };
 
 export async function knnSearchService(input: {
   imageId: string;
@@ -10,93 +13,112 @@ export async function knnSearchService(input: {
 }) {
   const { imageId, scope, gymId } = input;
   const limit = Math.max(1, Math.min(input.limit ?? 10, 100));
-  const minScore = Math.max(0, Math.min(input.minScore ?? 0.72, 1));
+  const minScore = clamp01(input.minScore ?? 0.72);
 
-  // 1) load source vector (prefer scoped table when scope === 'GYM')
-  const src =
-    scope === "GYM"
-      ? await prisma.$queryRawUnsafe<Array<{ embedding: number[] }>>(
-          `SELECT embedding FROM "GymEquipmentImage"
-           WHERE id = $1 AND "gymId" = $2 AND embedding IS NOT NULL LIMIT 1`,
-          imageId,
-          gymId
-        )
-      : await prisma.$queryRawUnsafe<Array<{ embedding: number[] }>>(
-          `SELECT embedding FROM "EquipmentImage"
-           WHERE id = $1 AND embedding IS NOT NULL LIMIT 1`,
-          imageId
-        );
-
-  const vec = src[0]?.embedding;
-  if (!vec) {
-    // fallback if wrong id was pasted
-    const fb =
-      scope === "GYM"
-        ? await prisma.$queryRawUnsafe<Array<{ embedding: number[] }>>(
-            `SELECT embedding FROM "EquipmentImage" WHERE id = $1 AND embedding IS NOT NULL LIMIT 1`,
-            imageId
-          )
-        : await prisma.$queryRawUnsafe<Array<{ embedding: number[] }>>(
-            `SELECT embedding FROM "GymEquipmentImage" WHERE id = $1 AND embedding IS NOT NULL LIMIT 1`,
-            imageId
-          );
-    if (!fb[0]?.embedding) throw new Error("Source image embedding not found");
-    return scope === "GYM"
-      ? await searchGym(fb[0].embedding, { gymId: gymId!, limit, excludeId: imageId })
-      : scope === "GLOBAL"
-      ? await searchGlobal(fb[0].embedding, { limit, excludeId: imageId })
-      : await handleAuto(fb[0].embedding, { limit, gymId: gymId!, excludeId: imageId, minScore });
+  if ((scope === "GYM" || scope === "AUTO") && !gymId) {
+    throw new Error("gymId is required for this scope");
   }
 
-  // 2) scoped or AUTO
-  if (scope === "GLOBAL") return searchGlobal(vec, { limit, excludeId: imageId });
-  if (scope === "GYM") return searchGym(vec, { gymId: gymId!, limit, excludeId: imageId });
-  return handleAuto(vec, { limit, gymId: gymId!, excludeId: imageId, minScore });
+  if (scope === "GLOBAL") {
+    return searchGlobalFromSourceId({ sourceId: imageId, excludeId: imageId, limit });
+  }
+
+  if (scope === "GYM") {
+    return searchGymFromSourceId({ sourceId: imageId, gymId: gymId!, excludeId: imageId, limit });
+  }
+
+  // AUTO: try GLOBAL, fall back to GYM if top score < minScore
+  const global = await searchGlobalFromSourceId({ sourceId: imageId, excludeId: imageId, limit });
+  if ((global[0]?.score ?? 0) >= minScore) return global;
+  return searchGymFromSourceId({ sourceId: imageId, gymId: gymId!, excludeId: imageId, limit });
 }
 
-async function handleAuto(
-  vec: number[],
-  opts: { limit: number; gymId: number; excludeId: string; minScore: number }
-) {
-  const global = await searchGlobal(vec, { limit: opts.limit, excludeId: opts.excludeId });
-  if ((global[0]?.score ?? 0) >= opts.minScore) return global;
-  const gym = await searchGym(vec, { gymId: opts.gymId, limit: opts.limit, excludeId: opts.excludeId });
-  return gym;
+function clamp01(x: number) {
+  return Math.max(0, Math.min(1, x));
 }
 
-async function searchGlobal(
-  vec: number[],
-  opts: { limit: number; excludeId: string }
-) {
-  return prisma.$queryRawUnsafe<
-    Array<{ id: string; equipmentId: number | null; score: number }>
-  >(
-    `SELECT id, "equipmentId", 1 - (embedding <=> $1) AS score
-     FROM "EquipmentImage"
-     WHERE embedding IS NOT NULL AND id <> $2
-     ORDER BY embedding <-> $1
-     LIMIT $3`,
-    vec,
-    opts.excludeId,
-    opts.limit
+/**
+ * GLOBAL: prefer the source embedding from EquipmentImage; if not found, fall back to GymEquipmentImage.
+ * We never fetch the vector into JS; we CROSS JOIN the chosen source embedding in SQL.
+ */
+async function searchGlobalFromSourceId(opts: {
+  sourceId: string;
+  excludeId: string;
+  limit: number;
+}): Promise<Row[]> {
+  const { sourceId, excludeId, limit } = opts;
+
+  return prisma.$queryRawUnsafe<Row[]>(
+    `
+    WITH src AS (
+      SELECT embedding FROM (
+        SELECT embedding, 1 AS pri
+          FROM "EquipmentImage"
+         WHERE id = $1 AND embedding IS NOT NULL
+        UNION ALL
+        SELECT embedding, 2 AS pri
+          FROM "GymEquipmentImage"
+         WHERE id = $1 AND embedding IS NOT NULL
+      ) s
+      ORDER BY pri
+      LIMIT 1
+    )
+    SELECT ei.id,
+           ei."equipmentId",
+           1 - (ei.embedding <=> src.embedding) AS score
+      FROM "EquipmentImage" ei
+      CROSS JOIN src
+     WHERE ei.embedding IS NOT NULL
+       AND ei.id <> $2
+     ORDER BY ei.embedding <-> src.embedding
+     LIMIT $3
+    `,
+    sourceId,
+    excludeId,
+    limit
   );
 }
 
-async function searchGym(
-  vec: number[],
-  opts: { gymId: number; limit: number; excludeId: string }
-) {
-  return prisma.$queryRawUnsafe<
-    Array<{ id: string; equipmentId: number | null; score: number }>
-  >(
-    `SELECT id, "equipmentId", 1 - (embedding <=> $1) AS score
-     FROM "GymEquipmentImage"
-     WHERE embedding IS NOT NULL AND "gymId" = $2 AND id <> $3
-     ORDER BY embedding <-> $1
-     LIMIT $4`,
-    vec,
-    opts.gymId,
-    opts.excludeId,
-    opts.limit
+/**
+ * GYM: prefer the source embedding from GymEquipmentImage (for the same gym); if not found, fall back to EquipmentImage.
+ */
+async function searchGymFromSourceId(opts: {
+  sourceId: string;
+  gymId: number;
+  excludeId: string;
+  limit: number;
+}): Promise<Row[]> {
+  const { sourceId, gymId, excludeId, limit } = opts;
+
+  return prisma.$queryRawUnsafe<Row[]>(
+    `
+    WITH src AS (
+      SELECT embedding FROM (
+        SELECT embedding, 1 AS pri
+          FROM "GymEquipmentImage"
+         WHERE id = $1 AND "gymId" = $2 AND embedding IS NOT NULL
+        UNION ALL
+        SELECT embedding, 2 AS pri
+          FROM "EquipmentImage"
+         WHERE id = $1 AND embedding IS NOT NULL
+      ) s
+      ORDER BY pri
+      LIMIT 1
+    )
+    SELECT ge.id,
+           ge."equipmentId",
+           1 - (ge.embedding <=> src.embedding) AS score
+      FROM "GymEquipmentImage" ge
+      CROSS JOIN src
+     WHERE ge.embedding IS NOT NULL
+       AND ge."gymId" = $2
+       AND ge.id <> $3
+     ORDER BY ge.embedding <-> src.embedding
+     LIMIT $4
+    `,
+    sourceId,
+    gymId,
+    excludeId,
+    limit
   );
 }
