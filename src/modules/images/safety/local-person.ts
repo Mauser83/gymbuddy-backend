@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { ensureModelFile } from "../models.ensure";
 
 // Tunables (env can override)
-const MODEL_PATH = process.env.PERSON_MODEL_PATH || "models/yolov5n.onnx";
+const MODEL_PATH = process.env.PERSON_MODEL_PATH || "models/yolov5s.onnx";
 const MODEL_R2_KEY = process.env.PERSON_MODEL_R2_KEY;
 const MODEL_SHA = process.env.PERSON_MODEL_SHA256;
 const INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640);
