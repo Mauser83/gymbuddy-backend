@@ -8,8 +8,8 @@ import {
   EMBEDDING_DIM,
 } from "./embedding/local-openclip-light";
 import { createSafetyProvider } from "./safety";
-import sharp from "sharp";
-import { detectPersons } from "./safety/local-person";
+import { hasPerson } from "./safety/local-person";
+
 import { ImageJobStatus } from "../../generated/prisma";
 
 const queue = new QueueRunnerService(prisma);
@@ -42,73 +42,9 @@ function adaptToDbDim(vec: number[]): number[] {
 
 const embedInitPromise = initLocalOpenCLIP();
 const safetyProvider = createSafetyProvider();
-const PERSON_CROP_MAX = Number(process.env.PERSON_CROP_MAX || 3);
 const MAX_RETRIES = Number(process.env.WORKER_MAX_RETRIES || 3);
-
-function toInt(n: any) {
-  return (n ?? 0) | 0;
-}
-
-function normalizeBox(raw: any) {
-  if (!raw) return null;
-  let left = raw.left ?? raw.x ?? raw.l ?? raw.x1;
-  let top = raw.top ?? raw.y ?? raw.t ?? raw.y1;
-  let width = raw.width ?? raw.w;
-  let height = raw.height ?? raw.h;
-  const right = raw.right ?? raw.x2;
-  const bottom = raw.bottom ?? raw.y2;
-
-  if ((width == null || height == null) && right != null && bottom != null) {
-    if (left == null || top == null) return null;
-    width = right - left;
-    height = bottom - top;
-  }
-  left = toInt(left);
-  top = toInt(top);
-  width = toInt(width);
-  height = toInt(height);
-  if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(width) || !Number.isFinite(height))
-    return null;
-  return { left, top, width, height };
-}
-
-function clampRegionToMeta(
-  b: { left: number; top: number; width: number; height: number },
-  iw: number,
-  ih: number,
-) {
-  let left = Math.max(0, Math.min(iw, b.left));
-  let top = Math.max(0, Math.min(ih, b.top));
-  let width = Math.max(1, Math.min(iw - left, b.width));
-  let height = Math.max(1, Math.min(ih - top, b.height));
-  return { left, top, width, height };
-}
-
-async function cropAndRescore(bytes: Buffer, rawBoxes: any[]) {
-  const meta = await sharp(bytes).metadata();
-  const iw = meta.width!, ih = meta.height!;
-  const boxes = (rawBoxes ?? [])
-    .map(normalizeBox)
-    .filter(Boolean)
-    .map((b) => clampRegionToMeta(b as any, iw, ih))
-    .filter((b) => b.width > 0 && b.height > 0)
-    .slice(0, PERSON_CROP_MAX);
-
-  const scores: number[] = [];
-  for (const b of boxes) {
-    try {
-      const crop = await sharp(bytes)
-        .extract({ left: b.left, top: b.top, width: b.width, height: b.height })
-        .jpeg({ quality: 85, chromaSubsampling: "4:2:0" })
-        .toBuffer();
-      const s = await safetyProvider.check(crop);
-      scores.push(s.nsfwScore);
-    } catch (e) {
-      console.warn("[PERSON_CROP] extract failed", b, e);
-    }
-  }
-  return scores;
-}
+const NSFW_FLAG_THRESHOLD = Number(process.env.NSFW_FLAG_THRESHOLD ?? 0.60);
+const NSFW_PERSON_DELTA = Number(process.env.NSFW_PERSON_DELTA ?? 0.0);
 
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
@@ -151,24 +87,21 @@ async function handleSAFETY(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
   const buf = Buffer.from(bytes);
   const base = await safetyProvider.check(buf);
-  const person = await detectPersons(buf);
+  const personPresent = await hasPerson(buf);
 
-  let nsfwScore = base.nsfwScore;
-  if (person.hasPerson && (person.boxes?.length ?? 0) > 0) {
-    const cropScores = await cropAndRescore(buf, person.boxes);
-    const personMax = cropScores.length ? Math.max(...cropScores) : 0;
-    nsfwScore = Math.max(nsfwScore, personMax);
-  }
+  const t = personPresent
+    ? Math.max(0, NSFW_FLAG_THRESHOLD - NSFW_PERSON_DELTA)
+    : NSFW_FLAG_THRESHOLD;
 
-  const isSafe = nsfwScore < 0.85;
+  const finalScore = base.nsfwScore;
+  const isSafe = finalScore < t;
+
   await prisma.gymEquipmentImage.updateMany({
     where: { storageKey },
     data: {
       isSafe,
-      nsfwScore,
-      hasPerson: person.hasPerson,
-      personCount: person.personCount,
-      personBoxes: person.boxes,
+      nsfwScore: finalScore,
+      hasPerson: personPresent,
     },
   });
 }
