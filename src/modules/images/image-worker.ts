@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { QueueRunnerService } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { createHash, randomUUID } from "crypto";
+import { createHash } from "crypto";
 import {
   initLocalOpenCLIP,
   embedImage,
@@ -9,6 +9,7 @@ import {
 } from "./embedding/local-openclip-light";
 import { createSafetyProvider } from "./safety";
 import { hasPerson } from "./safety/local-person";
+import { writeImageEmbedding } from "../cv/embeddingWriter";
 
 import { ImageJobStatus } from "../../generated/prisma";
 
@@ -26,19 +27,6 @@ const s3 = new S3Client({
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
 });
-
-const EMBED_VENDOR = process.env.EMBED_VENDOR ?? "local";
-const EMBED_MODEL = process.env.EMBED_MODEL ?? "openclip-vit-b32.onnx";
-const EMBED_VERSION = process.env.EMBED_VERSION ?? "1.0";
-const MODEL_DIM = Number(process.env.EMBED_DIM ?? EMBEDDING_DIM);
-const DB_VECTOR_DIM = Number(process.env.EMBED_DB_DIM ?? MODEL_DIM);
-
-function adaptToDbDim(vec: number[]): number[] {
-  if (vec.length === DB_VECTOR_DIM) return vec;
-  if (vec.length < DB_VECTOR_DIM)
-    return [...vec, ...Array(DB_VECTOR_DIM - vec.length).fill(0)];
-  return vec.slice(0, DB_VECTOR_DIM);
-}
 
 const embedInitPromise = initLocalOpenCLIP();
 const safetyProvider = createSafetyProvider();
@@ -122,9 +110,8 @@ async function handleEMBED(storageKey: string) {
 
   const scopeType = gymImg ? "GYM" : "GLOBAL";
   const gymId = gymImg?.gymId ?? null;
-  const scope = gymImg ? `GYM:${gymId}` : "GLOBAL";
 
-  // 2) compute vector and upsert row with embedding
+  // 2) compute vector
   const bytes = await downloadBytes(storageKey);
   await embedInitPromise;
   const vecFloat = await embedImage(Buffer.from(bytes));
@@ -139,37 +126,15 @@ async function handleEMBED(storageKey: string) {
   if (process.env.EMBED_LOG === '1') {
     console.log('[db] writing embed sample:', Array.from(vecNorm.slice(0, 8)));
   }
-  const vec = adaptToDbDim(Array.from(vecNorm)); // 1536 for DB
-  const vectorParam = `[${vec
-    .map((v) => (Number.isFinite(v) ? v : 0))
-    .join(",")}]`;
-  if (scopeType === "GYM" && gymImg) {
-    await prisma.$executeRaw`
-      INSERT INTO "ImageEmbedding"
-        ("id","gymImageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
-      VALUES
-        (${randomUUID()}, ${gymImg.id}, ${scope}, ${scopeType}, ${gymId}, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
-      ON CONFLICT ("gymImageId","scope","modelVendor","modelName","modelVersion")
-      DO UPDATE SET
-        "dim" = EXCLUDED."dim",
-        "scope_type" = EXCLUDED."scope_type",
-        "gym_id" = EXCLUDED."gym_id",
-        "embeddingVec" = ${vectorParam}::vector
-    `;
-  } else if (scopeType === "GLOBAL" && eqImg) {
-    await prisma.$executeRaw`
-      INSERT INTO "ImageEmbedding"
-        ("id","imageId","scope","scope_type","gym_id","modelVendor","modelName","modelVersion","dim","embeddingVec")
-      VALUES
-        (${randomUUID()}, ${eqImg.id}, ${scope}, ${scopeType}, NULL, ${EMBED_VENDOR}, ${EMBED_MODEL}, ${EMBED_VERSION}, ${DB_VECTOR_DIM}, ${vectorParam}::vector)
-      ON CONFLICT ("imageId","scope","modelVendor","modelName","modelVersion")
-      DO UPDATE SET
-        "dim" = EXCLUDED."dim",
-        "scope_type" = EXCLUDED."scope_type",
-        "gym_id" = EXCLUDED."gym_id",
-        "embeddingVec" = ${vectorParam}::vector
-    `;
-  }
+  const vec = Array.from(vecNorm);
+
+  // 3) write vector to correct table/row
+  await writeImageEmbedding({
+    target: scopeType === "GYM" ? "GYM" : "GLOBAL",
+    imageId: scopeType === "GYM" ? gymImg!.id : eqImg!.id,
+    gymId: gymId ?? undefined,
+    vector: vec,
+  });
 }
 
 export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY ?? 1)) {

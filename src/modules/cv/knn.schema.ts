@@ -1,15 +1,17 @@
 export const knnTypeDefs = `
-  enum KnnScope {
-    GLOBAL
-    GYM
-  }
+    enum KnnScope {
+      GLOBAL
+      GYM
+      AUTO
+    }
 
-  input KnnSearchInput {
-    imageId: ID!
-    scope: KnnScope!
-    limit: Int = 10
-    gymId: Int
-  }
+    input KnnSearchInput {
+      imageId: ID!
+      scope: KnnScope!
+      gymId: Int
+      limit: Int = 10
+      minScore: Float = 0.72
+    }
 
   type KnnNeighbor {
     imageId: ID!
