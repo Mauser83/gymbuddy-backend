@@ -8,15 +8,14 @@ const MODEL_R2_KEY = process.env.PERSON_MODEL_R2_KEY;
 const MODEL_SHA = process.env.PERSON_MODEL_SHA256;
 const INPUT_SIZE = Number(process.env.PERSON_INPUT_SIZE || 640);
 
-// Score gates (obj * cls)
-const CONF_MIN  = Number(process.env.PERSON_CONF || 0.65);
-const OBJ_MIN   = Number(process.env.PERSON_OBJ_MIN || 0.45);
+// Keep thresholds moderate to confirm the pipeline first
+const CONF_MIN = Number(process.env.PERSON_CONF || 0.45);   // final score threshold
+const OBJ_MIN  = Number(process.env.PERSON_OBJ_MIN || 0.25);
 
-// Shape gates in letterbox space (to avoid plush/mannequin FPs)
-const AREA_MIN  = Number(process.env.PERSON_AREA_MIN  || 0.015); // >= 1.5% of frame
-const AREA_MAX  = Number(process.env.PERSON_AREA_MAX  || 0.65);  // not almost full frame
-const ASP_MIN   = Number(process.env.PERSON_ASPECT_MIN || 1.3); // tall-ish: h/w >= 1.1
-const ASP_MAX   = Number(process.env.PERSON_ASPECT_MAX || 5.0);
+const AREA_MIN = Number(process.env.PERSON_AREA_MIN || 0.005); // 0.5% of frame
+const AREA_MAX = Number(process.env.PERSON_AREA_MAX || 0.90);
+const ASP_MIN  = Number(process.env.PERSON_ASPECT_MIN || 0.5); // allow seated/lying
+const ASP_MAX  = Number(process.env.PERSON_ASPECT_MAX || 7.0);
 
 let sess: ort.InferenceSession | null = null;
 async function getSession() {
@@ -38,9 +37,12 @@ async function getSession() {
   return sess;
 }
 
-function sigmoid(x: number) { return 1 / (1 + Math.exp(-x)); }
+function maybeSigmoid(v: number) {
+  // If already a probability (0..1), don't sigmoid again.
+  return v >= 0 && v <= 1 ? v : 1 / (1 + Math.exp(-v));
+}
 
-async function letterboxToNCHW(bytes: Buffer, size: number) {
+async function letterboxNCHW(bytes: Buffer, size: number) {
   const meta = await sharp(bytes).metadata();
   const iw = meta.width!, ih = meta.height!;
   const scale = Math.min(size / iw, size / ih);
@@ -70,38 +72,92 @@ async function letterboxToNCHW(bytes: Buffer, size: number) {
   return new ort.Tensor("float32", out, [1, 3, size, size]);
 }
 
-// Public API: presence only
 export async function hasPerson(bytes: Buffer): Promise<boolean> {
   const session = await getSession();
-  const input = session.inputNames[0];
-  const output = session.outputNames[0];
+  const inName = session.inputNames[0];
+  const tensor = await letterboxNCHW(bytes, INPUT_SIZE);
 
-  const tensor = await letterboxToNCHW(bytes, INPUT_SIZE);
-  const out = await session.run({ [input]: tensor });
+  const outMap = await session.run({ [inName]: tensor });
+  const outNames = session.outputNames;
 
-  // YOLOv5: [1, N, 85] rows of (cx,cy,w,h,obj,80 classes)
-  const arr = out[output].data as Float32Array;
-  const N = arr.length / 85;
-  const kPerson = 0;
   const frameArea = INPUT_SIZE * INPUT_SIZE;
+  const kPerson = 0; // COCO class 0
 
-  for (let i = 0; i < N; i++) {
-    const off = i * 85;
-    const w  = arr[off + 2];
-    const h  = arr[off + 3];
-    const obj = sigmoid(arr[off + 4]);
-    const cls = sigmoid(arr[off + 5 + kPerson]);
-    const score = obj * cls;
-    if (obj < OBJ_MIN || score < CONF_MIN) continue;
+  // Iterate every output tensor (supports: Nx85, [1,25200,85], 3-scale outputs, or NMS Nx6)
+  for (const name of outNames) {
+    const t = outMap[name];
+    const arr = t.data as Float32Array;
 
-    // Filter out non-human-like shapes/sizes (letterbox space)
-    const areaFrac = (w * h) / frameArea;
-    const aspect   = h / Math.max(1e-6, w);
-    if (areaFrac < AREA_MIN || areaFrac > AREA_MAX) continue;
-    if (aspect   < ASP_MIN  || aspect   > ASP_MAX)  continue;
+    // Prefer metadata; fallback to dims on tensor for older ORT versions
+    const meta = (
+      session.outputMetadata as unknown as
+        | Record<string, { dimensions?: number[] } | undefined>
+        | undefined
+    )?.[name];
+    const dims = meta?.dimensions ?? (t as any).dims ?? [];
 
-    // Found one good person detection → true early
-    return true;
+    const last = dims[dims.length - 1];
+
+    // Case A: rows of 85 (cx,cy,w,h,obj,80 classes)
+    if (last === 85 || (arr.length % 85 === 0 && last != 6 && last != 7)) {
+      for (let i = 0; i + 84 < arr.length; i += 85) {
+        const cx = arr[i + 0], cy = arr[i + 1];
+        const w  = arr[i + 2], h  = arr[i + 3];
+        const obj = maybeSigmoid(arr[i + 4]);
+        const cls = maybeSigmoid(arr[i + 5 + kPerson]);
+        const score = obj * cls;
+        if (obj < OBJ_MIN || score < CONF_MIN) continue;
+
+        // Lightweight gates (letterbox space)
+        const areaFrac = (w * h) / frameArea;
+        const aspect   = h / Math.max(1e-6, w);
+        if (areaFrac < AREA_MIN || areaFrac > AREA_MAX) continue;
+        if (aspect   < ASP_MIN  || aspect   > ASP_MAX)  continue;
+
+        return true; // found a valid person
+      }
+      continue;
+    }
+
+    // Case B: built-in NMS export → rows of 6 or 7: [x1,y1,x2,y2,score,class,(batch?)]
+    if (last === 6 || last === 7) {
+      const stride = last;
+      for (let i = 0; i + stride - 1 < arr.length; i += stride) {
+        const x1 = arr[i + 0], y1 = arr[i + 1];
+        const x2 = arr[i + 2], y2 = arr[i + 3];
+        const score = arr[i + 4];             // already 0..1
+        const clsId = Math.round(arr[i + 5]); // integer class id
+        if (clsId !== kPerson || score < CONF_MIN) continue;
+
+        const w = Math.max(1e-6, x2 - x1), h = Math.max(1e-6, y2 - y1);
+        const areaFrac = (w * h) / frameArea;
+        const aspect   = h / Math.max(1e-6, w);
+        if (areaFrac < AREA_MIN || areaFrac > AREA_MAX) continue;
+        if (aspect   < ASP_MIN  || aspect   > ASP_MAX)  continue;
+
+        return true;
+      }
+      continue;
+    }
+
+    // Case C: unusual layout (e.g., 3 scale outputs with 5D dims). Flatten generically.
+    if (arr.length % 85 === 0) {
+      for (let i = 0; i + 84 < arr.length; i += 85) {
+        const w  = arr[i + 2], h  = arr[i + 3];
+        const obj = maybeSigmoid(arr[i + 4]);
+        const cls = maybeSigmoid(arr[i + 5 + kPerson]);
+        const score = obj * cls;
+        if (obj >= OBJ_MIN && score >= CONF_MIN) {
+          const areaFrac = (w * h) / frameArea;
+          const aspect   = h / Math.max(1e-6, w);
+          if (areaFrac >= AREA_MIN && areaFrac <= AREA_MAX &&
+              aspect   >= ASP_MIN   && aspect   <= ASP_MAX) {
+            return true;
+          }
+        }
+      }
+    }
   }
+
   return false;
 }
