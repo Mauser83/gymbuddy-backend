@@ -172,9 +172,9 @@ async function handleEMBED(storageKey: string) {
   }
 }
 
-export async function processOnce() {
+export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY ?? 1)) {
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
-  const jobs = await queue.claimBatch(concurrency);
+  const jobs = await queue.claimBatch(Math.min(concurrency, limit));
 
   for (const job of jobs) {
     try {
@@ -211,15 +211,23 @@ export async function processOnce() {
       }
     }
   }
+
+  return jobs.length;
 }
 
 let isRunning = false;
 
-export async function runOnce() {
+export async function runOnce(max = Infinity) {
   if (isRunning) return;
   isRunning = true;
   try {
-    await processOnce();
+    let processed = 0;
+    while (processed < max) {
+      const remaining = max - processed;
+      const count = await processOnce(remaining);
+      if (count === 0) break;
+      processed += count;
+    }
   } finally {
     isRunning = false;
   }
