@@ -72,25 +72,123 @@ export class ImageModerationService {
     return { gymImage: updated };
   }
 
-  async candidateGlobalImages(input: CandidateGlobalImagesDto) {
+async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+    const offset = Math.max(input.offset ?? 0, 0);
+
+    const where: any = {
+      equipmentId: input.equipmentId,
+      status: { in: ["PENDING", "APPROVED"] },
+    };
+    if (input.gymId != null) where.gymId = input.gymId;
+
+    if (input.status) {
+      where.status = input.status;
+    }
+
+    if (input.safety?.state) {
+      if (input.safety.state === "COMPLETE") where.isSafe = true;
+      else if (input.safety.state === "FAILED") where.isSafe = false;
+      else where.isSafe = null;
+    }
+
+    if (input.search) {
+      const s = String(input.search).trim();
+      where.OR = [{ id: s }, { sha256: { startsWith: s } }];
+    }
 
     const existing = await this.prisma.equipmentImage.findMany({
       where: { equipmentId: input.equipmentId },
       select: { sha256: true },
     });
-    const existingSet = new Set(existing.map((e) => e.sha256));
+    const existingSet = new Set(existing.map((e) => e.sha256).filter(Boolean));
 
     const candidates = await this.prisma.gymEquipmentImage.findMany({
-      where: {
-        equipmentId: input.equipmentId,
-        status: { in: ["PENDING", "APPROVED"] },
-      },
+      where,
       orderBy: { capturedAt: "desc" },
+      skip: offset,
+      take: limit * 2,
+      select: {
+        id: true,
+        gymId: true,
+        equipmentId: true,
+        storageKey: true,
+        sha256: true,
+        status: true,
+        capturedAt: true,
+        angleId: true,
+        heightId: true,
+        distanceId: true,
+        lightingId: true,
+        mirrorId: true,
+        splitId: true,
+        sourceId: true,
+        isSafe: true,
+      },
     });
 
-    return candidates
+    const filtered = candidates
       .filter((c) => c.sha256 == null || !existingSet.has(c.sha256))
       .slice(0, limit);
+
+    const gymIds = [...new Set(filtered.map((r) => r.gymId))];
+    const gyms = gymIds.length
+      ? await this.prisma.gym.findMany({
+          where: { id: { in: gymIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const gymNameById = new Map(gyms.map((g) => [g.id, g.name]));
+
+    const sha256s = [...new Set(filtered.map((r) => r.sha256).filter(Boolean) as string[])];
+    const dupTotals = await this.computeDupTotalsAcrossGymAndGlobal(sha256s);
+
+    return filtered.map((r) => ({
+      id: r.id,
+      gymId: r.gymId,
+      equipmentId: r.equipmentId,
+      storageKey: r.storageKey,
+      sha256: r.sha256,
+      status: r.status,
+      createdAt: r.capturedAt.toISOString?.() ?? String(r.capturedAt),
+      gymName: gymNameById.get(r.gymId) ?? String(r.gymId),
+      tags: {
+        angleId: r.angleId,
+        heightId: r.heightId,
+        distanceId: r.distanceId,
+        lightingId: r.lightingId,
+        mirrorId: r.mirrorId,
+        splitId: r.splitId,
+        sourceId: r.sourceId,
+      },
+      safety: {
+        state: r.isSafe === true ? "COMPLETE" : r.isSafe === false ? "FAILED" : "PENDING",
+        score: null,
+        reasons: [],
+      },
+      dupCount: Math.max((dupTotals.get(r.sha256 ?? "") ?? 1) - 1, 0),
+    }));
+  }
+
+  private async computeDupTotalsAcrossGymAndGlobal(sha256s: string[]) {
+    if (sha256s.length === 0) return new Map<string, number>();
+
+    const [gym, equip] = await Promise.all([
+      this.prisma.gymEquipmentImage.groupBy({
+        by: ["sha256"],
+        where: { sha256: { in: sha256s } },
+        _count: { sha256: true },
+      }),
+      this.prisma.equipmentImage.groupBy({
+        by: ["sha256"],
+        where: { sha256: { in: sha256s } },
+        _count: { sha256: true },
+      }),
+    ]);
+
+    const map = new Map<string, number>();
+    for (const g of gym) map.set(g.sha256!, (map.get(g.sha256!) ?? 0) + (g._count.sha256 ?? 0));
+    for (const e of equip) map.set(e.sha256!, (map.get(e.sha256!) ?? 0) + (e._count.sha256 ?? 0));
+    return map;
   }
 }

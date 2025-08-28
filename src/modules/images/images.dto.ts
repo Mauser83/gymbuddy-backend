@@ -7,7 +7,25 @@ import {
   IsString,
   Matches,
   Min,
+  IsEnum,
 } from "class-validator";
+import { GymImageStatusDto } from "../gym/gym.dto";
+
+export enum SafetyStateDto {
+  PENDING = "PENDING",
+  COMPLETE = "COMPLETE",
+  FAILED = "FAILED",
+}
+
+export class CandidateSafetyFilterDto {
+  @IsOptional()
+  @IsEnum(SafetyStateDto)
+  state?: SafetyStateDto;
+
+  @IsOptional()
+  @IsBoolean()
+  flaggedOnly?: boolean;
+}
 
 export class FinalizeGymImageDto {
   @IsString() storageKey!: string;
@@ -76,6 +94,25 @@ export class CandidateGlobalImagesDto {
   @IsOptional()
   @IsInt()
   limit?: number;
+
+  @IsOptional()
+  @IsInt()
+  offset?: number;
+
+  @IsOptional()
+  @IsInt()
+  gymId?: number;
+
+  @IsOptional()
+  @IsEnum(GymImageStatusDto)
+  status?: GymImageStatusDto;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  safety?: CandidateSafetyFilterDto;
 }
 
 export class GymImageDefaultsDto {

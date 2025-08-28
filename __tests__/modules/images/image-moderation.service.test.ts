@@ -146,6 +146,12 @@ describe("ImageModerationService", () => {
       const res = await svc.candidateGlobalImages({ equipmentId: equipId });
       const ids = res.map((r: any) => r.id).sort();
       expect(ids).toEqual(["img2", "img3"]);
+      res.forEach((r: any) => {
+        expect(r).toHaveProperty("createdAt");
+        expect(r.gymName).toBe("Gym");
+        expect(r.dupCount).toBe(0);
+        expect(r.safety.state).toBe("PENDING");
+      });
     });
   });
 });

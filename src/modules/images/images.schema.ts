@@ -1,4 +1,11 @@
 export const imagesTypeDefs = `
+  enum SafetyState { PENDING COMPLETE FAILED }
+
+  input CandidateSafetyFilter {
+    state: SafetyState
+    flaggedOnly: Boolean
+  }
+    
   input FinalizeGymImageInput {
     storageKey: String!
     gymId: Int!
@@ -100,6 +107,27 @@ export const imagesTypeDefs = `
   input CandidateGlobalImagesInput {
     equipmentId: Int!
     limit: Int = 50
+    offset: Int = 0
+    gymId: Int
+    status: GymImageStatus
+    search: String
+    safety: CandidateSafetyFilter
+  }
+
+  type CandidateSafety {
+    state: SafetyState!
+    score: Float
+    reasons: [String!]!
+  }
+
+  type CandidateTags {
+    angleId: Int
+    heightId: Int
+    distanceId: Int
+    lightingId: Int
+    mirrorId: Int
+    splitId: Int
+    sourceId: Int
   }
 
   type CandidateGymImage {
@@ -108,7 +136,12 @@ export const imagesTypeDefs = `
     equipmentId: Int!
     storageKey: String!
     sha256: String
-    status: String!
+    status: GymImageStatus!
+    createdAt: String!
+    gymName: String!
+    tags: CandidateTags
+    safety: CandidateSafety
+    dupCount: Int!
   }
 
   extend type Mutation {
