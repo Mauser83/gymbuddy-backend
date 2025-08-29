@@ -85,12 +85,10 @@ export const imagesTypeDefs = `
 
   input ApproveGymImageInput {
     id: ID!
-    splitId: Int
     force: Boolean = false
   }
 
   type ApproveGymImagePayload {
-    equipmentImage: EquipmentImage!
     gymImage: GymEquipmentImage!
   }
 

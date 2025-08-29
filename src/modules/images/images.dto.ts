@@ -66,10 +66,6 @@ export class ApproveGymImageDto {
   id!: string;
 
   @IsOptional()
-  @IsInt()
-  splitId?: number;
-
-  @IsOptional()
   @IsBoolean()
   force?: boolean;
 }

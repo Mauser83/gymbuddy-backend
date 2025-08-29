@@ -88,7 +88,8 @@ model User {
   trainingGoalId    Int?
   trainingGoal      TrainingGoal?       @relation(fields: [trainingGoalId], references: [id])
   EquipmentImage    EquipmentImage[]
-  GymEquipmentImage GymEquipmentImage[]
+  capturedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageCapturedBy")
+  approvedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageApprovedBy")
 }
 
 model WorkoutPlan {
@@ -745,13 +746,15 @@ model GymEquipmentImage {
   hasPerson        Boolean?
   personCount      Int?
   personBoxes      Json?
-  
+  approvedAt       DateTime?
+  approvedByUserId Int?
+
   // relations
   gymEquipment   GymEquipment?   @relation(fields: [gymEquipmentId], references: [id])
   gym            Gym            @relation(fields: [gymId], references: [id])
   equipment      Equipment      @relation(fields: [equipmentId], references: [id])
   image          EquipmentImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  capturedByUser User?          @relation(fields: [capturedByUserId], references: [id])
+  capturedByUser User?          @relation("GymEquipmentImageCapturedBy", fields: [capturedByUserId], references: [id])
   angle          AngleType?    @relation(fields: [angleId], references: [id])
   heightType     HeightType?   @relation(fields: [heightId], references: [id])
   lighting       LightingType? @relation(fields: [lightingId], references: [id])
@@ -759,6 +762,7 @@ model GymEquipmentImage {
   distance       DistanceType? @relation(fields: [distanceId], references: [id])
   source         SourceType?   @relation(fields: [sourceId], references: [id])
   split          SplitType?    @relation(fields: [splitId], references: [id])
+  approvedByUser User?         @relation("GymEquipmentImageApprovedBy", fields: [approvedByUserId], references: [id])
   embeddings     ImageEmbedding[]
 
   @@unique([gymId, equipmentId, imageId])

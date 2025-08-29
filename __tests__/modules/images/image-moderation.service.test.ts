@@ -1,14 +1,10 @@
 import { ImageModerationService } from "../../../src/modules/images/image-moderation.service";
 import { PrismaClient } from "../../../src/lib/prisma";
-import { ImagePromotionService } from "../../../src/modules/images/image-promotion.service";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { cleanDB, prisma } from "../../testUtils";
 
 jest.spyOn(S3Client.prototype, "send").mockImplementation((cmd: any) => {
-  if (cmd instanceof DeleteObjectCommand) {
-    return Promise.resolve({} as any);
-  }
   return Promise.resolve({} as any);
 });
 
@@ -33,30 +29,32 @@ describe("ImageModerationService", () => {
         findUniqueOrThrow: jest.fn(),
         update: jest.fn(),
       },
+      imageQueue: {
+        create: jest.fn(),
+      },
+      $queryRaw: jest.fn(),
     } as unknown as PrismaClient;
   }
 
-  it("approves and promotes image", async () => {
+  it("approves image and enqueues embed", async () => {
     const prismaMock = createPrismaMock();
     (prismaMock.gymEquipmentImage.findUniqueOrThrow as any).mockResolvedValue({
       id: "g1",
       gymId: 1,
+      storageKey: "private/uploads/tmp.jpg",
       status: "PENDING",
       isSafe: true,
     });
-    const promo = {
-      promoteGymImageToGlobal: jest
-        .fn()
-        .mockResolvedValue({ equipmentImage: { id: "e1" }, gymImage: { id: "g1", status: "APPROVED" } }),
-    } as unknown as ImagePromotionService;
-    const svc = new ImageModerationService(prismaMock, promo);
-    const res = await svc.approveGymImage({ id: "g1" }, baseCtx);
-    expect(res.equipmentImage.id).toBe("e1");
-    expect(promo.promoteGymImageToGlobal).toHaveBeenCalled();
-    expect(prismaMock.gymEquipmentImage.update).toHaveBeenCalledWith({
-      where: { id: "g1" },
-      data: { status: "APPROVED" },
+    (prismaMock.gymEquipmentImage.update as any).mockResolvedValue({
+      id: "g1",
     });
+    (prismaMock.$queryRaw as any).mockResolvedValue([{ has: false }]);
+    const svc = new ImageModerationService(prismaMock);
+    const res = await svc.approveGymImage({ id: "g1" }, baseCtx);
+    expect(res.gymImage.id).toBe("g1");
+    expect(prismaMock.gymEquipmentImage.update).toHaveBeenCalled();
+    expect(prismaMock.imageQueue.create).toHaveBeenCalled();
+    expect(S3Client.prototype.send).toHaveBeenCalled();
   });
 
   it("blocks unsafe approval unless forced", async () => {
@@ -64,12 +62,13 @@ describe("ImageModerationService", () => {
     (prismaMock.gymEquipmentImage.findUniqueOrThrow as any).mockResolvedValue({
       id: "g1",
       gymId: 1,
+      storageKey: "key",
       status: "PENDING",
       isSafe: false,
     });
-    const promo = { promoteGymImageToGlobal: jest.fn() } as any;
-    const svc = new ImageModerationService(prismaMock, promo);
+    const svc = new ImageModerationService(prismaMock);
     await expect(svc.approveGymImage({ id: "g1" }, baseCtx)).rejects.toThrow();
+    (prismaMock.$queryRaw as any).mockResolvedValue([{ has: false }]);
     await expect(
       svc.approveGymImage({ id: "g1", force: true }, baseCtx)
     ).resolves.toBeDefined();
@@ -88,7 +87,7 @@ describe("ImageModerationService", () => {
       storageKey: "key",
       status: "REJECTED",
     });
-    const svc = new ImageModerationService(prismaMock, {} as any);
+    const svc = new ImageModerationService(prismaMock);
     await svc.rejectGymImage({ id: "g1", deleteObject: true }, baseCtx);
     expect(S3Client.prototype.send).toHaveBeenCalledWith(
       expect.any(DeleteObjectCommand)
@@ -99,7 +98,7 @@ describe("ImageModerationService", () => {
     let svc: ImageModerationService;
     let equipId: number;
     beforeAll(() => {
-      svc = new ImageModerationService(prisma, {} as any);
+      svc = new ImageModerationService(prisma);
     });
     beforeEach(async () => {
       await cleanDB();

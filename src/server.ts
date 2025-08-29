@@ -77,7 +77,7 @@ const permissionService =
 const mediaService = container.resolve<MediaService>("MediaService");
 const imageIntakeService = new ImageIntakeService(prisma);
 const imagePromotionService = new ImagePromotionService(prisma);
-const imageModerationService = new ImageModerationService(prisma, imagePromotionService);
+const imageModerationService = new ImageModerationService(prisma);
 
 // === Health & Metrics ===
 app.get("/health", (_req, res) => {

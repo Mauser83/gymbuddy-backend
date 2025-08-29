@@ -135,3 +135,28 @@ export function isValidStorageKey(key: string): boolean {
   if (parsed.kind === "upload" && !parsed.gymId) return false;
   return true;
 }
+
+export function makeGymApprovedKey(
+  gymId: number,
+  ext: string,
+  opts: MakeKeyOptions = {},
+): string {
+  assertPositiveInt("gymId", gymId);
+  const now = opts.now ?? new Date();
+  const yyyy = now.getUTCFullYear();
+  const uuid = getUUID(opts.uuid);
+  return `private/gym/${gymId}/approved/${yyyy}/${uuid}.${ext.toLowerCase()}`;
+}
+
+export function fileExtFrom(storageKey: string, mimeType?: string) {
+  const fromKey = storageKey.split(".").pop();
+  if (fromKey && fromKey.length <= 5) return fromKey.toLowerCase();
+  if (!mimeType) return "jpg";
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+  };
+  return map[mimeType] ?? "jpg";
+}

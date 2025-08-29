@@ -1,4 +1,10 @@
-import { isValidStorageKey, makeKey, parseKey } from "../../src/utils/makeKey";
+import {
+  isValidStorageKey,
+  makeKey,
+  parseKey,
+  makeGymApprovedKey,
+  fileExtFrom,
+} from "../../src/utils/makeKey";
 
 const FIXED = new Date(Date.UTC(2025, 0, 5, 12, 34, 56)); // Jan (MM=01)
 const FIX_UUID = "123e4567-e89b-4a12-9abc-1234567890ab"; // valid v4 shape
@@ -7,7 +13,7 @@ describe("makeKey", () => {
   it("creates golden key with UTC partition and zero-padded month", () => {
     const key = makeKey("golden", { equipmentId: 42 }, { now: FIXED, uuid: FIX_UUID });
     expect(key).toBe(
-      "public/golden/42/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg"
+      "public/golden/42/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg",
     );
     expect(isValidStorageKey(key)).toBe(true);
   });
@@ -27,7 +33,7 @@ describe("makeKey", () => {
   it("creates upload key under private/uploads with gymId", () => {
     const key = makeKey("upload", { gymId: 7 }, { now: FIXED, uuid: FIX_UUID, ext: "webp" });
     expect(key).toBe(
-      "private/uploads/7/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.webp"
+      "private/uploads/7/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.webp",
     );
     expect(isValidStorageKey(key)).toBe(true);
   });
@@ -48,6 +54,23 @@ describe("makeKey", () => {
     expect(() =>
       makeKey("golden", { equipmentId: 1 }, { now: FIXED, uuid: "not-a-uuid" })
     ).toThrow(/UUID v4/);
+  });
+});
+
+describe("makeGymApprovedKey", () => {
+  it("creates approved key without month partition", () => {
+    const key = makeGymApprovedKey(5, "png", { now: FIXED, uuid: FIX_UUID });
+    expect(key).toBe(
+      "private/gym/5/approved/2025/123e4567-e89b-4a12-9abc-1234567890ab.png",
+    );
+  });
+});
+
+describe("fileExtFrom", () => {
+  it("derives ext from key or mime type", () => {
+    expect(fileExtFrom("foo/bar.jpg")).toBe("jpg");
+    expect(fileExtFrom("foo/bar", "image/png")).toBe("png");
+    expect(fileExtFrom("foo/bar")).toBe("jpg");
   });
 });
 

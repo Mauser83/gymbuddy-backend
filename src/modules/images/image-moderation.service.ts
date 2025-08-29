@@ -1,9 +1,10 @@
 import { PrismaClient } from "../../lib/prisma";
-import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
-import { ImagePromotionService } from "./image-promotion.service";
+import { makeGymApprovedKey, fileExtFrom } from "../../utils/makeKey";
+import { ImageJobStatus } from "../../generated/prisma";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -12,7 +13,6 @@ if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set
 export class ImageModerationService {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly promotion: ImagePromotionService,
   ) {}
 
   private s3 = new S3Client({
@@ -40,21 +40,57 @@ export class ImageModerationService {
   async approveGymImage(input: ApproveGymImageDto, ctx: AuthContext) {
     const gymImg = await this.prisma.gymEquipmentImage.findUniqueOrThrow({
       where: { id: input.id },
+      select: {
+        id: true,
+        gymId: true,
+        storageKey: true,
+        status: true,
+        isSafe: true,
+      },
     });
     this.assertModerationPermission(ctx, gymImg.gymId);
     this.guardSafetyUnlessForce(gymImg, input.force);
-    const updated =
-      gymImg.status !== "APPROVED"
-        ? await this.prisma.gymEquipmentImage.update({
-            where: { id: input.id },
-            data: { status: "APPROVED" },
-          })
-        : gymImg;
-    const promoted = await this.promotion.promoteGymImageToGlobal(
-      { id: input.id, splitId: input.splitId, force: input.force },
-      ctx,
+
+    const embedRows = await this.prisma.$queryRaw<{ has: boolean }[]>`
+      SELECT embedding IS NOT NULL AS has FROM "GymEquipmentImage" WHERE id = ${input.id}`;
+    const hasEmbedding = embedRows?.[0]?.has ?? false;
+
+    if (!gymImg.storageKey) throw new Error("Gym image missing storageKey");
+    const ext = fileExtFrom(gymImg.storageKey);
+    const dstKey = makeGymApprovedKey(gymImg.gymId, ext);
+
+    await this.s3.send(
+      new CopyObjectCommand({
+        Bucket: BUCKET,
+        CopySource: `${BUCKET}/${gymImg.storageKey}`,
+        Key: dstKey,
+        MetadataDirective: "COPY",
+        ACL: "private",
+      })
     );
-    return promoted ?? { gymImage: updated };
+
+    const updated = await this.prisma.gymEquipmentImage.update({
+      where: { id: gymImg.id },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedByUserId: ctx.userId ?? null,
+        storageKey: dstKey,
+      },
+    });
+
+    if (!hasEmbedding) {
+      await this.prisma.imageQueue.create({
+        data: {
+          jobType: "EMBED",
+          status: ImageJobStatus.pending,
+          priority: 0,
+          storageKey: dstKey,
+        },
+      });
+    }
+
+    return { gymImage: updated };
   }
 
   async rejectGymImage(input: RejectGymImageDto, ctx: AuthContext) {
