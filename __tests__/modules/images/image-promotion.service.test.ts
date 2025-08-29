@@ -1,14 +1,31 @@
 import { ImagePromotionService } from "../../../src/modules/images/image-promotion.service";
 import { PrismaClient } from "../../../src/lib/prisma";
-import { S3Client, HeadObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  HeadObjectCommand,
+  CopyObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
+
+const ONE_BY_ONE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HwAF/gL+6rYPGQAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 jest.spyOn(S3Client.prototype, "send").mockImplementation((cmd: any) => {
   if (cmd instanceof HeadObjectCommand) {
-    return Promise.resolve({ ContentType: "image/jpeg" } as any);
+    return Promise.resolve({ ContentType: "image/png" } as any);
   }
   if (cmd instanceof CopyObjectCommand) {
     return Promise.resolve({} as any);
+  }
+  if (cmd instanceof GetObjectCommand) {
+    return Promise.resolve({
+      Body: {
+        transformToByteArray: () => Promise.resolve(new Uint8Array(ONE_BY_ONE_PNG)),
+      },
+    } as any);
   }
   return Promise.resolve({} as any);
 });
@@ -64,12 +81,17 @@ describe("promoteGymImageToGlobal", () => {
       status: "APPROVED",
       isSafe: true,
     });
-    (prisma.equipmentImage.create as any).mockResolvedValue({ id: "e1", storageKey: "public/golden/20/2025/01/x.jpg" });
+    (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
+      id: "e1",
+      storageKey: data.storageKey,
+    }));
     const svc = new ImagePromotionService(prisma);
     const res = await svc.promoteGymImageToGlobal({ id: "g1" } as any, ctx);
     expect(res.equipmentImage.id).toBe("e1");
     expect(prisma.equipmentImage.create).toHaveBeenCalled();
-    expect(prisma.imageQueue.create).toHaveBeenCalled();
+    expect(prisma.imageQueue.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ storageKey: res.destinationKey }),
+    });
   });
 
   it("returns existing on duplicate sha", async () => {

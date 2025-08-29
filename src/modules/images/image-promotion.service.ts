@@ -1,10 +1,16 @@
 import { PrismaClient } from "../../lib/prisma";
-import { S3Client, CopyObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  CopyObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import { makeKey } from "../../utils/makeKey";
 import { PromoteGymImageDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
+import sharp from "sharp";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -22,6 +28,35 @@ export class ImagePromotionService {
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
     },
   });
+
+  private async getImageMeta(key: string, fallbackMime: string) {
+    const res = await this.s3.send(
+      new GetObjectCommand({ Bucket: BUCKET, Key: key })
+    );
+    const body: any = res.Body;
+    let bytes: Uint8Array;
+    if (typeof body?.transformToByteArray === "function") {
+      bytes = await body.transformToByteArray();
+    } else {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of body as AsyncIterable<Uint8Array>) {
+        chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+      }
+      const total = chunks.reduce((n, c) => n + c.length, 0);
+      bytes = new Uint8Array(total);
+      let off = 0;
+      for (const c of chunks) {
+        bytes.set(c, off);
+        off += c.length;
+      }
+    }
+    const meta = await sharp(bytes).metadata();
+    return {
+      width: meta.width ?? 0,
+      height: meta.height ?? 0,
+      mime: meta.format ? `image/${meta.format}` : fallbackMime,
+    };
+  }
 
   async promoteGymImageToGlobal(
     input: PromoteGymImageDto,
@@ -51,10 +86,11 @@ export class ImagePromotionService {
       throw new Error("Gym image missing equipmentId/storageKey");
     }
 
+    const splitId = input.splitId ?? gymImg.splitId ?? null;
     let splitKind: "golden" | "training" = "golden";
-    if (input.splitId) {
+    if (splitId) {
       const split = await this.prisma.splitType.findUnique({
-        where: { id: input.splitId },
+        where: { id: splitId },
         select: { key: true },
       });
       if (split?.key?.toLowerCase() === "training") splitKind = "training";
@@ -96,29 +132,41 @@ export class ImagePromotionService {
       })
     );
 
+    const meta = await this.getImageMeta(destKey, contentType);
+
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
+      const gymEmbeds =
+        (await tx.imageEmbedding.findMany({
+          where: { gymImageId: gymImg.id },
+        })) ?? [];
+
       const created = await tx.equipmentImage.create({
         data: {
           equipmentId: gymImg.equipmentId,
+          uploadedByUserId:
+            gymImg.capturedByUserId ??
+            gymImg.approvedByUserId ??
+            ctx.userId ??
+            null,
           storageKey: destKey,
           sha256: gymImg.sha256 ?? null,
-          mimeType: contentType,
-          width: 0,
-          height: 0,
+          mimeType: meta.mime,
+          width: meta.width,
+          height: meta.height,
           angleId: gymImg.angleId ?? null,
           heightId: gymImg.heightId ?? null,
           lightingId: gymImg.lightingId ?? null,
           mirrorId: gymImg.mirrorId ?? null,
           distanceId: gymImg.distanceId ?? null,
           sourceId: gymImg.sourceId ?? null,
-          splitId: input.splitId ?? null,
+          splitId: splitId,
+          hasPerson: gymImg.hasPerson ?? null,
+          personCount: gymImg.personCount ?? null,
+          personBoxes: gymImg.personBoxes ?? null,
+          modelVersion: gymEmbeds[0]?.modelVersion ?? null,
         } as any,
       });
 
-      const gymEmbeds =
-        (await tx.imageEmbedding.findMany({
-          where: { gymImageId: gymImg.id },
-        })) ?? [];
       if (gymEmbeds.length > 0) {
         await tx.imageEmbedding.createMany({
           data: gymEmbeds.map((e) => ({
@@ -138,6 +186,7 @@ export class ImagePromotionService {
             jobType: "EMBED",
             status: ImageJobStatus.pending,
             priority: 0,
+            storageKey: destKey,
           },
         });
       }
