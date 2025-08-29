@@ -89,7 +89,7 @@ export class ImagePromotionService {
         personBoxes: true,
         status: true,
         isSafe: true,
-        embedding: true,
+        // embedding: true,
         modelVendor: true,
         modelName: true,
         modelVersion: true,
