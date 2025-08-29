@@ -170,9 +170,12 @@ export class ImagePromotionService {
       })
     );
 
+    console.log("copying image meta data");
     const meta = await this.getImageMeta(destKey, contentType);
 
+    console.log("creating the equipmentImage object:")
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
+          console.log("data")
       const data = {
         equipmentId: gymImg.equipmentId,
         uploadedByUserId:
@@ -207,14 +210,18 @@ export class ImagePromotionService {
           ? gymImg.modelVersion ?? EMBED_VERSION
           : null,
       } as any;
+          console.log("created")
 
       const created = await tx.equipmentImage.create({ data });
+          console.log("hasVector")
 
       const hasVector = !!(gymImg.embedding && (gymImg.embedding as any).length);
+      console.log("matchesCurrent");
       const matchesCurrent =
         gymImg.modelVendor === EMBED_VENDOR &&
         gymImg.modelName === EMBED_MODEL &&
         gymImg.modelVersion === EMBED_VERSION;
+              console.log("needsReembed");
       const needsReembed = !hasVector || !matchesCurrent;
 
       if (needsReembed) {
@@ -229,6 +236,7 @@ export class ImagePromotionService {
         });
       }
 
+                    console.log("gymImg approved");
       if (gymImg.status !== "APPROVED") {
         await tx.gymEquipmentImage.update({
           where: { id: gymImg.id },
@@ -239,6 +247,7 @@ export class ImagePromotionService {
 
       return created;
     });
+              console.log("returning the end");
 
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };
   }
