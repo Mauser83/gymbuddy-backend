@@ -173,7 +173,6 @@ export class ImagePromotionService {
     console.log("copying image meta data");
     const meta = await this.getImageMeta(destKey, contentType);
 
-    console.log("creating the equipmentImage object:")
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
           console.log("data")
       const data = {
@@ -212,8 +211,12 @@ export class ImagePromotionService {
       } as any;
           console.log("created")
 
-      const created = await tx.equipmentImage.create({ data });
-          console.log("hasVector")
+try {
+  console.log('creating the equipmentImage object:', data);
+  const created = await tx.equipmentImage.create({ data });
+  console.log('created equipmentImage', created.id);
+  // …continue
+
 
       const hasVector = !!(gymImg.embedding && (gymImg.embedding as any).length);
       console.log("matchesCurrent");
@@ -246,6 +249,16 @@ export class ImagePromotionService {
       }
 
       return created;
+      } catch (e: any) {
+  console.error('EquipmentImage.create failed', {
+    name: e?.name,
+    code: e?.code,        // e.g. P2002, P2003
+    message: e?.message,
+    meta: e?.meta,        // includes target (constraint) details
+  });
+  throw e; // rethrow so you see it in logs
+}
+      
     });
               console.log("returning the end");
 
