@@ -1,0 +1,8 @@
+ALTER TABLE "EquipmentImage"
+  ADD COLUMN IF NOT EXISTS "modelVendor" TEXT,
+  ADD COLUMN IF NOT EXISTS "modelName" TEXT;
+
+ALTER TABLE "GymEquipmentImage"
+  ADD COLUMN IF NOT EXISTS "modelVendor" TEXT,
+  ADD COLUMN IF NOT EXISTS "modelName" TEXT,
+  ADD COLUMN IF NOT EXISTS "modelVersion" TEXT;

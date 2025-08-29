@@ -12,21 +12,24 @@ export async function writeImageEmbedding(params: {
   imageId: string;
   gymId?: number;
   vector: number[];
+  modelVendor: string;
+  modelName: string;
+  modelVersion: string;
 }) {
-  const { target, imageId, gymId, vector } = params;
+  const { target, imageId, gymId, vector, modelVendor, modelName, modelVersion } = params;
 
   if (target === 'GLOBAL') {
     // ensure row exists, then update embedding
     await prisma.$executeRawUnsafe(
-      `UPDATE "EquipmentImage" SET embedding = $1 WHERE id = $2`,
-      vector, imageId
+      `UPDATE "EquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5`,
+      vector, modelVendor, modelName, modelVersion, imageId
     );
     return;
   }
 
   if (!gymId) throw new Error('gymId is required for GYM embedding write');
   await prisma.$executeRawUnsafe(
-    `UPDATE "GymEquipmentImage" SET embedding = $1 WHERE id = $2 AND "gymId" = $3`,
-    vector, imageId, gymId
+    `UPDATE "GymEquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5 AND "gymId" = $6`,
+    vector, modelVendor, modelName, modelVersion, imageId, gymId
   );
 }

@@ -684,6 +684,8 @@ model EquipmentImage {
   hasPerson        Boolean?
   personCount      Int?
   personBoxes      Json?
+  modelVendor      String?
+  modelName        String?
   modelVersion     String?
   // optional annotations
   note             String?
@@ -746,6 +748,9 @@ model GymEquipmentImage {
   hasPerson        Boolean?
   personCount      Int?
   personBoxes      Json?
+  modelVendor      String?
+  modelName        String?
+  modelVersion     String?
   approvedAt       DateTime?
   approvedByUserId Int?
 

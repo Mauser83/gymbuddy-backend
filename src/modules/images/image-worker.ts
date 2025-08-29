@@ -33,6 +33,9 @@ const safetyProvider = createSafetyProvider();
 const MAX_RETRIES = Number(process.env.WORKER_MAX_RETRIES || 3);
 const NSFW_FLAG_THRESHOLD = Number(process.env.NSFW_FLAG_THRESHOLD ?? 0.60);
 const NSFW_PERSON_DELTA = Number(process.env.NSFW_PERSON_DELTA ?? 0.0);
+const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
+const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
+const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
 
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
@@ -134,6 +137,9 @@ async function handleEMBED(storageKey: string) {
     imageId: scopeType === "GYM" ? gymImg!.id : eqImg!.id,
     gymId: gymId ?? undefined,
     vector: vec,
+    modelVendor: EMBED_VENDOR,
+    modelName: EMBED_MODEL,
+    modelVersion: EMBED_VERSION,
   });
 }
 

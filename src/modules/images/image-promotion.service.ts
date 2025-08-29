@@ -15,7 +15,6 @@ import sharp from "sharp";
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
-const CURRENT_EMBED_MODEL = `${EMBED_VENDOR}:${EMBED_MODEL}:${EMBED_VERSION}`;
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -90,6 +89,8 @@ export class ImagePromotionService {
         status: true,
         isSafe: true,
         embedding: true,
+        modelVendor: true,
+        modelName: true,
         modelVersion: true,
       },
     } as any)) as any;
@@ -187,20 +188,27 @@ export class ImagePromotionService {
         hasPerson: gymImg.hasPerson ?? null,
         personCount: gymImg.personCount ?? null,
         personBoxes: gymImg.personBoxes ?? null,
-        // copy gym embedding/modelVersion if present
+        // copy gym embedding/model info if present
         embedding: gymImg.embedding ?? null,
+        modelVendor: gymImg.embedding
+          ? gymImg.modelVendor ?? EMBED_VENDOR
+          : null,
+        modelName: gymImg.embedding
+          ? gymImg.modelName ?? EMBED_MODEL
+          : null,
         modelVersion: gymImg.embedding
-          ? gymImg.modelVersion ?? CURRENT_EMBED_MODEL
+          ? gymImg.modelVersion ?? EMBED_VERSION
           : null,
       } as any;
 
       const created = await tx.equipmentImage.create({ data });
 
-      const CURRENT = CURRENT_EMBED_MODEL;
       const hasVector = !!(gymImg.embedding && (gymImg.embedding as any).length);
-      const needsReembed =
-        !hasVector ||
-        (gymImg.modelVersion && gymImg.modelVersion !== CURRENT);
+      const matchesCurrent =
+        gymImg.modelVendor === EMBED_VENDOR &&
+        gymImg.modelName === EMBED_MODEL &&
+        gymImg.modelVersion === EMBED_VERSION;
+      const needsReembed = !hasVector || !matchesCurrent;
 
       if (needsReembed) {
         await tx.imageQueue.create({

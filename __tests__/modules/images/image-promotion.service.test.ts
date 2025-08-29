@@ -12,8 +12,6 @@ process.env.EMBED_VENDOR = "local";
 process.env.EMBED_MODEL = "mobileCLIP-S0";
 process.env.EMBED_VERSION = "1.0";
 
-const MODEL_TAG = `${process.env.EMBED_VENDOR}:${process.env.EMBED_MODEL}:${process.env.EMBED_VERSION}`;
-
 const ONE_BY_ONE_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HwAF/gL+6rYPGQAAAABJRU5ErkJggg==",
   "base64"
@@ -83,6 +81,8 @@ describe("promoteGymImageToGlobal", () => {
       status: "APPROVED",
       isSafe: true,
       embedding: null,
+      modelVendor: null,
+      modelName: null,
       modelVersion: null,
     });
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
@@ -109,7 +109,9 @@ describe("promoteGymImageToGlobal", () => {
       status: "APPROVED",
       isSafe: true,
       embedding: [0.1, 0.2],
-      modelVersion: MODEL_TAG,
+      modelVendor: process.env.EMBED_VENDOR,
+      modelName: process.env.EMBED_MODEL,
+      modelVersion: process.env.EMBED_VERSION,
     });
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
       id: "e1",
@@ -121,7 +123,9 @@ describe("promoteGymImageToGlobal", () => {
     expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         embedding: [0.1, 0.2],
-        modelVersion: MODEL_TAG,
+        modelVendor: process.env.EMBED_VENDOR,
+        modelName: process.env.EMBED_MODEL,
+        modelVersion: process.env.EMBED_VERSION,
       }),
     });
   });
@@ -137,6 +141,8 @@ describe("promoteGymImageToGlobal", () => {
       status: "APPROVED",
       isSafe: true,
       embedding: null,
+      modelVendor: null,
+      modelName: null,
       modelVersion: null,
     });
     (prisma.equipmentImage.findFirst as any).mockResolvedValue({ id: "e1", storageKey: "public/golden/20/..." });
@@ -157,6 +163,8 @@ describe("promoteGymImageToGlobal", () => {
       status: "APPROVED",
       isSafe: true,
       embedding: null,
+      modelVendor: null,
+      modelName: null,
       modelVersion: null,
     });
     (prisma.splitType.findUnique as any).mockResolvedValue({ key: "training" });
