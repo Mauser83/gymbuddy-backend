@@ -163,7 +163,7 @@ export class ImagePromotionService {
       })
     );
 
-    const meta = await this.getImageMeta(destKey, contentType);
+    // const meta = await this.getImageMeta(destKey, contentType);
 
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
       const data = {
@@ -174,9 +174,9 @@ export class ImagePromotionService {
           ctx.userId ??
           null,
         storageKey: destKey,
-        mimeType: meta.mime,
-        width: meta.width,
-        height: meta.height,
+        mimeType: contentType,
+        width: 0,
+        height: 0,
         sha256: gymImg.sha256 ?? null,
         angleId: gymImg.angleId ?? null,
         heightId: gymImg.heightId ?? null,
