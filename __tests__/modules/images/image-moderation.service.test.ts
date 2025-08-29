@@ -47,11 +47,15 @@ describe("ImageModerationService", () => {
     });
     (prismaMock.gymEquipmentImage.update as any).mockResolvedValue({
       id: "g1",
+      approvedAt: new Date(),
+      approvedByUserId: 1,
     });
     (prismaMock.$queryRaw as any).mockResolvedValue([{ has: false }]);
     const svc = new ImageModerationService(prismaMock);
     const res = await svc.approveGymImage({ id: "g1" }, baseCtx);
     expect(res.gymImage.id).toBe("g1");
+    expect(res.gymImage.approvedAt).toBeInstanceOf(Date);
+    expect(res.gymImage.approvedByUserId).toBe(1);
     expect(prismaMock.gymEquipmentImage.update).toHaveBeenCalled();
     expect(prismaMock.imageQueue.create).toHaveBeenCalled();
     expect(S3Client.prototype.send).toHaveBeenCalled();

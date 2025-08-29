@@ -72,6 +72,18 @@ export const GymResolvers = {
         args.ttlSec ?? 300
       );
     },
+    approvedBy: (
+      src: { approvedByUserId?: number; approvedByUser?: any },
+      _args: unknown,
+      context: AuthContext
+    ) => {
+      if (src.approvedByUser) return src.approvedByUser;
+      if (src.approvedByUserId)
+        return context.prisma.user.findUnique({
+          where: { id: src.approvedByUserId },
+        });
+      return null;
+    },
   },
 
   Query: {

@@ -47,6 +47,8 @@ export const gymTypeDefs = `
     storageKey: String!
     sha256: String!
     status: GymImageStatus
+    approvedAt: String
+    approvedBy: User
     createdAt: String!
     updatedAt: String
     thumbUrl(ttlSec: Int = 300): String

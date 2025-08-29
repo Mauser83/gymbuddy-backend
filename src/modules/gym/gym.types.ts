@@ -1,3 +1,5 @@
+import { User } from "../user/user.types";
+
 export interface Gym {
   id: number;
   name: string;
@@ -78,6 +80,9 @@ export interface GymEquipmentImage {
   storageKey: string;
   sha256?: string;
   status?: GymImageStatus;
+  approvedAt?: Date;
+  approvedByUserId?: number;
+  approvedBy?: User;
   createdAt: Date;
   updatedAt?: Date;
   thumbUrl?: string;

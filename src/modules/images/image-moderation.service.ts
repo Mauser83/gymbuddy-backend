@@ -77,6 +77,7 @@ export class ImageModerationService {
         approvedByUserId: ctx.userId ?? null,
         storageKey: dstKey,
       },
+      include: { approvedByUser: true },
     });
 
     if (!hasEmbedding) {
