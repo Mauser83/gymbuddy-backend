@@ -15,7 +15,6 @@ import sharp from "sharp";
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
-const EMBED_DIM = Number(process.env.EMBED_DIM ?? 512);
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -210,10 +209,10 @@ export class ImagePromotionService {
         if (gymEmbeddingText) {
           await tx.$executeRaw`
             UPDATE "EquipmentImage"
-            SET embedding     = CAST(${gymEmbeddingText} AS vector(${EMBED_DIM})),
-                "modelVendor" = COALESCE("modelVendor", ${EMBED_VENDOR}),
-                "modelName"   = COALESCE("modelName", ${EMBED_MODEL}),
-                "modelVersion"= COALESCE("modelVersion", ${EMBED_VERSION})
+            SET embedding      = CAST(${gymEmbeddingText} AS vector),
+                "modelVendor"  = COALESCE("modelVendor",  ${EMBED_VENDOR}),
+                "modelName"    = COALESCE("modelName",    ${EMBED_MODEL}),
+                "modelVersion" = COALESCE("modelVersion", ${EMBED_VERSION})
             WHERE id = ${created.id}
           `;
         } else {
