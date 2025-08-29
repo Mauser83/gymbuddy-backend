@@ -66,7 +66,6 @@ export class ImagePromotionService {
     input: PromoteGymImageDto,
     ctx: AuthContext
   ) {
-    console.log("finding the gymImg data from GymEquipmentImage")
     const gymImg = (await this.prisma.gymEquipmentImage.findUnique({
       where: { id: input.id },
       select: {
@@ -89,7 +88,7 @@ export class ImagePromotionService {
         personBoxes: true,
         status: true,
         isSafe: true,
-        // embedding: true,
+        // embedding intentionally omitted; fetched via raw query
         modelVendor: true,
         modelName: true,
         modelVersion: true,
@@ -118,8 +117,6 @@ export class ImagePromotionService {
       throw new Error("Gym image missing equipmentId/storageKey");
     }
 
-    console.log("handling the split data")
-
     const splitId = input.splitId ?? gymImg.splitId ?? null;
     let splitKind: "golden" | "training" = "golden";
     if (splitId) {
@@ -131,8 +128,6 @@ export class ImagePromotionService {
     }
     const destKey = makeKey(splitKind, { equipmentId: gymImg.equipmentId }, {});
 
-
-      console.log("handling the sha256")
     if (gymImg.sha256) {
       const existing = await this.prisma.equipmentImage.findFirst({
         where: { equipmentId: gymImg.equipmentId, sha256: gymImg.sha256 },
@@ -149,7 +144,6 @@ export class ImagePromotionService {
       }
     }
 
-          console.log("handling the bucket header")
     const head = await this.s3
       .send(new HeadObjectCommand({ Bucket: BUCKET, Key: gymImg.storageKey }))
       .catch((err) => {
@@ -159,7 +153,6 @@ export class ImagePromotionService {
       });
     const contentType = head.ContentType || "image/jpeg";
 
-    console.log("handling the image copying in R2")
     await this.s3.send(
       new CopyObjectCommand({
         Bucket: BUCKET,
@@ -170,11 +163,9 @@ export class ImagePromotionService {
       })
     );
 
-    console.log("copying image meta data");
     const meta = await this.getImageMeta(destKey, contentType);
 
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
-          console.log("data")
       const data = {
         equipmentId: gymImg.equipmentId,
         uploadedByUserId:
@@ -197,70 +188,61 @@ export class ImagePromotionService {
         hasPerson: gymImg.hasPerson ?? null,
         personCount: gymImg.personCount ?? null,
         personBoxes: gymImg.personBoxes ?? null,
-        // copy gym embedding/model info if present
-        embedding: gymImg.embedding ?? null,
-        modelVendor: gymImg.embedding
-          ? gymImg.modelVendor ?? EMBED_VENDOR
-          : null,
-        modelName: gymImg.embedding
-          ? gymImg.modelName ?? EMBED_MODEL
-          : null,
-        modelVersion: gymImg.embedding
-          ? gymImg.modelVersion ?? EMBED_VERSION
-          : null,
+        modelVendor: gymImg.modelVendor ?? null,
+        modelName: gymImg.modelName ?? null,
+        modelVersion: gymImg.modelVersion ?? null,
       } as any;
-          console.log("created")
 
-try {
-  console.log('creating the equipmentImage object:', data);
-  const created = await tx.equipmentImage.create({ data });
-  console.log('created equipmentImage', created.id);
-  // …continue
+      try {
+        console.log('creating the equipmentImage object:', data);
+        const created = await tx.equipmentImage.create({ data });
+        console.log('created equipmentImage', created.id);
 
+        const [embRow] = await tx.$queryRaw<{ embedding: unknown }[]>`
+          SELECT embedding FROM "GymEquipmentImage" WHERE id = ${gymImg.id} LIMIT 1
+        `;
+        const gymEmbedding = embRow?.embedding ?? null;
 
-      const hasVector = !!(gymImg.embedding && (gymImg.embedding as any).length);
-      console.log("matchesCurrent");
-      const matchesCurrent =
-        gymImg.modelVendor === EMBED_VENDOR &&
-        gymImg.modelName === EMBED_MODEL &&
-        gymImg.modelVersion === EMBED_VERSION;
-              console.log("needsReembed");
-      const needsReembed = !hasVector || !matchesCurrent;
+        if (gymEmbedding) {
+          await tx.$executeRaw`
+            UPDATE "EquipmentImage"
+            SET embedding    = ${gymEmbedding},
+                "modelVendor"  = COALESCE("modelVendor",  ${EMBED_VENDOR}),
+                "modelName"    = COALESCE("modelName",    ${EMBED_MODEL}),
+                "modelVersion" = COALESCE("modelVersion", ${EMBED_VERSION})
+            WHERE id = ${created.id}
+          `;
+        } else {
+          await tx.imageQueue.create({
+            data: {
+              imageId: created.id,
+              jobType: "EMBED",
+              status: ImageJobStatus.pending,
+              priority: 0,
+              storageKey: destKey,
+            },
+          });
+        }
 
-      if (needsReembed) {
-        await tx.imageQueue.create({
-          data: {
-            imageId: created.id,
-            jobType: "EMBED",
-            status: ImageJobStatus.pending,
-            priority: 0,
-            storageKey: destKey,
-          },
-        });
-      }
+        if (gymImg.status !== "APPROVED") {
+          await tx.gymEquipmentImage.update({
+            where: { id: gymImg.id },
+            data: { status: "APPROVED" },
+          });
+          gymImg.status = "APPROVED";
+        }
 
-                    console.log("gymImg approved");
-      if (gymImg.status !== "APPROVED") {
-        await tx.gymEquipmentImage.update({
-          where: { id: gymImg.id },
-          data: { status: "APPROVED" },
-        });
-        gymImg.status = "APPROVED";
-      }
-
-      return created;
+        return created;
       } catch (e: any) {
-  console.error('EquipmentImage.create failed', {
-    name: e?.name,
-    code: e?.code,        // e.g. P2002, P2003
-    message: e?.message,
-    meta: e?.meta,        // includes target (constraint) details
-  });
-  throw e; // rethrow so you see it in logs
-}
-      
+        console.error('EquipmentImage.create failed (raw)', {
+          name: e?.name,
+          code: e?.code,
+          message: e?.message,
+          meta: e?.meta,
+        });
+        throw e;
+      }
     });
-              console.log("returning the end");
 
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };
   }
