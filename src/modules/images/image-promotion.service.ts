@@ -12,6 +12,11 @@ import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
 import sharp from "sharp";
 
+const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
+const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
+const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
+const CURRENT_EMBED_MODEL = `${EMBED_VENDOR}:${EMBED_MODEL}:${EMBED_VERSION}`;
+
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
@@ -62,9 +67,34 @@ export class ImagePromotionService {
     input: PromoteGymImageDto,
     ctx: AuthContext
   ) {
-    const gymImg = await this.prisma.gymEquipmentImage.findUniqueOrThrow({
+    const gymImg = (await this.prisma.gymEquipmentImage.findUnique({
       where: { id: input.id },
-    });
+      select: {
+        id: true,
+        gymId: true,
+        equipmentId: true,
+        storageKey: true,
+        sha256: true,
+        angleId: true,
+        heightId: true,
+        lightingId: true,
+        mirrorId: true,
+        distanceId: true,
+        sourceId: true,
+        splitId: true,
+        capturedByUserId: true,
+        approvedByUserId: true,
+        hasPerson: true,
+        personCount: true,
+        personBoxes: true,
+        status: true,
+        isSafe: true,
+        embedding: true,
+        modelVersion: true,
+      },
+    } as any)) as any;
+
+    if (!gymImg) throw new Error("Gym image not found");
 
     if (ctx.appRole !== "ADMIN") {
       verifyGymScope(ctx, ctx.permissionService, gymImg.gymId);
@@ -135,51 +165,44 @@ export class ImagePromotionService {
     const meta = await this.getImageMeta(destKey, contentType);
 
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
-      const gymEmbeds =
-        (await tx.imageEmbedding.findMany({
-          where: { gymImageId: gymImg.id },
-        })) ?? [];
+      const data = {
+        equipmentId: gymImg.equipmentId,
+        uploadedByUserId:
+          gymImg.capturedByUserId ??
+          gymImg.approvedByUserId ??
+          ctx.userId ??
+          null,
+        storageKey: destKey,
+        mimeType: meta.mime,
+        width: meta.width,
+        height: meta.height,
+        sha256: gymImg.sha256 ?? null,
+        angleId: gymImg.angleId ?? null,
+        heightId: gymImg.heightId ?? null,
+        lightingId: gymImg.lightingId ?? null,
+        mirrorId: gymImg.mirrorId ?? null,
+        distanceId: gymImg.distanceId ?? null,
+        sourceId: gymImg.sourceId ?? null,
+        splitId: splitId,
+        hasPerson: gymImg.hasPerson ?? null,
+        personCount: gymImg.personCount ?? null,
+        personBoxes: gymImg.personBoxes ?? null,
+        // copy gym embedding/modelVersion if present
+        embedding: gymImg.embedding ?? null,
+        modelVersion: gymImg.embedding
+          ? gymImg.modelVersion ?? CURRENT_EMBED_MODEL
+          : null,
+      } as any;
 
-      const created = await tx.equipmentImage.create({
-        data: {
-          equipmentId: gymImg.equipmentId,
-          uploadedByUserId:
-            gymImg.capturedByUserId ??
-            gymImg.approvedByUserId ??
-            ctx.userId ??
-            null,
-          storageKey: destKey,
-          sha256: gymImg.sha256 ?? null,
-          mimeType: meta.mime,
-          width: meta.width,
-          height: meta.height,
-          angleId: gymImg.angleId ?? null,
-          heightId: gymImg.heightId ?? null,
-          lightingId: gymImg.lightingId ?? null,
-          mirrorId: gymImg.mirrorId ?? null,
-          distanceId: gymImg.distanceId ?? null,
-          sourceId: gymImg.sourceId ?? null,
-          splitId: splitId,
-          hasPerson: gymImg.hasPerson ?? null,
-          personCount: gymImg.personCount ?? null,
-          personBoxes: gymImg.personBoxes ?? null,
-          modelVersion: gymEmbeds[0]?.modelVersion ?? null,
-        } as any,
-      });
+      const created = await tx.equipmentImage.create({ data });
 
-      if (gymEmbeds.length > 0) {
-        await tx.imageEmbedding.createMany({
-          data: gymEmbeds.map((e) => ({
-            imageId: created.id,
-            scope: "GLOBAL",
-            modelVendor: e.modelVendor,
-            modelName: e.modelName,
-            modelVersion: e.modelVersion,
-            dim: e.dim,
-            embeddingVec: (e as any).embeddingVec,
-          })),
-        });
-      } else {
+      const CURRENT = CURRENT_EMBED_MODEL;
+      const hasVector = !!(gymImg.embedding && (gymImg.embedding as any).length);
+      const needsReembed =
+        !hasVector ||
+        (gymImg.modelVersion && gymImg.modelVersion !== CURRENT);
+
+      if (needsReembed) {
         await tx.imageQueue.create({
           data: {
             imageId: created.id,

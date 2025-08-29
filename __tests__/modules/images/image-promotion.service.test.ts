@@ -8,6 +8,12 @@ import {
 } from "@aws-sdk/client-s3";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
 
+process.env.EMBED_VENDOR = "local";
+process.env.EMBED_MODEL = "mobileCLIP-S0";
+process.env.EMBED_VERSION = "1.0";
+
+const MODEL_TAG = `${process.env.EMBED_VENDOR}:${process.env.EMBED_MODEL}:${process.env.EMBED_VERSION}`;
+
 const ONE_BY_ONE_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HwAF/gL+6rYPGQAAAABJRU5ErkJggg==",
   "base64"
@@ -33,16 +39,12 @@ jest.spyOn(S3Client.prototype, "send").mockImplementation((cmd: any) => {
 function createPrismaMock() {
   const prisma = {
     gymEquipmentImage: {
-      findUniqueOrThrow: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
     equipmentImage: {
       findFirst: jest.fn(),
       create: jest.fn(),
-    },
-    imageEmbedding: {
-      findMany: jest.fn().mockResolvedValue([]),
-      createMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     imageQueue: {
       create: jest.fn(),
@@ -72,7 +74,7 @@ describe("promoteGymImageToGlobal", () => {
 
   it("copies object and creates equipment image", async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUniqueOrThrow as any).mockResolvedValue({
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
       id: "g1",
       gymId: 10,
       equipmentId: 20,
@@ -80,6 +82,8 @@ describe("promoteGymImageToGlobal", () => {
       sha256: "abc",
       status: "APPROVED",
       isSafe: true,
+      embedding: null,
+      modelVersion: null,
     });
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
       id: "e1",
@@ -94,9 +98,9 @@ describe("promoteGymImageToGlobal", () => {
     });
   });
 
-  it("returns existing on duplicate sha", async () => {
+  it("skips embed queue when gym embedding exists", async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUniqueOrThrow as any).mockResolvedValue({
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
       id: "g1",
       gymId: 10,
       equipmentId: 20,
@@ -104,6 +108,36 @@ describe("promoteGymImageToGlobal", () => {
       sha256: "abc",
       status: "APPROVED",
       isSafe: true,
+      embedding: [0.1, 0.2],
+      modelVersion: MODEL_TAG,
+    });
+    (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
+      id: "e1",
+      storageKey: data.storageKey,
+    }));
+    const svc = new ImagePromotionService(prisma);
+    await svc.promoteGymImageToGlobal({ id: "g1" } as any, ctx);
+    expect(prisma.imageQueue.create).not.toHaveBeenCalled();
+    expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        embedding: [0.1, 0.2],
+        modelVersion: MODEL_TAG,
+      }),
+    });
+  });
+
+    it("returns existing on duplicate sha", async () => {
+    const prisma = createPrismaMock();
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
+      id: "g1",
+      gymId: 10,
+      equipmentId: 20,
+      storageKey: "private/uploads/10/2025/01/img.jpg",
+      sha256: "abc",
+      status: "APPROVED",
+      isSafe: true,
+      embedding: null,
+      modelVersion: null,
     });
     (prisma.equipmentImage.findFirst as any).mockResolvedValue({ id: "e1", storageKey: "public/golden/20/..." });
     const svc = new ImagePromotionService(prisma);
@@ -114,7 +148,7 @@ describe("promoteGymImageToGlobal", () => {
 
   it("uses training split when splitId matches", async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUniqueOrThrow as any).mockResolvedValue({
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
       id: "g1",
       gymId: 10,
       equipmentId: 20,
@@ -122,6 +156,8 @@ describe("promoteGymImageToGlobal", () => {
       sha256: null,
       status: "APPROVED",
       isSafe: true,
+      embedding: null,
+      modelVersion: null,
     });
     (prisma.splitType.findUnique as any).mockResolvedValue({ key: "training" });
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({ id: "e1", storageKey: data.storageKey }));
