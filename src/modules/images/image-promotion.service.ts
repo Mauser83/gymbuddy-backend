@@ -15,6 +15,7 @@ import sharp from "sharp";
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
+const EMBED_DIM = Number(process.env.EMBED_DIM ?? 512);
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -188,28 +189,31 @@ export class ImagePromotionService {
         hasPerson: gymImg.hasPerson ?? null,
         personCount: gymImg.personCount ?? null,
         personBoxes: gymImg.personBoxes ?? null,
-        modelVendor: gymImg.modelVendor ?? null,
-        modelName: gymImg.modelName ?? null,
-        modelVersion: gymImg.modelVersion ?? null,
+        modelVendor: gymImg.modelVendor ?? EMBED_VENDOR,
+        modelName: gymImg.modelName ?? EMBED_MODEL,
+        modelVersion: gymImg.modelVersion ?? EMBED_VERSION,
       } as any;
 
       try {
+        const [row] = await tx.$queryRaw<{ embedding_text: string }[]>`
+          SELECT embedding::text AS embedding_text
+          FROM "GymEquipmentImage"
+          WHERE id = ${gymImg.id}
+          LIMIT 1
+        `;
+        const gymEmbeddingText = row?.embedding_text ?? null;
+
         console.log('creating the equipmentImage object:', data);
         const created = await tx.equipmentImage.create({ data });
         console.log('created equipmentImage', created.id);
 
-        const [embRow] = await tx.$queryRaw<{ embedding: unknown }[]>`
-          SELECT embedding FROM "GymEquipmentImage" WHERE id = ${gymImg.id} LIMIT 1
-        `;
-        const gymEmbedding = embRow?.embedding ?? null;
-
-        if (gymEmbedding) {
+        if (gymEmbeddingText) {
           await tx.$executeRaw`
             UPDATE "EquipmentImage"
-            SET embedding    = ${gymEmbedding},
-                "modelVendor"  = COALESCE("modelVendor",  ${EMBED_VENDOR}),
-                "modelName"    = COALESCE("modelName",    ${EMBED_MODEL}),
-                "modelVersion" = COALESCE("modelVersion", ${EMBED_VERSION})
+            SET embedding     = CAST(${gymEmbeddingText} AS vector(${EMBED_DIM})),
+                "modelVendor" = COALESCE("modelVendor", ${EMBED_VENDOR}),
+                "modelName"   = COALESCE("modelName", ${EMBED_MODEL}),
+                "modelVersion"= COALESCE("modelVersion", ${EMBED_VERSION})
             WHERE id = ${created.id}
           `;
         } else {
