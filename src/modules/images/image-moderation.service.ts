@@ -153,6 +153,8 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
         sha256: true,
         status: true,
         capturedAt: true,
+        approvedAt: true,
+        approvedByUserId: true,
         angleId: true,
         heightId: true,
         distanceId: true,
@@ -187,6 +189,8 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
       storageKey: r.storageKey,
       sha256: r.sha256,
       status: r.status,
+      approvedAt: r.approvedAt?.toISOString?.() ?? null,
+      approvedByUserId: r.approvedByUserId ?? null,
       createdAt: r.capturedAt.toISOString?.() ?? String(r.capturedAt),
       gymName: gymNameById.get(r.gymId) ?? String(r.gymId),
       tags: {

@@ -101,6 +101,7 @@ describe("ImageModerationService", () => {
   describe("candidateGlobalImages", () => {
     let svc: ImageModerationService;
     let equipId: number;
+    let userId: number;
     beforeAll(() => {
       svc = new ImageModerationService(prisma);
     });
@@ -109,6 +110,7 @@ describe("ImageModerationService", () => {
       const user = await prisma.user.create({
         data: { username: "u", email: "e@e.com", password: "pw" },
       });
+      userId = user.id;
       const gym = await prisma.gym.create({
         data: {
           name: "Gym",
@@ -137,10 +139,40 @@ describe("ImageModerationService", () => {
       });
       await prisma.gymEquipmentImage.createMany({
         data: [
-          { id: "img1", gymId: gym.id, equipmentId: equipId, status: "PENDING", storageKey: "a", sha256: "dup" },
-          { id: "img2", gymId: gym.id, equipmentId: equipId, status: "PENDING", storageKey: "b", sha256: null },
-          { id: "img3", gymId: gym.id, equipmentId: equipId, status: "APPROVED", storageKey: "c", sha256: "uniq" },
-          { id: "img4", gymId: gym.id, equipmentId: equipId, status: "REJECTED", storageKey: "d", sha256: "x" },
+          {
+            id: "img1",
+            gymId: gym.id,
+            equipmentId: equipId,
+            status: "PENDING",
+            storageKey: "a",
+            sha256: "dup",
+          },
+          {
+            id: "img2",
+            gymId: gym.id,
+            equipmentId: equipId,
+            status: "PENDING",
+            storageKey: "b",
+            sha256: null,
+          },
+          {
+            id: "img3",
+            gymId: gym.id,
+            equipmentId: equipId,
+            status: "APPROVED",
+            storageKey: "c",
+            sha256: "uniq",
+            approvedAt: new Date(),
+            approvedByUserId: userId,
+          },
+          {
+            id: "img4",
+            gymId: gym.id,
+            equipmentId: equipId,
+            status: "REJECTED",
+            storageKey: "d",
+            sha256: "x",
+          },
         ],
       });
     });
@@ -154,7 +186,15 @@ describe("ImageModerationService", () => {
         expect(r.gymName).toBe("Gym");
         expect(r.dupCount).toBe(0);
         expect(r.safety.state).toBe("PENDING");
+        expect(r).toHaveProperty("approvedAt");
+        expect(r).toHaveProperty("approvedByUserId");
       });
+      const pending = res.find((r: any) => r.id === "img2");
+      expect(pending.approvedAt).toBeNull();
+      expect(pending.approvedByUserId).toBeNull();
+      const approved = res.find((r: any) => r.id === "img3");
+      expect(approved.approvedAt).toBeTruthy();
+      expect(approved.approvedByUserId).toBe(userId);
     });
   });
 });

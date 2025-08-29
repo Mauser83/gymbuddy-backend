@@ -135,6 +135,8 @@ export const imagesTypeDefs = `
     storageKey: String!
     sha256: String
     status: GymImageStatus!
+    approvedAt: String
+    approvedBy: User
     createdAt: String!
     gymName: String!
     tags: CandidateTags

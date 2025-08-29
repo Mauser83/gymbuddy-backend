@@ -11,6 +11,20 @@ import {
 import { AuthContext } from "../auth/auth.types";
 
 export const ImagesResolvers = {
+  CandidateGymImage: {
+    approvedBy: (
+      src: { approvedByUserId?: number; approvedByUser?: any },
+      _args: unknown,
+      context: AuthContext
+    ) => {
+      if (src.approvedByUser) return src.approvedByUser;
+      if (src.approvedByUserId)
+        return context.prisma.user.findUnique({
+          where: { id: src.approvedByUserId },
+        });
+      return null;
+    },
+  },
   Mutation: {
     finalizeGymImage: async (
       _parent: unknown,
