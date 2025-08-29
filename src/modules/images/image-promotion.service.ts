@@ -66,6 +66,7 @@ export class ImagePromotionService {
     input: PromoteGymImageDto,
     ctx: AuthContext
   ) {
+    console.log("finding the gymImg data from GymEquipmentImage")
     const gymImg = (await this.prisma.gymEquipmentImage.findUnique({
       where: { id: input.id },
       select: {
@@ -117,6 +118,8 @@ export class ImagePromotionService {
       throw new Error("Gym image missing equipmentId/storageKey");
     }
 
+    console.log("handling the split data")
+
     const splitId = input.splitId ?? gymImg.splitId ?? null;
     let splitKind: "golden" | "training" = "golden";
     if (splitId) {
@@ -128,6 +131,8 @@ export class ImagePromotionService {
     }
     const destKey = makeKey(splitKind, { equipmentId: gymImg.equipmentId }, {});
 
+
+      console.log("handling the sha256")
     if (gymImg.sha256) {
       const existing = await this.prisma.equipmentImage.findFirst({
         where: { equipmentId: gymImg.equipmentId, sha256: gymImg.sha256 },
@@ -144,6 +149,7 @@ export class ImagePromotionService {
       }
     }
 
+          console.log("handling the bucket header")
     const head = await this.s3
       .send(new HeadObjectCommand({ Bucket: BUCKET, Key: gymImg.storageKey }))
       .catch((err) => {
@@ -153,6 +159,7 @@ export class ImagePromotionService {
       });
     const contentType = head.ContentType || "image/jpeg";
 
+    console.log("handling the image copying in R2")
     await this.s3.send(
       new CopyObjectCommand({
         Bucket: BUCKET,
@@ -163,7 +170,7 @@ export class ImagePromotionService {
       })
     );
 
-    // const meta = await this.getImageMeta(destKey, contentType);
+    const meta = await this.getImageMeta(destKey, contentType);
 
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
       const data = {
@@ -174,9 +181,9 @@ export class ImagePromotionService {
           ctx.userId ??
           null,
         storageKey: destKey,
-        mimeType: contentType,
-        width: 0,
-        height: 0,
+        mimeType: meta.mime,
+        width: meta.width,
+        height: meta.height,
         sha256: gymImg.sha256 ?? null,
         angleId: gymImg.angleId ?? null,
         heightId: gymImg.heightId ?? null,
