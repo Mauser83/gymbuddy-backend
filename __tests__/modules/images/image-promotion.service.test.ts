@@ -50,6 +50,8 @@ function createPrismaMock() {
     splitType: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
+    $queryRaw: jest.fn().mockResolvedValue([]),
+    $executeRaw: jest.fn().mockResolvedValue(0),
     $transaction: async (fn: any) => fn(prisma),
   } as unknown as PrismaClient;
   return prisma;
@@ -117,17 +119,20 @@ describe("promoteGymImageToGlobal", () => {
       id: "e1",
       storageKey: data.storageKey,
     }));
+    (prisma.$queryRaw as any).mockResolvedValue([
+      { embedding_text: "[0.1,0.2]" },
+    ]);
     const svc = new ImagePromotionService(prisma);
     await svc.promoteGymImageToGlobal({ id: "g1" } as any, ctx);
     expect(prisma.imageQueue.create).not.toHaveBeenCalled();
     expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        embedding: [0.1, 0.2],
         modelVendor: process.env.EMBED_VENDOR,
         modelName: process.env.EMBED_MODEL,
         modelVersion: process.env.EMBED_VERSION,
       }),
     });
+    expect(prisma.$executeRaw).toHaveBeenCalled();
   });
 
     it("returns existing on duplicate sha", async () => {
