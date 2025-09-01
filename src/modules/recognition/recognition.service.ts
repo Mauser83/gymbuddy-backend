@@ -167,7 +167,7 @@ export class RecognitionService {
 
     return {
       attempt: {
-        attemptId: attempt.id,
+        attemptId: String(attempt.id),           // ← stringify
         storageKey: attempt.storageKey,
         vectorHash: attempt.vectorHash,
         bestEquipmentId: attempt.bestEquipmentId,
