@@ -7,6 +7,7 @@ process.env.R2_BUCKET = process.env.R2_BUCKET || "bucket";
 process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "account";
 process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "id";
 process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "secret";
+process.env.TICKET_SECRET = process.env.TICKET_SECRET || "ticketsecret";
 import { prisma } from "../src/lib/prisma";
 import resolvers from "../src/graphql/rootResolvers";
 import typeDefs from "../src/graphql/rootSchema";
@@ -16,6 +17,7 @@ import { MediaService } from '../src/modules/media/media.service';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
 import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { ImageModerationService } from '../src/modules/images/image-moderation.service';
+import { RecognitionService } from '../src/modules/recognition/recognition.service';
 import { getPort } from "get-port-please";
 
 async function cleanDatabase() {
@@ -69,6 +71,7 @@ export default async function () {
           imageIntakeService: {} as ImageIntakeService,
           imagePromotionService: {} as ImagePromotionService,
           imageModerationService: {} as ImageModerationService,
+          recognitionService: {} as RecognitionService,
           userId: 1,
           userRole: UserRole.USER,
           isPremium: true,

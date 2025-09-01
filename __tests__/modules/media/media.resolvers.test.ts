@@ -7,6 +7,7 @@ const baseCtx = {
   imageIntakeService: {} as any,
   imagePromotionService: {} as any,
   imageModerationService: {} as any,
+  recognitionService: {} as any,
   appRole: undefined,
   userRole: UserRole.USER,
   isPremium: false,

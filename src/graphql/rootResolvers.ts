@@ -16,6 +16,7 @@ import { KnnResolvers } from "../modules/cv/knn.resolvers";
 import { MediaResolvers } from "../modules/media/media.resolvers";
 import { ImagesResolvers } from "../modules/images/images.resolvers";
 import { WorkerResolvers } from "../modules/worker/worker.resolvers";
+import { RecognitionResolvers } from "../modules/recognition/recognition.resolvers";
 
 export const pubsub = new PubSub();
 
@@ -53,6 +54,7 @@ const resolvers = {
   ...MediaResolvers,
   ...ImagesResolvers,
   ...WorkerResolvers,
+  ...RecognitionResolvers,
   Query: {
     hello: () => "Hello world!",
     ...EquipmentResolvers.Query,
@@ -82,6 +84,7 @@ const resolvers = {
     ...ImagesResolvers.Mutation,
     ...WorkerResolvers.Mutation,
     ...TaxonomyResolvers.Mutation,
+    ...RecognitionResolvers.Mutation,
   },
   Subscription: {
     ...SubscriptionResolvers.Subscription,

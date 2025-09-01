@@ -4,6 +4,7 @@ import { MediaService } from "../media/media.service";
 import { ImageIntakeService } from "../images/image-intake.service";
 import { ImagePromotionService } from "../images/image-promotion.service";
 import { ImageModerationService } from "../images/image-moderation.service";
+import { RecognitionService } from "../recognition/recognition.service";
 
 // Existing GraphQL-related types
 export interface RegisterInput {
@@ -81,4 +82,5 @@ export interface AuthContext {
   imageIntakeService: ImageIntakeService;
   imagePromotionService: ImagePromotionService;
   imageModerationService: ImageModerationService;
+  recognitionService: RecognitionService;
 }

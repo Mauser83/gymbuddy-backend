@@ -27,6 +27,7 @@ describe("auth.roles", () => {
     imageIntakeService: {} as any,
     imagePromotionService: {} as any,
     imageModerationService: {} as any,
+    recognitionService: {} as any,
   };
 
   beforeEach(() => {

@@ -10,6 +10,7 @@ import { MediaService } from "../modules/media/media.service";
 import { ImageIntakeService } from "../modules/images/image-intake.service";
 import { ImagePromotionService } from "../modules/images/image-promotion.service";
 import { ImageModerationService } from "../modules/images/image-moderation.service";
+import { RecognitionService } from "../modules/recognition/recognition.service";
 
 export async function setupApollo(
   app: any,
@@ -18,7 +19,8 @@ export async function setupApollo(
   mediaService: MediaService,
   imageIntakeService: ImageIntakeService,
   imagePromotionService: ImagePromotionService,
-  imageModerationService: ImageModerationService
+  imageModerationService: ImageModerationService,
+  recognitionService: RecognitionService
 ) {
   const apolloServer = new ApolloServer<AuthContext>({ typeDefs, resolvers });
   await apolloServer.start();
@@ -41,6 +43,7 @@ export async function setupApollo(
           imageIntakeService,
           imagePromotionService,
           imageModerationService,
+          recognitionService,
         };
       },
     })

@@ -13,6 +13,7 @@ import { knnTypeDefs } from "../modules/cv/knn.schema";
 import { mediaTypeDefs } from "../modules/media/media.schema";
 import { imagesTypeDefs } from "../modules/images/images.schema";
 import { workerTypeDefs } from "../modules/worker/worker.schema";
+import { recognitionTypeDefs } from "../modules/recognition/recognition.schema";
 
 const baseTypeDefs = `
   scalar JSON       # ✅ Add this line
@@ -38,6 +39,7 @@ const typeDefs = gql`
   ${mediaTypeDefs}
   ${imagesTypeDefs}
   ${workerTypeDefs}
+  ${recognitionTypeDefs}
 
   extend type Query {
     hello: String

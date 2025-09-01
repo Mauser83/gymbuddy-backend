@@ -8,6 +8,7 @@ import { MediaService } from "../src/modules/media/media.service";
 import { ImageIntakeService } from "../src/modules/images/image-intake.service";
 import { ImagePromotionService } from "../src/modules/images/image-promotion.service";
 import { ImageModerationService } from "../src/modules/images/image-moderation.service";
+import { RecognitionService } from "../src/modules/recognition/recognition.service";
 
 async function getUtils() {
   const utils = (global as any).__TEST_UTILS__;
@@ -57,6 +58,7 @@ export const executeOperation = async (operation: {
     imageIntakeService: {} as ImageIntakeService,
     imagePromotionService: {} as ImagePromotionService,
     imageModerationService: {} as ImageModerationService,
+    recognitionService: {} as RecognitionService,
   };
   return await testServer.executeOperation(operation, { contextValue });
 };
