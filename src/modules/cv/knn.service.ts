@@ -4,6 +4,8 @@ type Scope = "GLOBAL" | "GYM" | "AUTO";
 
 type Row = { id: string; equipmentId: number | null; score: number; storageKey: string };
 
+type VecRow = { equipmentId: number | null; score: number; storageKey: string; id: string };
+
 export async function knnSearchService(input: {
   imageId: string;
   scope: Scope;
@@ -122,5 +124,72 @@ async function searchGymFromSourceId(opts: {
     gymId,
     excludeId,
     limit
+  );
+}
+
+export async function knnFromVectorGlobal(params: {
+  vector: number[];
+  limit: number;
+  gymId?: number;
+}): Promise<VecRow[]> {
+  const { vector, limit, gymId } = params;
+
+  const gymFilter =
+    gymId == null
+      ? ``
+      : `
+      AND ei."equipmentId" IN (
+        SELECT ge."equipmentId"
+          FROM "GymEquipment" ge
+         WHERE ge."gymId" = ${Number(gymId)}
+      )
+    `;
+
+  return prisma.$queryRawUnsafe<VecRow[]>(
+    `
+    WITH src AS (
+      SELECT CAST($1 AS vector(512)) AS embedding
+    )
+    SELECT ei.id,
+           ei."equipmentId",
+           ei."storageKey",
+           1 - (ei.embedding <=> src.embedding) AS score
+      FROM "EquipmentImage" ei
+      CROSS JOIN src
+     WHERE ei.embedding IS NOT NULL
+       ${gymFilter}
+     ORDER BY ei.embedding <-> src.embedding
+     LIMIT $2
+    `,
+    vector,
+    Math.max(1, Math.min(limit, 100))
+  );
+}
+
+export async function knnFromVectorGym(params: {
+  vector: number[];
+  gymId: number;
+  limit: number;
+}): Promise<VecRow[]> {
+  const { vector, gymId, limit } = params;
+  return prisma.$queryRawUnsafe<VecRow[]>(
+    `
+    WITH src AS (
+      SELECT CAST($1 AS vector(512)) AS embedding
+    )
+    SELECT ge.id,
+           ge."equipmentId",
+           ge."storageKey",
+           1 - (ge.embedding <=> src.embedding) AS score
+      FROM "GymEquipmentImage" ge
+      CROSS JOIN src
+     WHERE ge.embedding IS NOT NULL
+       AND ge."gymId" = $2
+     ORDER BY ge.embedding <-> src.embedding
+     LIMIT $3
+    `,
+    vector,
+    gymId,
+    Math.max(1, Math.min(limit, 100))
   );
 }
