@@ -52,5 +52,6 @@ export const mediaTypeDefs = `
 
   extend type Query {
     imageUrlMany(storageKeys: [String!]!, ttlSec: Int = 600): [ImageUrlItem!]!
+    imageUrl(storageKey: String!, ttlSec: Int = 300): ImageUrlItem!
   }
 `;

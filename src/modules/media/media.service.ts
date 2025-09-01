@@ -1,6 +1,10 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
+import { HeadObjectCommand } from "@aws-sdk/client-s3";
+import { GraphQLError } from "graphql";
+import { DIContainer } from "../core/di.container";
+import { AuditService } from "../core/audit.service";
 import { makeKey, parseKey } from "../../utils/makeKey";
 
 const BUCKET = process.env.R2_BUCKET!;
@@ -47,6 +51,30 @@ export class MediaService {
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
     },
   });
+
+  private signCounts: Map<number, { count: number; reset: number }> = new Map();
+
+  private clampShortTtl(ttlSec?: number) {
+    const MIN = 30;
+    const MAX = 900;
+    const ttl = ttlSec ?? 300;
+    return Math.max(MIN, Math.min(ttl, MAX));
+  }
+
+  private checkRateLimit(userId: number) {
+    const now = Date.now();
+    const bucket = this.signCounts.get(userId);
+    if (!bucket || now > bucket.reset) {
+      this.signCounts.set(userId, { count: 1, reset: now + 60_000 });
+      return;
+    }
+    if (bucket.count >= 60) {
+      throw new GraphQLError("Too many requests", {
+        extensions: { code: "TOO_MANY_REQUESTS" },
+      });
+    }
+    bucket.count += 1;
+  }
 
   /**
    * Build a pre-signed GET URL for a storageKey.
@@ -166,5 +194,42 @@ export class MediaService {
         return { storageKey: key, url, expiresAt };
       })
     );
+  }
+
+  async imageUrl(
+    storageKey: string,
+    ttlSec = 300,
+    actorId?: number | null
+  ): Promise<{ url: string; expiresAt: string }> {
+    this.checkRateLimit(actorId ?? 0);
+    const ttl = this.clampShortTtl(ttlSec);
+
+    if (storageKey.startsWith("private/")) {
+      try {
+        await this.s3.send(
+          new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })
+        );
+      } catch (err: any) {
+        if (err?.$metadata?.httpStatusCode === 404) {
+          throw new GraphQLError("Object not found", {
+            extensions: { code: "NOT_FOUND" },
+          });
+        }
+        throw err;
+      }
+    }
+
+    const url = await this.presignGetForKey(storageKey, ttl);
+    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+    const audit = DIContainer.resolve<AuditService>("AuditService");
+    const keyHash = createHash("sha256").update(storageKey).digest("hex");
+    await audit.logEvent({
+      action: "SIGNED_URL_ISSUED",
+      userId: actorId ?? undefined,
+      metadata: { keyHash, ttlSec: ttl },
+    });
+
+    return { url, expiresAt };
   }
 }

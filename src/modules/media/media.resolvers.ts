@@ -3,8 +3,10 @@ import {
   GetImageUploadUrlDto,
   CreateUploadSessionDto,
   ImageUrlManyDto,
+  ImageUrlDto,
 } from "./media.dto";
 import { AuthContext } from "../auth/auth.types";
+import { GraphQLError } from "graphql";
 
 export const MediaResolvers = {
   Mutation: {
@@ -36,6 +38,28 @@ export const MediaResolvers = {
   },
 
   Query: {
+    imageUrl: async (_: unknown, args: ImageUrlDto, ctx: AuthContext) => {
+      const dto = Object.assign(new ImageUrlDto(), args);
+      await validateOrReject(dto);
+
+      const privateMatch = /^private\/uploads\/(\d+)\//.exec(dto.storageKey);
+      if (privateMatch) {
+        const gymId = parseInt(privateMatch[1], 10);
+        const allowed = ctx.gymRoles.some((g) => g.gymId === gymId);
+        if (!allowed) {
+          throw new GraphQLError("Forbidden", {
+            extensions: { code: "FORBIDDEN" },
+          });
+        }
+      }
+
+      const { url, expiresAt } = await ctx.mediaService.imageUrl(
+        dto.storageKey,
+        dto.ttlSec,
+        ctx.userId ?? undefined
+      );
+      return { storageKey: dto.storageKey, url, expiresAt };
+    },
     imageUrlMany: async (
       _: unknown,
       args: ImageUrlManyDto,

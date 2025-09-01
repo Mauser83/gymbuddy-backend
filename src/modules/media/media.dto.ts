@@ -45,3 +45,12 @@ export class ImageUrlManyDto {
 
   @IsOptional() @IsInt() ttlSec?: number;
 }
+
+export class ImageUrlDto {
+  @IsString()
+  @Matches(/^(private\/uploads\/\d+\/.*|public\/(golden|training)\/.*)$/)
+  storageKey!: string;
+
+  @IsOptional() @IsInt()
+  ttlSec?: number;
+}

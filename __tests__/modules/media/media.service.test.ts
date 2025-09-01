@@ -49,6 +49,34 @@ describe("MediaService.presignGetForKey", () => {
   });
 });
 
+describe("MediaService.imageUrl", () => {
+  const svc = new MediaService();
+  beforeEach(() => {
+    (svc as any).s3.send = jest.fn().mockResolvedValue({});
+  });
+
+  it("clamps ttl and returns expiresAt", async () => {
+    const now = Date.now();
+    const out = await svc.imageUrl(
+      `public/golden/1/2025/01/${UUID}.jpg`,
+      9999,
+      1
+    );
+    const exp = new Date(out.expiresAt).getTime();
+    expect(exp).toBeGreaterThanOrEqual(now + 900 * 1000 - 1000);
+    expect(exp).toBeLessThanOrEqual(now + 900 * 1000 + 1000);
+  });
+
+  it("HEADs private keys and throws when missing", async () => {
+    (svc as any).s3.send = jest
+      .fn()
+      .mockRejectedValue({ $metadata: { httpStatusCode: 404 } });
+    await expect(
+      svc.imageUrl(`private/uploads/1/2025/01/${UUID}.jpg`, 60, 1)
+    ).rejects.toMatchObject({ extensions: { code: "NOT_FOUND" } });
+  });
+});
+
 describe("MediaService.getImageUploadUrl", () => {
   const svc = new MediaService();
 
