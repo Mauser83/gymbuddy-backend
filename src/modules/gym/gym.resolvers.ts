@@ -72,6 +72,14 @@ export const GymResolvers = {
         args.ttlSec ?? 300
       );
     },
+    url: async (
+      src: { storageKey: string },
+      _args: unknown,
+      context: AuthContext
+    ) => {
+      if (!src.storageKey) return null;
+      return context.mediaService.presignGetForKey(src.storageKey, 300);
+    },
     approvedBy: (
       src: { approvedByUserId?: number; approvedByUser?: any },
       _args: unknown,
@@ -163,6 +171,23 @@ export const GymResolvers = {
         new PermissionService(context.prisma)
       );
       return service.getGymImageById(args.id);
+    },
+    listGymEquipmentImages: async (
+      _: unknown,
+      args: { gymEquipmentId: number; limit?: number; cursor?: string },
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.listGymEquipmentImages(
+        context.userId,
+        args.gymEquipmentId,
+        args.limit,
+        args.cursor
+      );
     },
   },
 
@@ -304,6 +329,39 @@ export const GymResolvers = {
         new PermissionService(context.prisma)
       );
       return service.deleteGymImage(args.imageId);
+    },
+    createEquipmentTrainingUploadTicket: async (
+      _: unknown,
+      args: { gymId: number; equipmentId: number; ext: string },
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.createEquipmentTrainingUploadTicket(
+        context.userId,
+        args.gymId,
+        args.equipmentId,
+        args.ext
+      );
+    },
+    finalizeEquipmentTrainingImage: async (
+      _: unknown,
+      args: { gymEquipmentId: number; storageKey: string },
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.finalizeEquipmentTrainingImage(
+        context.userId,
+        args.gymEquipmentId,
+        args.storageKey
+      );
     },
   },
 };

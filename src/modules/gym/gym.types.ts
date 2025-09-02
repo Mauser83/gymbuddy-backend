@@ -86,6 +86,7 @@ export interface GymEquipmentImage {
   createdAt: Date;
   updatedAt?: Date;
   thumbUrl?: string;
+  url?: string;
 }
 
 // --- Inputs ---
@@ -111,4 +112,14 @@ export interface UploadGymImageInput {
   storageKey: string;
   sha256?: string;
   status?: GymImageStatus;
+}
+
+export interface GymEquipmentImageConnection {
+  items: GymEquipmentImage[];
+  nextCursor: string | null;
+}
+
+export interface UploadTicket {
+  putUrl: string;
+  storageKey: string;
 }

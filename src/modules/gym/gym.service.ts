@@ -11,6 +11,10 @@ import {
 } from "./gym.dto";
 import { validateInput } from "../../middlewares/validation";
 import { pubsub } from "../../graphql/rootResolvers";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
+import { ImageJobStatus } from "../../generated/prisma";
 
 const fullGymInclude = {
   creator: true,
@@ -19,9 +23,21 @@ const fullGymInclude = {
   trainers: { include: { user: true } },
 };
 
+const BUCKET = process.env.R2_BUCKET!;
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
+
 export class GymService {
   private prisma: PrismaClient;
   private permissionService: PermissionService;
+  private s3 = new S3Client({
+    region: "auto",
+    endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    },
+  });
 
   constructor(prisma: PrismaClient, permissionService: PermissionService) {
     this.prisma = prisma;
@@ -366,5 +382,81 @@ export class GymService {
         images: true,
       },
     });
+  }
+
+  async listGymEquipmentImages(
+    userId: number,
+    gymEquipmentId: number,
+    limit = 24,
+    cursor?: string
+  ) {
+    const join = await this.prisma.gymEquipment.findUnique({
+      where: { id: gymEquipmentId },
+      select: { gymId: true },
+    });
+    if (!join) throw new Error("Gym equipment not found");
+
+    const hasAccess = await this.checkGymPermission(userId, join.gymId);
+    if (!hasAccess) throw new Error("Unauthorized");
+
+    const rows = await this.prisma.gymEquipmentImage.findMany({
+      where: { gymEquipmentId },
+      take: limit + 1,
+      orderBy: { capturedAt: "desc" },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const items = rows.slice(0, limit);
+    const nextCursor = rows.length > limit ? rows[rows.length - 1].id : null;
+    return { items, nextCursor };
+  }
+
+  async createEquipmentTrainingUploadTicket(
+    userId: number,
+    gymId: number,
+    equipmentId: number,
+    ext: string
+  ) {
+    const hasAccess = await this.checkGymPermission(userId, gymId);
+    if (!hasAccess) throw new Error("Unauthorized");
+
+    const storageKey = `gyms/${gymId}/equipment/${equipmentId}/${randomUUID()}.${ext}`;
+    const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: storageKey });
+    const putUrl = await getSignedUrl(this.s3, cmd, { expiresIn: 600 });
+    return { putUrl, storageKey };
+  }
+
+  async finalizeEquipmentTrainingImage(
+    userId: number,
+    gymEquipmentId: number,
+    storageKey: string
+  ) {
+    const join = await this.prisma.gymEquipment.findUnique({
+      where: { id: gymEquipmentId },
+      select: { gymId: true, equipmentId: true },
+    });
+    if (!join) throw new Error("Gym equipment not found");
+
+    const hasAccess = await this.checkGymPermission(userId, join.gymId);
+    if (!hasAccess) throw new Error("Unauthorized");
+
+    const image = await this.prisma.gymEquipmentImage.create({
+      data: {
+        gymEquipmentId,
+        gymId: join.gymId,
+        equipmentId: join.equipmentId,
+        storageKey,
+        status: "PENDING",
+      },
+    });
+
+    const jobs = [
+      { jobType: "HASH", status: ImageJobStatus.pending, priority: 0, storageKey },
+      { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey },
+      { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey },
+    ];
+    await this.prisma.imageQueue.createMany({ data: jobs });
+
+    return image;
   }
 }

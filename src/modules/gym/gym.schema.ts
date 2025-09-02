@@ -52,6 +52,17 @@ export const gymTypeDefs = `
     createdAt: String!
     updatedAt: String
     thumbUrl(ttlSec: Int = 300): String
+    url: String!
+  }
+
+  type GymEquipmentImageConnection {
+    items: [GymEquipmentImage!]!
+    nextCursor: String
+  }
+
+  type UploadTicket {
+    putUrl: String!
+    storageKey: String!
   }
 
   input CreateGymInput {
@@ -120,6 +131,7 @@ export const gymTypeDefs = `
     getGymEquipmentDetail(gymEquipmentId: Int!): GymEquipment
     gymImagesByGymId(gymId: Int!): [GymEquipmentImage!]!
     gymImage(id: ID!): GymEquipmentImage
+    listGymEquipmentImages(gymEquipmentId: Int!, limit: Int, cursor: String): GymEquipmentImageConnection!
   }
 
   extend type Mutation {
@@ -133,8 +145,10 @@ export const gymTypeDefs = `
     assignEquipmentToGym(input: AssignEquipmentToGymInput!): GymEquipment!
     updateGymEquipment(input: UpdateGymEquipmentInput!): GymEquipment!
     removeGymEquipment(gymEquipmentId: Int!): Boolean!
-    uploadGymImage(input: UploadGymImageInput!): GymEquipmentImage!
+    uploadGymImage(input: UploadGymImageInput!): GymEquipmentImage! @deprecated(reason: "Use createEquipmentTrainingUploadTicket/finalizeEquipmentTrainingImage")
     deleteGymImage(imageId: ID!): Boolean!
+    createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, ext: String!): UploadTicket!
+    finalizeEquipmentTrainingImage(gymEquipmentId: Int!, storageKey: String!): GymEquipmentImage!
   }
 
   extend type Subscription {
