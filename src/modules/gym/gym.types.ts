@@ -85,6 +85,7 @@ export interface GymEquipmentImage {
   approvedBy?: User;
   createdAt: Date;
   updatedAt?: Date;
+  isPrimary: boolean;
   thumbUrl?: string;
   url?: string;
 }

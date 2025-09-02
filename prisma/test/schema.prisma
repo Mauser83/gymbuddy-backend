@@ -743,6 +743,7 @@ model GymEquipmentImage {
   storageKey       String?
   objectUuid       String?
   sha256           String? @unique
+  isPrimary       Boolean  @default(false)
   isSafe           Boolean?
   nsfwScore        Float?
   hasPerson        Boolean?

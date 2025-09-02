@@ -324,11 +324,12 @@ export const GymResolvers = {
       args: { imageId: string },
       context: AuthContext
     ) => {
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
       const service = new GymService(
         context.prisma,
         new PermissionService(context.prisma)
       );
-      return service.deleteGymImage(args.imageId);
+      return service.deleteGymImage(context.userId, args.imageId);
     },
     createEquipmentTrainingUploadTicket: async (
       _: unknown,
@@ -362,6 +363,18 @@ export const GymResolvers = {
         args.gymEquipmentId,
         args.storageKey
       );
+    },
+    setPrimaryGymEquipmentImage: async (
+      _: unknown,
+      args: { imageId: string },
+      context: AuthContext
+    ) => {
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.setPrimaryGymEquipmentImage(context.userId, args.imageId);
     },
   },
 };

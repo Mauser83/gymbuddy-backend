@@ -51,6 +51,7 @@ export const gymTypeDefs = `
     approvedBy: User
     createdAt: String!
     updatedAt: String
+    isPrimary: Boolean!
     thumbUrl(ttlSec: Int = 300): String
     url: String!
   }
@@ -149,6 +150,7 @@ export const gymTypeDefs = `
     deleteGymImage(imageId: ID!): Boolean!
     createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, ext: String!): UploadTicket!
     finalizeEquipmentTrainingImage(gymEquipmentId: Int!, storageKey: String!): GymEquipmentImage!
+    setPrimaryGymEquipmentImage(imageId: ID!): GymEquipmentImage!
   }
 
   extend type Subscription {

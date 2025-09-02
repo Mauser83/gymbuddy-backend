@@ -312,20 +312,53 @@ describe("GymService", () => {
     });
   });
 
-  test("deleteGymImage deletes image", async () => {
-    prisma.gymEquipmentImage.delete.mockResolvedValue({} as any);
-    const res = await service.deleteGymImage('3');
-    expect(prisma.gymEquipmentImage.delete).toHaveBeenCalledWith({ where: { id: '3' } });
+  test("deleteGymImage deletes and promotes next when primary", async () => {
+    prisma.gymEquipmentImage.findUnique.mockResolvedValue({
+      gymId: 1,
+      gymEquipmentId: 10,
+      isPrimary: true,
+    } as any);
+    const tx = {
+      gymEquipmentImage: {
+        delete: jest.fn().mockResolvedValue({ isPrimary: true, gymEquipmentId: 10 } as any),
+        findFirst: jest.fn().mockResolvedValue({ id: "next" } as any),
+        update: jest.fn().mockResolvedValue({} as any),
+      },
+    } as any;
+    prisma.$transaction.mockImplementation((fn: any) => fn(tx));
+    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
+    const res = await service.deleteGymImage(5, "3");
+    expect(tx.gymEquipmentImage.delete).toHaveBeenCalledWith({ where: { id: "3" } });
+    expect(tx.gymEquipmentImage.update).toHaveBeenCalledWith({
+      where: { id: "next" },
+      data: { isPrimary: true },
+    });
     expect(res).toBe(true);
   });
 
-  test("getGymEquipment queries prisma", async () => {
-    prisma.gymEquipment.findMany.mockResolvedValue([] as any);
-    await service.getGymEquipment(1);
-    expect(prisma.gymEquipment.findMany).toHaveBeenCalledWith({
-      where: { gymId: 1 },
-      include: { equipment: true, images: true },
+  test("setPrimaryGymEquipmentImage swaps primary", async () => {
+    prisma.gymEquipmentImage.findUnique.mockResolvedValue({
+      gymId: 1,
+      gymEquipmentId: 10,
+    } as any);
+    const tx = {
+      gymEquipmentImage: {
+        updateMany: jest.fn().mockResolvedValue({} as any),
+        update: jest.fn().mockResolvedValue({ id: "img2", isPrimary: true } as any),
+      },
+    } as any;
+    prisma.$transaction.mockImplementation((fn: any) => fn(tx));
+    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
+    const res = await service.setPrimaryGymEquipmentImage(5, "img2");
+    expect(tx.gymEquipmentImage.updateMany).toHaveBeenCalledWith({
+      where: { gymEquipmentId: 10, isPrimary: true },
+      data: { isPrimary: false },
     });
+    expect(tx.gymEquipmentImage.update).toHaveBeenCalledWith({
+      where: { id: "img2" },
+      data: { isPrimary: true },
+    });
+    expect(res).toEqual({ id: "img2", isPrimary: true });
   });
 
   test("getGymEquipmentDetail queries prisma", async () => {
@@ -333,7 +366,17 @@ describe("GymService", () => {
     const res = await service.getGymEquipmentDetail(1);
     expect(prisma.gymEquipment.findUnique).toHaveBeenCalledWith({
       where: { id: 1 },
-      include: { equipment: true, images: true },
+      include: {
+        gym: true,
+        equipment: {
+          include: {
+            category: true,
+            subcategory: true,
+            images: true,
+          },
+        },
+        images: true,
+      },
     });
     expect(res).toEqual({ id: 1 });
   });

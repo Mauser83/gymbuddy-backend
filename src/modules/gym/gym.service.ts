@@ -338,11 +338,58 @@ export class GymService {
     });
   }
 
-  async deleteGymImage(imageId: string) {
-    await this.prisma.gymEquipmentImage.delete({
+  async deleteGymImage(userId: number, imageId: string) {
+    const img = await this.prisma.gymEquipmentImage.findUnique({
       where: { id: imageId },
+      select: { gymId: true, gymEquipmentId: true, isPrimary: true },
     });
+    if (!img) throw new Error("Image not found");
+
+    const hasAccess = await this.checkGymPermission(userId, img.gymId);
+    if (!hasAccess) throw new Error("Unauthorized");
+
+    await this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.gymEquipmentImage.delete({ where: { id: imageId } });
+      if (deleted.isPrimary && deleted.gymEquipmentId) {
+        const next = await tx.gymEquipmentImage.findFirst({
+          where: { gymEquipmentId: deleted.gymEquipmentId },
+          orderBy: { capturedAt: "desc" },
+        });
+        if (next) {
+          await tx.gymEquipmentImage.update({
+            where: { id: next.id },
+            data: { isPrimary: true },
+          });
+        }
+      }
+    });
+
     return true;
+  }
+
+  async setPrimaryGymEquipmentImage(userId: number, imageId: string) {
+    const img = await this.prisma.gymEquipmentImage.findUnique({
+      where: { id: imageId },
+      select: { gymId: true, gymEquipmentId: true },
+    });
+    if (!img || !img.gymEquipmentId)
+      throw new Error("Image not found");
+
+    const hasAccess = await this.checkGymPermission(userId, img.gymId);
+    if (!hasAccess) throw new Error("Unauthorized");
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.gymEquipmentImage.updateMany({
+        where: { gymEquipmentId: img.gymEquipmentId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+      return tx.gymEquipmentImage.update({
+        where: { id: imageId },
+        data: { isPrimary: true },
+      });
+    });
+
+    return updated;
   }
 
   async getGymImagesByGymId(gymId: number) {

@@ -268,7 +268,15 @@ describe("GymResolvers", () => {
       mockedService.mockImplementation(() => instance);
       const ctx = createContext();
       await GymResolvers.Mutation.deleteGymImage(null as any, { imageId: '2' }, ctx);
-      expect(instance.deleteGymImage).toHaveBeenCalledWith('2');
+      expect(instance.deleteGymImage).toHaveBeenCalledWith(1, '2');
+    });
+
+    test('setPrimaryGymEquipmentImage uses service', async () => {
+      const instance = { setPrimaryGymEquipmentImage: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      await GymResolvers.Mutation.setPrimaryGymEquipmentImage(null as any, { imageId: '1' }, ctx);
+      expect(instance.setPrimaryGymEquipmentImage).toHaveBeenCalledWith(1, '1');
     });
   });
 });
