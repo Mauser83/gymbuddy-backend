@@ -49,7 +49,8 @@ export const gymTypeDefs = `
     status: GymImageStatus
     approvedAt: String
     approvedBy: User
-    createdAt: String!
+    capturedAt: String!
+    createdAt: String! @deprecated(reason: "Use capturedAt instead")
     updatedAt: String
     isPrimary: Boolean!
     thumbUrl(ttlSec: Int = 300): String

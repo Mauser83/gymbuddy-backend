@@ -449,7 +449,7 @@ export class GymService {
     const rows = await this.prisma.gymEquipmentImage.findMany({
       where: { gymEquipmentId },
       take: limit + 1,
-      orderBy: { capturedAt: "desc" },
+      orderBy: [{ capturedAt: "desc" }, { id: "desc" }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
@@ -494,6 +494,7 @@ export class GymService {
         equipmentId: join.equipmentId,
         storageKey,
         status: "PENDING",
+        capturedAt: new Date(),
       },
     });
 

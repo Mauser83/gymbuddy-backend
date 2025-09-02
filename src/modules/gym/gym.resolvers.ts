@@ -58,6 +58,10 @@ export const GymResolvers = {
   },
 
   GymEquipmentImage: {
+    capturedAt: (src: { capturedAt?: string; updatedAt?: string }) =>
+      src.capturedAt ?? src.updatedAt ?? new Date(0).toISOString(),
+    createdAt: (src: { capturedAt?: string; updatedAt?: string }) =>
+      src.capturedAt ?? src.updatedAt ?? new Date(0).toISOString(),
     thumbUrl: async (
       src: { storageKey: string },
       args: { ttlSec?: number },
