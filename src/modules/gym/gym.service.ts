@@ -294,7 +294,7 @@ export class GymService {
     return true;
   }
 
-    async uploadGymImage(input: UploadGymImageDto) {
+  async uploadGymImage(input: UploadGymImageDto) {
     await validateInput(input, UploadGymImageDto);
 
     const gymEquipment = await this.prisma.gymEquipment.findFirst({
@@ -354,7 +354,17 @@ export class GymService {
   async getGymEquipmentDetail(gymEquipmentId: number) {
     return this.prisma.gymEquipment.findUnique({
       where: { id: gymEquipmentId },
-      include: { equipment: true, images: true },
+      include: {
+        gym: true, // ✅ ensure gym is always loaded
+        equipment: {
+          include: {
+            category: true,
+            subcategory: true,
+            images: true,
+          },
+        },
+        images: true,
+      },
     });
   }
 }
