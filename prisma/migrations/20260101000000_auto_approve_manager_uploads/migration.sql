@@ -3,7 +3,6 @@ ALTER TABLE "Gym" ADD COLUMN IF NOT EXISTS "autoApproveManagerUploads" BOOLEAN N
 ALTER TABLE "Gym" ADD COLUMN IF NOT EXISTS "requireHumanReviewForPersons" BOOLEAN NOT NULL DEFAULT true;
 
 -- Drop old training tables if they exist
-DROP TABLE IF EXISTS "RecognitionAttempt" CASCADE;
 DROP TABLE IF EXISTS "TrainingCandidate" CASCADE;
 
 -- Enums

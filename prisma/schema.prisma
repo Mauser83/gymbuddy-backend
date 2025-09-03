@@ -963,6 +963,17 @@ enum TrainingStatus {
   failed
 }
 
+model RecognitionAttempt {
+  id             BigInt  @id @default(autoincrement())
+  gymId          Int
+  storageKey     String
+  vectorHash     String
+  bestEquipmentId Int?
+  bestScore      Float
+  createdAt      DateTime @default(now())
+  consent        String   @default("unknown")
+}
+
 model TrainingCandidate {
   id            String         @id @default(cuid())
   storageKey    String

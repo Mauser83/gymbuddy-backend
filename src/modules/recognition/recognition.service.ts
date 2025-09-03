@@ -202,11 +202,10 @@ export class RecognitionService {
 
       await prisma.trainingCandidate.create({
         data: {
-          attemptId: attempt.id,
           gymId: attempt.gymId,
-          equipmentId: input.selectedEquipmentId,
+          gymEquipmentId: input.selectedEquipmentId,
           storageKey: targetKey,
-          sourceScore: attempt.bestScore,
+          source: 'user_submission',
         },
       });
 

@@ -8,18 +8,22 @@ jest
   .mockResolvedValue({ ContentType: "image/jpeg", ContentLength: 12345 } as any);
 
 function createPrismaMock() {
+  const image = {
+    id: "cuid1",
+    gymId: 1,
+    equipmentId: 2,
+    storageKey: "private/uploads/1/2025/01/u.jpg",
+    status: "PENDING",
+  };
+
   return {
+    gymEquipment: {
+      upsert: jest.fn().mockResolvedValue({ id: 1 }),
+    },
     gymEquipmentImage: {
       findFirst: jest.fn().mockResolvedValue(null),
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          id: "cuid1",
-          gymId: 1,
-          equipmentId: 2,
-          storageKey: "private/uploads/1/2025/01/u.jpg",
-          status: "PENDING",
-        }),
+      create: jest.fn().mockResolvedValue(image),
+      update: jest.fn().mockImplementation(({ data }) => ({ ...image, ...data })),
     },
     imageQueue: {
       createMany: jest.fn().mockResolvedValue({ count: 3 }),
