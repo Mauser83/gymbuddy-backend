@@ -87,13 +87,14 @@ export class MediaService {
    * Optionally enforces prefix allowlist and sets response headers.
    */
   async presignGetForKey(storageKey: string, ttlSec = 300): Promise<string> {
-    // Basic safety: only allow our three prefixes
+    // Basic safety: only allow our five prefixes
     if (
       !(
         storageKey.startsWith("public/golden/") ||
         storageKey.startsWith("public/training/") ||
         storageKey.startsWith("private/uploads/") ||
-        storageKey.startsWith("private/gym/")
+        storageKey.startsWith("private/gym/") ||
+        storageKey.startsWith("private/recognition/")
       )
     ) {
       throw new Error("Invalid storage key prefix");

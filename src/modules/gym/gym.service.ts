@@ -471,7 +471,7 @@ export class GymService {
     const hasAccess = await this.checkGymPermission(userId, gymId);
     if (!hasAccess) throw new Error("Unauthorized");
 
-    const storageKey = `gyms/${gymId}/equipment/${equipmentId}/${randomUUID()}.${ext}`;
+    const storageKey = `private/uploads/gym/${equipmentId}/${randomUUID()}.${ext}`;
     const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: storageKey });
     const putUrl = await getSignedUrl(this.s3, cmd, { expiresIn: 600 });
     return { putUrl, storageKey };
