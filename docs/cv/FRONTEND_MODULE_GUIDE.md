@@ -5,6 +5,7 @@ This document describes how the frontend can interact with backend modules respo
 ## Upload flow overview
 
 - **Mobile batch (preferred)**: `createUploadSession` → PUTs → `finalizeGymImages` → `applyTaxonomiesToGymImages`.
+- **Admin batch**: `createUploadSession` → PUTs → `finalizeGymImagesAdmin` → `applyTaxonomiesToGymImages`.
 - **Single file (legacy)**: `getImageUploadUrl` → PUT → `finalizeGymImage`.
 
 The single-file path remains supported, but batch uploads are recommended for mobile.
@@ -142,12 +143,13 @@ type FinalizeManyPayload {
 
 extend type Mutation {
   finalizeGymImages(input: FinalizeGymImagesInput!): FinalizeManyPayload!
+  finalizeGymImagesAdmin(input: FinalizeGymImagesInput!): FinalizeManyPayload!
 }
 ```
 
 **Behavior**
 
-Auth: admin or gym-admin for `defaults.gymId`.
+Auth: `finalizeGymImagesAdmin` requires app admin; regular users call `finalizeGymImages` for their own uploads.
 
 For each item:
 

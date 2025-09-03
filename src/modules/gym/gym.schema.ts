@@ -62,6 +62,15 @@ export const gymTypeDefs = `
     nextCursor: String
   }
 
+  type ImageProcessingStatus {
+    status: String!
+    queuePosition: Int!
+    etaSeconds: Int!
+    attempts: Int!
+    scheduledAt: String
+    priority: Int!
+  }
+
   type UploadTicket {
     putUrl: String!
     storageKey: String!
@@ -134,6 +143,7 @@ export const gymTypeDefs = `
     gymImagesByGymId(gymId: Int!): [GymEquipmentImage!]!
     gymImage(id: ID!): GymEquipmentImage
     listGymEquipmentImages(gymEquipmentId: Int!, limit: Int, cursor: String): GymEquipmentImageConnection!
+    getImageProcessingStatus(imageId: ID!): ImageProcessingStatus!
   }
 
   extend type Mutation {

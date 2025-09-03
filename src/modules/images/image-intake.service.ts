@@ -9,6 +9,7 @@ import {
   deleteObjectIgnoreMissing,
 } from "../media/media.service";
 import { kickBurstRunner } from "./image-worker";
+import { priorityFromSource } from "./queue.service";
 import {
   FinalizeGymImageDto,
   FinalizeGymImagesDto,
@@ -197,40 +198,44 @@ export class ImageIntakeService {
     });
 
     // 6) Enqueue HASH, SAFETY, EMBED for gym upload (by approvedKey)
-    const jobs: Prisma.ImageQueueCreateManyInput[] = [
-      ...(input.sha256
-        ? []
-        : [
-            {
-              jobType: "HASH",
-              status: ImageJobStatus.pending,
-              priority: 0,
-              storageKey: approvedKey,
-            },
-          ]),
-      {
-        jobType: "SAFETY",
-        status: ImageJobStatus.pending,
-        priority: 0,
-        storageKey: approvedKey,
-      },
-      {
-        jobType: "EMBED",
-        status: ImageJobStatus.pending,
-        priority: 0,
-        storageKey: approvedKey,
-      },
-    ];
-    await this.prisma.imageQueue.createMany({ data: jobs });
-
-    setImmediate(() => {
-      kickBurstRunner().catch((e) => console.error("burst runner error", e));
-    });
-
+    const source: "recognition_user" = "recognition_user";
+    const priority = priorityFromSource(source);
+    const jobs: Prisma.ImageQueueCreateManyInput[] = input.sha256
+      ? []
+      : [
+          {
+            jobType: "HASH",
+            status: ImageJobStatus.pending,
+            priority,
+            storageKey: approvedKey,
+            imageId: image.id,
+          },
+        ];
+    if (jobs.length) {
+      await this.prisma.imageQueue.createMany({ data: jobs });
+      setImmediate(() => {
+        kickBurstRunner().catch((e) => console.error("burst runner error", e));
+      });
+    }
     return { image, queuedJobs: jobs.map((j) => j.jobType) };
   }
 
+async finalizeGymImagesAdmin(
+    input: FinalizeGymImagesDto,
+    userId: number | null,
+  ) {
+    return this.finalizeGymImagesCore(input, userId, "admin");
+  }
+
   async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
+    return this.finalizeGymImagesCore(input, userId, "recognition_user");
+  }
+
+  private async finalizeGymImagesCore(
+    input: FinalizeGymImagesDto,
+    userId: number | null,
+    source: "recognition_user" | "gym_manager" | "admin" | "backfill",
+  ) {
     const defaults = await this.getDefaultTaxonomyIds();
     const d = input.defaults;
     const join = await this.prisma.gymEquipment.upsert({
@@ -243,11 +248,12 @@ export class ImageIntakeService {
 
     const images: any[] = [];
     let queued = 0;
+    const priority = priorityFromSource(source);
     for (const it of input.items) {
       const parsed = parseKey(it.storageKey);
       if (!parsed || parsed.kind !== "upload" || parsed.gymId !== d.gymId) {
         throw new Error(
-          "storageKey must be under private/uploads/... and match gymId"
+          "storageKey must be under private/uploads/... and match gymId",
         );
       }
       const objectUuid = parsed.uuid;
@@ -283,39 +289,30 @@ export class ImageIntakeService {
         data: { storageKey: approvedKey },
       });
 
-      const jobs: Prisma.ImageQueueCreateManyInput[] = [
-        ...(it.sha256
-          ? []
-          : [
-              {
-                jobType: "HASH",
-                status: ImageJobStatus.pending,
-                priority: 0,
-                storageKey: approvedKey,
-              },
-            ]),
-        {
-          jobType: "SAFETY",
-          status: ImageJobStatus.pending,
-          priority: 0,
-          storageKey: approvedKey,
-        },
-        {
-          jobType: "EMBED",
-          status: ImageJobStatus.pending,
-          priority: 0,
-          storageKey: approvedKey,
-        },
-      ];
-      await this.prisma.imageQueue.createMany({ data: jobs });
+      const jobs: Prisma.ImageQueueCreateManyInput[] = it.sha256
+        ? []
+        : [
+            {
+              jobType: "HASH",
+              status: ImageJobStatus.pending,
+              priority,
+              storageKey: approvedKey,
+              imageId: image.id,
+            },
+          ];
+      if (jobs.length) {
+        await this.prisma.imageQueue.createMany({ data: jobs });
+        queued += jobs.length;
+      }
       images.push(image);
-      queued += jobs.length;
     }
-    setImmediate(() => {
-      kickBurstRunner().catch((e) =>
-        console.error("burst runner error", e)
-      );
-    });
+    if (queued > 0) {
+      setImmediate(() => {
+                kickBurstRunner().catch((e) =>
+          console.error("burst runner error", e),
+              );
+      });
+    }
     return { images, queuedJobs: queued };
   }
 

@@ -4,7 +4,7 @@ import type { ImageQueue } from "../../generated/prisma";
 
 export type QueueJob = Pick<
   ImageQueue,
-  "id" | "jobType" | "storageKey" | "imageId" | "attempts"
+  "id" | "jobType" | "storageKey" | "imageId" | "attempts" | "priority"
 >;
 
 const RUNNER_NAME = "image-runner";
@@ -73,7 +73,7 @@ export class QueueRunnerService {
           "attempts" = "attempts" + 1
       FROM next
       WHERE q."id" = next."id"
-      RETURNING q."id", q."jobType", q."storageKey", q."imageId", q."attempts";
+      RETURNING q."id", q."jobType", q."storageKey", q."imageId", q."attempts", q."priority";
     `,
       batchSize
     );

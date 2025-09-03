@@ -36,6 +36,8 @@ const s3 = new S3Client({
 const embedInitPromise = initLocalOpenCLIP();
 const safetyProvider = createSafetyProvider();
 const MAX_RETRIES = Number(process.env.WORKER_MAX_RETRIES || 3);
+const BACKOFF_BASE = Number(process.env.QUEUE_BACKOFF_BASE_SEC ?? 5);
+const BACKOFF_MAX = Number(process.env.QUEUE_BACKOFF_MAX_SEC ?? 300);
 const NSFW_FLAG_THRESHOLD = Number(process.env.NSFW_FLAG_THRESHOLD ?? 0.60);
 const NSFW_PERSON_DELTA = Number(process.env.NSFW_PERSON_DELTA ?? 0.0);
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
@@ -80,6 +82,7 @@ async function handleHASH(storageKey: string) {
     where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
     data: { hash: sha },
   });
+  return { sha };
 }
 
 // --- SAFETY ---
@@ -128,15 +131,8 @@ async function handleSAFETY(storageKey: string) {
       where: { storageKey },
       data: { storageKey: qKey },
     });
-    await prisma.imageQueue.updateMany({
-      where: { storageKey, jobType: "EMBED", status: ImageJobStatus.pending },
-      data: {
-        status: ImageJobStatus.failed,
-        finishedAt: new Date(),
-        lastError: "unsafe",
-      },
-    });
   }
+  return { safe: isSafe };
 }
 
 async function handleEMBED(storageKey: string) {
@@ -211,18 +207,39 @@ async function handleEMBED(storageKey: string) {
       });
     }
   }
+  return { ok: true };
 }
 
 async function processJob(job: QueueJob) {
   if (!job.storageKey) throw new Error("Job missing storageKey");
   const type = (job.jobType ?? "").trim().toUpperCase();
   switch (type) {
-    case "HASH":
+    case "HASH": {
       await handleHASH(job.storageKey);
+      await prisma.imageQueue.create({
+        data: {
+          jobType: "SAFETY",
+          status: ImageJobStatus.pending,
+          priority: job.priority ?? 0,
+          storageKey: job.storageKey,
+        },
+      });
       break;
-    case "SAFETY":
-      await handleSAFETY(job.storageKey);
+    }
+    case "SAFETY": {
+      const { safe } = await handleSAFETY(job.storageKey);
+      if (safe) {
+        await prisma.imageQueue.create({
+          data: {
+            jobType: "EMBED",
+            status: ImageJobStatus.pending,
+            priority: job.priority ?? 0,
+            storageKey: job.storageKey,
+          },
+        });
+      }
       break;
+    }
     case "EMBED":
       await handleEMBED(job.storageKey);
       break;
@@ -320,7 +337,11 @@ export async function kickBurstRunner({
               },
             });
           } else {
-            await queue.markFailed(job.id, err, 30);
+            const backoff = Math.min(
+              BACKOFF_BASE * 2 ** Math.max(attempts - 1, 0),
+              BACKOFF_MAX
+            );
+            await queue.markFailed(job.id, err, backoff);
           }
         } finally {
           lastWorkAt = Date.now();

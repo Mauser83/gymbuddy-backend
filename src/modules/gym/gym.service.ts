@@ -20,6 +20,7 @@ import {
   deleteObjectIgnoreMissing,
 } from "../media/media.service";
 import { kickBurstRunner } from "../images/image-worker";
+import { priorityFromSource } from "../images/queue.service";
 
 const fullGymInclude = {
   creator: true,
@@ -534,34 +535,66 @@ export class GymService {
       },
     });
 
-    const jobs = [
-      {
+    const source: "gym_equipment" = "gym_equipment";
+    const priority = priorityFromSource(source);
+
+    await this.prisma.imageQueue.create({
+      data: {
         jobType: "HASH",
         status: ImageJobStatus.pending,
-        priority: 0,
+        priority,
         storageKey: approvedKey,
+        imageId: image.id,
       },
-      {
-        jobType: "SAFETY",
-        status: ImageJobStatus.pending,
-        priority: 0,
-        storageKey: approvedKey,
-      },
-      {
-        jobType: "EMBED",
-        status: ImageJobStatus.pending,
-        priority: 0,
-        storageKey: approvedKey,
-      },
-    ];
-    await this.prisma.imageQueue.createMany({ data: jobs });
+    });
 
     setImmediate(() => {
       kickBurstRunner().catch((e) =>
         console.error("burst runner error", e)
       );
     });
-    
+
     return image;
+  }
+
+  async getImageProcessingStatus(imageId: string) {
+    const img = await this.prisma.gymEquipmentImage.findUnique({
+      where: { id: imageId },
+      select: { status: true, storageKey: true },
+    });
+    if (!img) throw new Error("Image not found");
+    const job = await this.prisma.imageQueue.findFirst({
+      where: { storageKey: img.storageKey, status: ImageJobStatus.pending },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!job) {
+      return {
+        status: img.status,
+        queuePosition: 0,
+        etaSeconds: 0,
+        attempts: 0,
+        scheduledAt: null,
+        priority: 0,
+      };
+    }
+    const rows = await this.prisma.$queryRaw<{ totalahead: bigint }[]>`
+      SELECT COUNT(*)::bigint as totalahead
+      FROM "ImageQueue"
+      WHERE status = 'pending'
+        AND ("scheduledAt" IS NULL OR "scheduledAt" <= NOW())
+        AND (priority > ${job.priority}
+          OR (priority = ${job.priority} AND "createdAt" < ${job.createdAt}))
+    `;
+    const totalAhead = Number(rows?.[0]?.totalahead ?? 0);
+    const throughput = Number(process.env.THROUGHPUT_JOBS_PER_MIN ?? 20);
+    const etaSeconds = Math.ceil((totalAhead * 60) / Math.max(throughput, 1));
+    return {
+      status: img.status,
+      queuePosition: totalAhead,
+      etaSeconds,
+      attempts: job.attempts,
+      scheduledAt: job.scheduledAt?.toISOString?.() ?? null,
+      priority: job.priority,
+    };
   }
 }

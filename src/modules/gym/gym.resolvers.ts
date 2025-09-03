@@ -193,6 +193,17 @@ export const GymResolvers = {
         args.cursor
       );
     },
+    getImageProcessingStatus: async (
+      _: unknown,
+      args: { imageId: string },
+      context: AuthContext
+    ) => {
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.getImageProcessingStatus(args.imageId);
+    },
   },
 
   Mutation: {
