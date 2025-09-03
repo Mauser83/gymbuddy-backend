@@ -32,6 +32,24 @@ const fullGymInclude = {
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 
+const EXT_WHITELIST = new Set(["jpg", "jpeg", "png", "webp", "heic"]);
+
+function inferContentType(ext: string) {
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "heic":
+      return "image/heic";
+    default:
+      return "application/octet-stream";
+  }
+}
+
 export class GymService {
   private prisma: PrismaClient;
   private permissionService: PermissionService;
@@ -463,6 +481,33 @@ export class GymService {
     const items = rows.slice(0, limit);
     const nextCursor = rows.length > limit ? rows[rows.length - 1].id : null;
     return { items, nextCursor };
+  }
+
+  async createAdminUploadTicket(params: {
+    gymId: number;
+    ext: string;
+    contentType?: string;
+    ttlSec: number;
+    requestedByUserId: number;
+  }) {
+    const ext = params.ext.trim().toLowerCase();
+    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+
+    const storageKey = `private/uploads/gym/${params.gymId}/${randomUUID()}.${ext}`;
+    const contentType = params.contentType || inferContentType(ext);
+    const cmd = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: storageKey,
+      ContentType: contentType,
+    });
+    const url = await getSignedUrl(this.s3, cmd, { expiresIn: params.ttlSec });
+    const expiresAt = new Date(Date.now() + params.ttlSec * 1000).toISOString();
+    return {
+      url,
+      storageKey,
+      expiresAt,
+      requiredHeaders: [{ name: "Content-Type", value: contentType }],
+    };
   }
 
   async createEquipmentTrainingUploadTicket(

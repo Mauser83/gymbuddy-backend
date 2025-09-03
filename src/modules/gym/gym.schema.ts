@@ -76,6 +76,25 @@ export const gymTypeDefs = `
     storageKey: String!
   }
 
+  type UploadHeaderKV {
+    name: String!
+    value: String!
+  }
+
+  input CreateAdminUploadTicketInput {
+    gymId: Int!
+    ext: String!
+    contentType: String
+    ttlSec: Int
+  }
+
+  type AdminUploadTicket {
+    url: String!
+    storageKey: String!
+    expiresAt: String!
+    requiredHeaders: [UploadHeaderKV!]!
+  }
+
   input CreateGymInput {
     name: String!
     description: String
@@ -159,6 +178,7 @@ export const gymTypeDefs = `
     removeGymEquipment(gymEquipmentId: Int!): Boolean!
     uploadGymImage(input: UploadGymImageInput!): GymEquipmentImage! @deprecated(reason: "Use createEquipmentTrainingUploadTicket/finalizeEquipmentTrainingImage")
     deleteGymImage(imageId: ID!): Boolean!
+    createAdminUploadTicket(input: CreateAdminUploadTicketInput!): AdminUploadTicket!
     createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, ext: String!): UploadTicket!
     finalizeEquipmentTrainingImage(gymEquipmentId: Int!, storageKey: String!): GymEquipmentImage!
     setPrimaryGymEquipmentImage(imageId: ID!): GymEquipmentImage!

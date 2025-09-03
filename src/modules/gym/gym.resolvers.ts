@@ -1,4 +1,4 @@
-import { AuthContext } from "../auth/auth.types";
+import { AuthContext, AppRole } from "../auth/auth.types";
 import { GymService } from "./gym.service";
 import { PermissionService } from "../core/permission.service";
 import {
@@ -6,6 +6,7 @@ import {
   UpdateGymInput,
   AssignEquipmentToGymInput,
   UpdateGymEquipmentInput,
+  CreateAdminUploadTicketInput,
 } from "./gym.types";
 import { UploadGymImageDto } from "./gym.dto";
 
@@ -345,6 +346,27 @@ export const GymResolvers = {
         new PermissionService(context.prisma)
       );
       return service.deleteGymImage(context.userId, args.imageId);
+    },
+    createAdminUploadTicket: async (
+      _parent: unknown,
+      args: { input: CreateAdminUploadTicketInput },
+      context: AuthContext
+    ) => {
+      if (context.appRole !== AppRole.ADMIN) {
+        throw new Error("Forbidden: admin only");
+      }
+      if (!context.userId) throw new Error("Unauthenticated: userId is null.");
+      const service = new GymService(
+        context.prisma,
+        new PermissionService(context.prisma)
+      );
+      return service.createAdminUploadTicket({
+        gymId: args.input.gymId,
+        ext: args.input.ext,
+        contentType: args.input.contentType,
+        ttlSec: args.input.ttlSec ?? 600,
+        requestedByUserId: context.userId,
+      });
     },
     createEquipmentTrainingUploadTicket: async (
       _: unknown,

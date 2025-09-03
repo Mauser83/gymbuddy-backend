@@ -124,3 +124,22 @@ export interface UploadTicket {
   putUrl: string;
   storageKey: string;
 }
+
+export interface UploadHeaderKV {
+  name: string;
+  value: string;
+}
+
+export interface CreateAdminUploadTicketInput {
+  gymId: number;
+  ext: string;
+  contentType?: string;
+  ttlSec?: number;
+}
+
+export interface AdminUploadTicket {
+  url: string;
+  storageKey: string;
+  expiresAt: string;
+  requiredHeaders: UploadHeaderKV[];
+}
