@@ -64,7 +64,7 @@ export class QueueRunnerService {
         WHERE "status" = 'pending'
           AND ("scheduledAt" IS NULL OR "scheduledAt" <= NOW())
         ORDER BY "priority" DESC, "createdAt" ASC
-        LIMIT $1
+        LIMIT $1::int
         FOR UPDATE SKIP LOCKED
       )
       UPDATE "ImageQueue" q
@@ -75,7 +75,7 @@ export class QueueRunnerService {
       WHERE q."id" = next."id"
       RETURNING q."id", q."jobType", q."storageKey", q."imageId", q."attempts";
     `,
-      String(batchSize)
+      batchSize
     );
   }
 
