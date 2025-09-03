@@ -401,6 +401,32 @@ export const GymResolvers = {
         args.storageKey
       );
     },
+    finalizeGymImagesAdmin: async (
+      _: unknown,
+      args: {
+        input: {
+          gymId: number;
+          equipmentId: number;
+          storageKeys: string[];
+        };
+      },
+      context: AuthContext
+    ) => {
+      if (context.appRole !== AppRole.ADMIN) {
+        throw new Error("Forbidden");
+      }
+      const normalized = {
+        defaults: {
+          gymId: args.input.gymId,
+          equipmentId: args.input.equipmentId,
+        },
+        items: args.input.storageKeys.map((k) => ({ storageKey: k })),
+      };
+      return context.imageIntakeService.finalizeGymImagesAdmin(
+        normalized,
+        context.userId ?? null
+      );
+    },
     setPrimaryGymEquipmentImage: async (
       _: unknown,
       args: { imageId: string },

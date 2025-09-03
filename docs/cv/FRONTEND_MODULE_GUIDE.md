@@ -136,14 +136,20 @@ input FinalizeGymImagesInput {
   items: [FinalizeGymImageItem!]!   # 1..10
 }
 
-type FinalizeManyPayload {
+input FinalizeGymImagesAdminInput {
+  gymId: Int!
+  equipmentId: Int!
+  storageKeys: [String!]!
+}
+
+type FinalizeGymImagesPayload {
   images: [GymEquipmentImage!]!
   queuedJobs: Int!
 }
 
 extend type Mutation {
-  finalizeGymImages(input: FinalizeGymImagesInput!): FinalizeManyPayload!
-  finalizeGymImagesAdmin(input: FinalizeGymImagesInput!): FinalizeManyPayload!
+  finalizeGymImages(input: FinalizeGymImagesInput!): FinalizeGymImagesPayload!
+  finalizeGymImagesAdmin(input: FinalizeGymImagesAdminInput!): FinalizeGymImagesPayload!
 }
 ```
 

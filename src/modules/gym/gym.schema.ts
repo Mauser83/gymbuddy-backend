@@ -152,6 +152,12 @@ export const gymTypeDefs = `
     status: GymImageStatus
   }
 
+  input FinalizeGymImagesAdminInput {
+    gymId: Int!
+    equipmentId: Int!
+    storageKeys: [String!]!
+  }
+    
   extend type Query {
     gyms(search: String): [Gym]
     gym(id: Int!): Gym
@@ -181,6 +187,7 @@ export const gymTypeDefs = `
     createAdminUploadTicket(input: CreateAdminUploadTicketInput!): AdminUploadTicket!
     createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, ext: String!): UploadTicket!
     finalizeEquipmentTrainingImage(gymEquipmentId: Int!, storageKey: String!): GymEquipmentImage!
+    finalizeGymImagesAdmin(input: FinalizeGymImagesAdminInput!): FinalizeGymImagesPayload!
     setPrimaryGymEquipmentImage(imageId: ID!): GymEquipmentImage!
   }
 

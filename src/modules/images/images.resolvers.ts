@@ -8,7 +8,7 @@ import {
   RejectGymImageDto,
   CandidateGlobalImagesDto,
 } from "./images.dto";
-import { AuthContext, AppRole } from "../auth/auth.types";
+import { AuthContext } from "../auth/auth.types";
 
 export const ImagesResolvers = {
   CandidateGymImage: {
@@ -44,19 +44,6 @@ export const ImagesResolvers = {
       const dto = Object.assign(new FinalizeGymImagesDto(), input);
       await validateOrReject(dto);
       return ctx.imageIntakeService.finalizeGymImages(dto, ctx.userId);
-    },
-
-    finalizeGymImagesAdmin: async (
-      _parent: unknown,
-      { input }: { input: FinalizeGymImagesDto },
-      ctx: AuthContext
-    ) => {
-      if (ctx.appRole !== AppRole.ADMIN) {
-        throw new Error("Forbidden: admin only");
-      }
-      const dto = Object.assign(new FinalizeGymImagesDto(), input);
-      await validateOrReject(dto);
-      return ctx.imageIntakeService.finalizeGymImagesAdmin(dto, ctx.userId);
     },
 
     applyTaxonomiesToGymImages: async (

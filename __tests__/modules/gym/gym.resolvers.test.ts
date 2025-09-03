@@ -278,5 +278,41 @@ describe("GymResolvers", () => {
       await GymResolvers.Mutation.setPrimaryGymEquipmentImage(null as any, { imageId: '1' }, ctx);
       expect(instance.setPrimaryGymEquipmentImage).toHaveBeenCalledWith(1, '1');
     });
+
+    test('finalizeGymImagesAdmin requires admin', async () => {
+      const ctx = {
+        userId: 1,
+        appRole: 'USER',
+        imageIntakeService: { finalizeGymImagesAdmin: jest.fn() },
+      } as any;
+      await expect(
+        GymResolvers.Mutation.finalizeGymImagesAdmin(
+          null as any,
+          { input: { gymId: 1, equipmentId: 2, storageKeys: ['k'] } },
+          ctx
+        )
+      ).rejects.toThrow('Forbidden');
+    });
+
+    test('finalizeGymImagesAdmin normalizes and calls service', async () => {
+      const service = { finalizeGymImagesAdmin: jest.fn() };
+      const ctx = {
+        userId: 5,
+        appRole: 'ADMIN',
+        imageIntakeService: service,
+      } as any;
+      await GymResolvers.Mutation.finalizeGymImagesAdmin(
+        null as any,
+        { input: { gymId: 3, equipmentId: 4, storageKeys: ['a', 'b'] } },
+        ctx
+      );
+      expect(service.finalizeGymImagesAdmin).toHaveBeenCalledWith(
+        {
+          defaults: { gymId: 3, equipmentId: 4 },
+          items: [{ storageKey: 'a' }, { storageKey: 'b' }],
+        },
+        5
+      );
+    });
   });
 });
