@@ -1,7 +1,13 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+  HeadObjectCommand,
+  CopyObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID, createHash } from "crypto";
-import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { GraphQLError } from "graphql";
 import { DIContainer } from "../core/di.container";
 import { AuditService } from "../core/audit.service";
@@ -231,5 +237,47 @@ export class MediaService {
     });
 
     return { url, expiresAt };
+  }
+}
+
+// --- storage helpers ---
+const helperS3 = new S3Client({
+  region: "auto",
+  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  forcePathStyle: true,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
+export async function copyObjectIfMissing(
+  srcKey: string,
+  dstKey: string
+): Promise<void> {
+  try {
+    await helperS3.send(
+      new HeadObjectCommand({ Bucket: BUCKET, Key: dstKey })
+    );
+    return; // destination exists
+  } catch (err: any) {
+    if (err?.$metadata?.httpStatusCode !== 404) throw err;
+  }
+  await helperS3.send(
+    new CopyObjectCommand({
+      Bucket: BUCKET,
+      CopySource: `${BUCKET}/${srcKey}`,
+      Key: dstKey,
+      MetadataDirective: "COPY",
+      ACL: "private",
+    })
+  );
+}
+
+export async function deleteObjectIgnoreMissing(key: string): Promise<void> {
+  try {
+    await helperS3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  } catch (err: any) {
+    if (err?.$metadata?.httpStatusCode !== 404) throw err;
   }
 }

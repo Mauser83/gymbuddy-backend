@@ -3,6 +3,11 @@ import type { Prisma } from "../../generated/prisma";
 import { ImageJobStatus } from "../../generated/prisma";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { parseKey } from "../../utils/makeKey";
+import { randomUUID } from "crypto";
+import {
+  copyObjectIfMissing,
+  deleteObjectIgnoreMissing,
+} from "../media/media.service";
 import {
   FinalizeGymImageDto,
   FinalizeGymImagesDto,
@@ -138,9 +143,17 @@ private defaultTaxonomyIds:
       if (existing) throw new Error("Duplicate image (sha256 already exists)");
     }
 
-    // 4) Create GymEquipmentImage
-    const image = await this.prisma.gymEquipmentImage.create({
+    // 4) Ensure gymEquipment join exists
+    const join = await this.prisma.gymEquipment.upsert({
+      where: { gymId_equipmentId: { gymId: input.gymId, equipmentId: input.equipmentId } },
+      update: {},
+      create: { gymId: input.gymId, equipmentId: input.equipmentId },
+    });
+
+    // 5) Create GymEquipmentImage
+    let image = await this.prisma.gymEquipmentImage.create({
       data: {
+        gymEquipmentId: join.id,
         gymId: input.gymId,
         equipmentId: input.equipmentId,
         status: "PENDING",
@@ -153,21 +166,29 @@ private defaultTaxonomyIds:
         distanceId: input.distanceId ?? null,
         sourceId: input.sourceId ?? null,
         splitId: input.splitId ?? null,
+        objectUuid: parsed.uuid,
       },
     });
 
-    // 5) Enqueue HASH, SAFETY, EMBED for gym upload (by storageKey)
+    const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${parsed.ext}`;
+    await copyObjectIfMissing(input.storageKey, approvedKey);
+    await deleteObjectIgnoreMissing(input.storageKey);
+    image = await this.prisma.gymEquipmentImage.update({
+      where: { id: image.id },
+      data: { storageKey: approvedKey },
+    });
+
+    // 6) Enqueue HASH, SAFETY, EMBED for gym upload (by approvedKey)
     const jobs: Prisma.ImageQueueCreateManyInput[] = [
-      // If sha256 was already provided, you can skip HASH:
       ...(input.sha256
         ? []
-        : [{ jobType: "HASH", status: ImageJobStatus.pending, priority: 0, storageKey: input.storageKey }]),
-      { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: input.storageKey },
-      { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: input.storageKey },
+        : [{ jobType: "HASH", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey }]),
+      { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
+      { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
     ];
     await this.prisma.imageQueue.createMany({ data: jobs });
 
-    return { image, queuedJobs: jobs.map(j => j.jobType) };
+    return { image, queuedJobs: jobs.map((j) => j.jobType) };
   }
 
     async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
@@ -187,7 +208,7 @@ private defaultTaxonomyIds:
         throw new Error("storageKey must be under private/uploads/... and match gymId");
       }
       const objectUuid = parsed.uuid;
-      const image = await this.prisma.gymEquipmentImage.create({
+      let image = await this.prisma.gymEquipmentImage.create({
         data: {
           gymId: d.gymId,
           equipmentId: d.equipmentId,
@@ -209,6 +230,14 @@ private defaultTaxonomyIds:
         },
       });
 
+      const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${parsed.ext}`;
+      await copyObjectIfMissing(it.storageKey, approvedKey);
+      await deleteObjectIgnoreMissing(it.storageKey);
+      image = await this.prisma.gymEquipmentImage.update({
+        where: { id: image.id },
+        data: { storageKey: approvedKey },
+      });
+
       const jobs: Prisma.ImageQueueCreateManyInput[] = [
         ...(it.sha256
           ? []
@@ -216,10 +245,10 @@ private defaultTaxonomyIds:
               jobType: "HASH",
               status: ImageJobStatus.pending,
               priority: 0,
-              storageKey: it.storageKey,
+              storageKey: approvedKey,
             }]),
-        { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: it.storageKey },
-        { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: it.storageKey },
+        { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
+        { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
       ];
       await this.prisma.imageQueue.createMany({ data: jobs });
       images.push(image);

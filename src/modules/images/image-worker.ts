@@ -12,6 +12,10 @@ import { hasPerson } from "./safety/local-person";
 import { writeImageEmbedding } from "../cv/embeddingWriter";
 
 import { ImageJobStatus } from "../../generated/prisma";
+import {
+  copyObjectIfMissing,
+  deleteObjectIgnoreMissing,
+} from "../media/media.service";
 
 const queue = new QueueRunnerService(prisma);
 
@@ -95,6 +99,29 @@ async function handleSAFETY(storageKey: string) {
       hasPerson: personPresent,
     },
   });
+
+  if (!isSafe && storageKey.startsWith("private/gym/")) {
+    const parts = storageKey.split("/");
+    const gymEqId = parts[2];
+    const file = parts[parts.length - 1];
+    const ext = file.split(".").pop() || "jpg";
+    const baseName = file.split(".")[0];
+    const qKey = `private/gym/${gymEqId}/quarantine/${baseName}.${ext}`;
+    await copyObjectIfMissing(storageKey, qKey);
+    await deleteObjectIgnoreMissing(storageKey);
+    await prisma.gymEquipmentImage.updateMany({
+      where: { storageKey },
+      data: { storageKey: qKey, status: "QUARANTINED" },
+    });
+    await prisma.imageQueue.updateMany({
+      where: { storageKey, jobType: "EMBED", status: ImageJobStatus.pending },
+      data: {
+        status: ImageJobStatus.failed,
+        finishedAt: new Date(),
+        lastError: "unsafe",
+      },
+    });
+  }
 }
 
 async function handleEMBED(storageKey: string) {

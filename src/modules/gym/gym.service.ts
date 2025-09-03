@@ -15,6 +15,10 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { ImageJobStatus } from "../../generated/prisma";
+import {
+  copyObjectIfMissing,
+  deleteObjectIgnoreMissing,
+} from "../media/media.service";
 
 const fullGymInclude = {
   creator: true,
@@ -487,7 +491,13 @@ export class GymService {
     const hasAccess = await this.checkGymPermission(userId, join.gymId);
     if (!hasAccess) throw new Error("Unauthorized");
 
-    const image = await this.prisma.gymEquipmentImage.create({
+    const parts = storageKey.split("/");
+    const filename = parts[parts.length - 1] || "";
+    const [uuidPart, extRaw] = filename.split(".");
+    const ext = (extRaw || "jpg").toLowerCase();
+    const objectUuid = uuidPart;
+
+    let image = await this.prisma.gymEquipmentImage.create({
       data: {
         gymEquipmentId,
         gymId: join.gymId,
@@ -495,13 +505,39 @@ export class GymService {
         storageKey,
         status: "PENDING",
         capturedAt: new Date(),
+        objectUuid,
       },
     });
 
+    const approvedKey = `private/gym/${gymEquipmentId}/approved/${randomUUID()}.${ext}`;
+
+    await copyObjectIfMissing(storageKey, approvedKey);
+    await deleteObjectIgnoreMissing(storageKey);
+
+    image = await this.prisma.gymEquipmentImage.update({
+      where: { id: image.id },
+      data: { storageKey: approvedKey },
+    });
+
     const jobs = [
-      { jobType: "HASH", status: ImageJobStatus.pending, priority: 0, storageKey },
-      { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey },
-      { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey },
+      {
+        jobType: "HASH",
+        status: ImageJobStatus.pending,
+        priority: 0,
+        storageKey: approvedKey,
+      },
+      {
+        jobType: "SAFETY",
+        status: ImageJobStatus.pending,
+        priority: 0,
+        storageKey: approvedKey,
+      },
+      {
+        jobType: "EMBED",
+        status: ImageJobStatus.pending,
+        priority: 0,
+        storageKey: approvedKey,
+      },
     ];
     await this.prisma.imageQueue.createMany({ data: jobs });
 

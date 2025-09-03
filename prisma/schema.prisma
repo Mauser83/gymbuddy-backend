@@ -42,6 +42,7 @@ enum GymImageStatus {
   PENDING
   APPROVED
   REJECTED
+  QUARANTINED
 }
 
 enum EmbeddingScopeType {
