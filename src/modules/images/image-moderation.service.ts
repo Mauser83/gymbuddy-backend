@@ -5,6 +5,7 @@ import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
 import { makeGymApprovedKey, fileExtFrom } from "../../utils/makeKey";
 import { ImageJobStatus } from "../../generated/prisma";
+import { kickBurstRunner } from "./image-worker";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -88,6 +89,11 @@ export class ImageModerationService {
           priority: 0,
           storageKey: dstKey,
         },
+      });
+      setImmediate(() => {
+        kickBurstRunner().catch((e) =>
+          console.error("burst runner error", e)
+        );
       });
     }
 

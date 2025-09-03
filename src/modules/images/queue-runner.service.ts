@@ -4,71 +4,104 @@ import type { ImageQueue } from "../../generated/prisma";
 
 export type QueueJob = Pick<
   ImageQueue,
-  "id" | "jobType" | "storageKey" | "imageId"
+  "id" | "jobType" | "storageKey" | "imageId" | "attempts"
 >;
+
+const RUNNER_NAME = "image-runner";
 
 export class QueueRunnerService {
   constructor(private prisma: PrismaClient) {}
 
-  /**
-   * Claim a small batch of due jobs in a race-safe way.
-   * Flips status: pending → running and increments attempts.
-   */
-  async claimBatch(limit = 5): Promise<QueueJob[]> {
-    const now = new Date();
-
-      const candidates = await this.prisma.imageQueue.findMany({
-        where: {
-          status: ImageJobStatus.pending,
-          OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }],
-        },
-        orderBy: [{ priority: "desc" }, { scheduledAt: "asc" }, { createdAt: "asc" }],
-        take: limit * 3,
-        select: { id: true },
-      });
-
-    const claimed: QueueJob[] = [];
-    for (const c of candidates) {
-        const updated = await this.prisma.imageQueue.updateMany({
-          where: { id: c.id, status: ImageJobStatus.pending },
-          data: {
-            status: ImageJobStatus.processing,
-            startedAt: now,
-            attempts: { increment: 1 },
-          },
-        });
-      if (updated.count === 1) {
-        const job = await this.prisma.imageQueue.findUnique({ where: { id: c.id } });
-        if (job) claimed.push(job as QueueJob);
-      }
-      if (claimed.length >= limit) break;
-    }
-    return claimed;
+  async tryAcquireLease(owner: string, ttlMs = 30_000) {
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `
+      INSERT INTO "WorkerLease"("name", "owner", "leaseUntil", "heartbeatAt")
+      VALUES ($1, $2, NOW() + ($3::text || ' milliseconds')::interval, NOW())
+      ON CONFLICT ("name")
+      DO UPDATE SET
+        "owner" = EXCLUDED."owner",
+        "leaseUntil" = EXCLUDED."leaseUntil",
+        "heartbeatAt" = EXCLUDED."heartbeatAt"
+      WHERE "WorkerLease"."leaseUntil" <= NOW()
+      RETURNING "name";
+    `,
+      RUNNER_NAME,
+      owner,
+      String(ttlMs)
+    );
+    return Array.isArray(rows) && rows.length > 0;
   }
 
-    async markDone(id: string) {
-      await this.prisma.imageQueue.update({
-        where: { id },
-        data: {
-          status: ImageJobStatus.succeeded,
-          finishedAt: new Date(),
-          lastError: null,
-        },
-      });
-    }
+  async renewLease(owner: string, ttlMs = 30_000) {
+    const updated = await this.prisma.$executeRawUnsafe(
+      `
+      UPDATE "WorkerLease"
+      SET "leaseUntil" = NOW() + ($3::text || ' milliseconds')::interval,
+          "heartbeatAt" = NOW()
+      WHERE "name" = $1 AND "owner" = $2 AND "leaseUntil" > NOW();
+    `,
+      RUNNER_NAME,
+      owner,
+      String(ttlMs)
+    );
+    return updated > 0;
+  }
 
-    async markFailed(id: string, err: unknown, backoffSeconds = 60) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const next = new Date(Date.now() + backoffSeconds * 1000);
-      await this.prisma.imageQueue.update({
-        where: { id },
-        data: {
-          status: ImageJobStatus.pending,
-          lastError: msg.slice(0, 500),
-          scheduledAt: next,
-          startedAt: null,
-          finishedAt: null,
-        },
-      });
-    }
+  async releaseLease(owner: string) {
+    await this.prisma.$executeRawUnsafe(
+      `DELETE FROM "WorkerLease" WHERE "name" = $1 AND "owner" = $2`,
+      RUNNER_NAME,
+      owner
+    );
+  }
+
+  async claimBatch(batchSize: number): Promise<QueueJob[]> {
+    return this.prisma.$queryRawUnsafe<QueueJob[]>(
+      `
+      WITH next AS (
+        SELECT "id"
+        FROM "ImageQueue"
+        WHERE "status" = 'pending'
+          AND ("scheduledAt" IS NULL OR "scheduledAt" <= NOW())
+        ORDER BY "priority" DESC, "createdAt" ASC
+        LIMIT $1
+        FOR UPDATE SKIP LOCKED
+      )
+      UPDATE "ImageQueue" q
+      SET "status" = 'processing',
+          "startedAt" = NOW(),
+          "attempts" = "attempts" + 1
+      FROM next
+      WHERE q."id" = next."id"
+      RETURNING q."id", q."jobType", q."storageKey", q."imageId", q."attempts";
+    `,
+      String(batchSize)
+    );
+  }
+
+  async markDone(id: string) {
+    await this.prisma.imageQueue.update({
+      where: { id },
+      data: {
+        status: ImageJobStatus.succeeded,
+        finishedAt: new Date(),
+        lastError: null,
+      },
+    });
+  }
+
+  async markFailed(id: string, err: unknown, backoffSeconds = 60) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const next = new Date(Date.now() + backoffSeconds * 1000);
+    await this.prisma.imageQueue.update({
+      where: { id },
+      data: {
+        status: ImageJobStatus.pending,
+        lastError: msg.slice(0, 500),
+        scheduledAt: next,
+        startedAt: null,
+        finishedAt: null,
+      },
+    });
+  }
 }

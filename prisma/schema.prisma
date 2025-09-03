@@ -851,6 +851,16 @@ model ImageQueue {
   @@index([storageKey])
 }
 
+// Single-row lease table to coordinate burst workers
+model WorkerLease {
+  name        String   @id
+  owner       String
+  leaseUntil  DateTime
+  heartbeatAt DateTime @default(now())
+
+  @@index([leaseUntil])
+}
+
 model AngleType {
   id           Int      @id @default(autoincrement()) @db.SmallInt
   key          String   @unique

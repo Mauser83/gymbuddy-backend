@@ -11,6 +11,7 @@ import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
 import sharp from "sharp";
+import { kickBurstRunner } from "./image-worker";
 
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
@@ -245,6 +246,12 @@ export class ImagePromotionService {
         });
         throw e;
       }
+    });
+
+    setImmediate(() => {
+      kickBurstRunner().catch((e) =>
+        console.error("burst runner error", e)
+      );
     });
 
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };

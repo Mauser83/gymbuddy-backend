@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { QueueRunnerService } from "./queue-runner.service";
+import { QueueRunnerService, type QueueJob } from "./queue-runner.service";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createHash } from "crypto";
 import {
@@ -213,30 +213,34 @@ async function handleEMBED(storageKey: string) {
   }
 }
 
+async function processJob(job: QueueJob) {
+  if (!job.storageKey) throw new Error("Job missing storageKey");
+  const type = (job.jobType ?? "").trim().toUpperCase();
+  switch (type) {
+    case "HASH":
+      await handleHASH(job.storageKey);
+      break;
+    case "SAFETY":
+      await handleSAFETY(job.storageKey);
+      break;
+    case "EMBED":
+      await handleEMBED(job.storageKey);
+      break;
+    default:
+      throw new Error(`Unsupported jobType: ${job.jobType}`);
+  }
+  await queue.markDone(job.id);
+}
+
 export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY ?? 1)) {
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(Math.min(concurrency, limit));
 
   for (const job of jobs) {
     try {
-      if (!job.storageKey) throw new Error("Job missing storageKey");
-      const type = (job.jobType ?? "").trim().toUpperCase();
-      switch (type) {
-        case "HASH":
-          await handleHASH(job.storageKey);
-          break;
-        case "SAFETY":
-          await handleSAFETY(job.storageKey);
-          break;
-        case "EMBED":
-          await handleEMBED(job.storageKey);
-          break;
-        default:
-          throw new Error(`Unsupported jobType: ${job.jobType}`);
-      }
-      await queue.markDone(job.id);
+      await processJob(job);
     } catch (err) {
-      const attempts = (job as any).attempts ?? 0;
+      const attempts = job.attempts ?? 0;
       if (attempts >= MAX_RETRIES) {
         const msg = err instanceof Error ? err.message : String(err);
         await prisma.imageQueue.update({
@@ -271,5 +275,59 @@ export async function runOnce(max = Infinity) {
     }
   } finally {
     isRunning = false;
+  }
+}
+
+export async function kickBurstRunner({
+  maxRuntimeMs = 300_000,
+  idleExitMs = 4_000,
+  batchSize = 1,
+  leaseTtlMs = 30_000,
+} = {}) {
+  const owner = `${process.pid}-${Math.random().toString(36).slice(2)}`;
+  const start = Date.now();
+  const deadline = start + maxRuntimeMs;
+  let lastWorkAt = Date.now();
+
+  if (!(await queue.tryAcquireLease(owner, leaseTtlMs))) return;
+
+  try {
+    while (Date.now() < deadline) {
+      await queue.renewLease(owner, leaseTtlMs).catch(() => {});
+
+      const jobs = await queue.claimBatch(batchSize);
+
+      if (!jobs.length) {
+        if (Date.now() - lastWorkAt >= idleExitMs) break;
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+
+      for (const job of jobs) {
+        try {
+          await processJob(job);
+        } catch (err) {
+          console.error("job failed", job.id, err);
+          const attempts = job.attempts ?? 0;
+          if (attempts >= MAX_RETRIES) {
+            const msg = err instanceof Error ? err.message : String(err);
+            await prisma.imageQueue.update({
+              where: { id: job.id },
+              data: {
+                status: ImageJobStatus.failed,
+                finishedAt: new Date(),
+                lastError: msg.slice(0, 500),
+              },
+            });
+          } else {
+            await queue.markFailed(job.id, err, 30);
+          }
+        } finally {
+          lastWorkAt = Date.now();
+        }
+      }
+    }
+  } finally {
+    await queue.releaseLease(owner).catch(() => {});
   }
 }

@@ -19,6 +19,7 @@ import {
   copyObjectIfMissing,
   deleteObjectIgnoreMissing,
 } from "../media/media.service";
+import { kickBurstRunner } from "../images/image-worker";
 
 const fullGymInclude = {
   creator: true,
@@ -555,6 +556,12 @@ export class GymService {
     ];
     await this.prisma.imageQueue.createMany({ data: jobs });
 
+    setImmediate(() => {
+      kickBurstRunner().catch((e) =>
+        console.error("burst runner error", e)
+      );
+    });
+    
     return image;
   }
 }

@@ -8,6 +8,7 @@ import {
   copyObjectIfMissing,
   deleteObjectIgnoreMissing,
 } from "../media/media.service";
+import { kickBurstRunner } from "./image-worker";
 import {
   FinalizeGymImageDto,
   FinalizeGymImagesDto,
@@ -16,7 +17,8 @@ import {
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
-if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
+if (!BUCKET || !ACCOUNT_ID)
+  throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
 
 function allowedContentType(ct?: string) {
   return !!ct && /^(image\/jpeg|image\/png|image\/webp)$/i.test(ct);
@@ -35,17 +37,15 @@ export class ImageIntakeService {
     },
   });
 
-private defaultTaxonomyIds:
-    | {
-        sourceId: number | null;
-        splitId: number | null;
-        angleId: number | null;
-        heightId: number | null;
-        distanceId: number | null;
-        lightingId: number | null;
-        mirrorId: number | null;
-      }
-    | null = null;
+  private defaultTaxonomyIds: {
+    sourceId: number | null;
+    splitId: number | null;
+    angleId: number | null;
+    heightId: number | null;
+    distanceId: number | null;
+    lightingId: number | null;
+    mirrorId: number | null;
+  } | null = null;
 
   private async getDefaultTaxonomyIds() {
     if (!this.defaultTaxonomyIds) {
@@ -97,7 +97,9 @@ private defaultTaxonomyIds:
 
       if (missing.length) {
         throw new Error(
-          `Missing default taxonomy IDs: ${missing.join(", ")}. Seed keys must exist (mobile_app, training, unknown for angle/height/distance/lighting/mirror).`
+          `Missing default taxonomy IDs: ${missing.join(
+            ", "
+          )}. Seed keys must exist (mobile_app, training, unknown for angle/height/distance/lighting/mirror).`
         );
       }
 
@@ -113,26 +115,35 @@ private defaultTaxonomyIds:
     }
     return this.defaultTaxonomyIds;
   }
-  
+
   async finalizeGymImage(input: FinalizeGymImageDto) {
     // 1) Validate key & gymId
     const parsed = parseKey(input.storageKey);
-    if (!parsed || parsed.kind !== "upload") throw new Error("storageKey must be under private/uploads/...");
-    if (parsed.gymId !== input.gymId) throw new Error("storageKey gymId does not match input.gymId");
+    if (!parsed || parsed.kind !== "upload")
+      throw new Error("storageKey must be under private/uploads/...");
+    if (parsed.gymId !== input.gymId)
+      throw new Error("storageKey gymId does not match input.gymId");
 
     // 2) HEAD the object
-    const head = await this.s3.send(new HeadObjectCommand({
-      Bucket: BUCKET,
-      Key: input.storageKey,
-    })).catch((err) => {
-      if (err?.$metadata?.httpStatusCode === 404) throw new Error("Uploaded object not found. Did the PUT succeed?");
-      throw err;
-    });
+    const head = await this.s3
+      .send(
+        new HeadObjectCommand({
+          Bucket: BUCKET,
+          Key: input.storageKey,
+        })
+      )
+      .catch((err) => {
+        if (err?.$metadata?.httpStatusCode === 404)
+          throw new Error("Uploaded object not found. Did the PUT succeed?");
+        throw err;
+      });
 
     const contentType = head.ContentType || "";
     const size = Number(head.ContentLength ?? 0);
-    if (!allowedContentType(contentType)) throw new Error(`Unsupported contentType: ${contentType}`);
-    if (!(size > 0 && Number.isFinite(size))) throw new Error("Object size invalid or zero");
+    if (!allowedContentType(contentType))
+      throw new Error(`Unsupported contentType: ${contentType}`);
+    if (!(size > 0 && Number.isFinite(size)))
+      throw new Error("Object size invalid or zero");
 
     // 3) Dedup by sha256 if provided
     if (input.sha256) {
@@ -145,7 +156,12 @@ private defaultTaxonomyIds:
 
     // 4) Ensure gymEquipment join exists
     const join = await this.prisma.gymEquipment.upsert({
-      where: { gymId_equipmentId: { gymId: input.gymId, equipmentId: input.equipmentId } },
+      where: {
+        gymId_equipmentId: {
+          gymId: input.gymId,
+          equipmentId: input.equipmentId,
+        },
+      },
       update: {},
       create: { gymId: input.gymId, equipmentId: input.equipmentId },
     });
@@ -170,7 +186,9 @@ private defaultTaxonomyIds:
       },
     });
 
-    const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${parsed.ext}`;
+    const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
+      parsed.ext
+    }`;
     await copyObjectIfMissing(input.storageKey, approvedKey);
     await deleteObjectIgnoreMissing(input.storageKey);
     image = await this.prisma.gymEquipmentImage.update({
@@ -182,20 +200,43 @@ private defaultTaxonomyIds:
     const jobs: Prisma.ImageQueueCreateManyInput[] = [
       ...(input.sha256
         ? []
-        : [{ jobType: "HASH", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey }]),
-      { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
-      { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
+        : [
+            {
+              jobType: "HASH",
+              status: ImageJobStatus.pending,
+              priority: 0,
+              storageKey: approvedKey,
+            },
+          ]),
+      {
+        jobType: "SAFETY",
+        status: ImageJobStatus.pending,
+        priority: 0,
+        storageKey: approvedKey,
+      },
+      {
+        jobType: "EMBED",
+        status: ImageJobStatus.pending,
+        priority: 0,
+        storageKey: approvedKey,
+      },
     ];
     await this.prisma.imageQueue.createMany({ data: jobs });
+
+    setImmediate(() => {
+      kickBurstRunner().catch((e) => console.error("burst runner error", e));
+    });
 
     return { image, queuedJobs: jobs.map((j) => j.jobType) };
   }
 
-    async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
+  async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
     const defaults = await this.getDefaultTaxonomyIds();
     const d = input.defaults;
     const join = await this.prisma.gymEquipment.upsert({
-      where: { gymId_equipmentId: { gymId: d.gymId, equipmentId: d.equipmentId } },
+      where: {
+        gymId_equipmentId: { gymId: d.gymId, equipmentId: d.equipmentId },
+      },
       update: {},
       create: { gymId: d.gymId, equipmentId: d.equipmentId },
     });
@@ -205,7 +246,9 @@ private defaultTaxonomyIds:
     for (const it of input.items) {
       const parsed = parseKey(it.storageKey);
       if (!parsed || parsed.kind !== "upload" || parsed.gymId !== d.gymId) {
-        throw new Error("storageKey must be under private/uploads/... and match gymId");
+        throw new Error(
+          "storageKey must be under private/uploads/... and match gymId"
+        );
       }
       const objectUuid = parsed.uuid;
       let image = await this.prisma.gymEquipmentImage.create({
@@ -230,7 +273,9 @@ private defaultTaxonomyIds:
         },
       });
 
-      const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${parsed.ext}`;
+      const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
+        parsed.ext
+      }`;
       await copyObjectIfMissing(it.storageKey, approvedKey);
       await deleteObjectIgnoreMissing(it.storageKey);
       image = await this.prisma.gymEquipmentImage.update({
@@ -241,19 +286,36 @@ private defaultTaxonomyIds:
       const jobs: Prisma.ImageQueueCreateManyInput[] = [
         ...(it.sha256
           ? []
-          : [{
-              jobType: "HASH",
-              status: ImageJobStatus.pending,
-              priority: 0,
-              storageKey: approvedKey,
-            }]),
-        { jobType: "SAFETY", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
-        { jobType: "EMBED", status: ImageJobStatus.pending, priority: 0, storageKey: approvedKey },
+          : [
+              {
+                jobType: "HASH",
+                status: ImageJobStatus.pending,
+                priority: 0,
+                storageKey: approvedKey,
+              },
+            ]),
+        {
+          jobType: "SAFETY",
+          status: ImageJobStatus.pending,
+          priority: 0,
+          storageKey: approvedKey,
+        },
+        {
+          jobType: "EMBED",
+          status: ImageJobStatus.pending,
+          priority: 0,
+          storageKey: approvedKey,
+        },
       ];
       await this.prisma.imageQueue.createMany({ data: jobs });
       images.push(image);
       queued += jobs.length;
     }
+    setImmediate(() => {
+      kickBurstRunner().catch((e) =>
+        console.error("burst runner error", e)
+      );
+    });
     return { images, queuedJobs: queued };
   }
 

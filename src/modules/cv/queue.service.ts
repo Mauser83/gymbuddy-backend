@@ -1,6 +1,7 @@
 import { PrismaClient } from "../../lib/prisma";
 import { EnqueueImageJobDto, UpdateImageJobStatusDto } from "./queue.dto";
 import { validateInput } from "../../middlewares/validation";
+import { kickBurstRunner } from "../images/image-worker";
 
 export class QueueService {
   private prisma: PrismaClient;
@@ -30,7 +31,7 @@ export class QueueService {
 
   async enqueue(input: EnqueueImageJobDto) {
     await validateInput(input, EnqueueImageJobDto);
-    return this.prisma.imageQueue.create({
+    const job = await this.prisma.imageQueue.create({
       data: {
         imageId: input.imageId,
         jobType: input.jobType,
@@ -40,8 +41,13 @@ export class QueueService {
           : undefined,
       },
     });
+    setImmediate(() => {
+      kickBurstRunner().catch((e) =>
+        console.error("burst runner error", e)
+      );
+    });
+    return job;
   }
-
   async updateStatus(input: UpdateImageJobStatusDto) {
     await validateInput(input, UpdateImageJobStatusDto);
     return this.prisma.imageQueue.update({
