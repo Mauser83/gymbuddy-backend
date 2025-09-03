@@ -1,8 +1,18 @@
-// tsconfig.test.json
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["jest"]
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["jest", "node"],         // makes describe/it/expect typed
+    "esModuleInterop": true,
+    "skipLibCheck": true               // often reduces noise in node projects
   },
-  "include": ["src", "tests", "**/*.test.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
 }

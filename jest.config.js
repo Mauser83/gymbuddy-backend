@@ -2,11 +2,7 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
-  globals: {
-    "ts-jest": {
-      tsconfig: "tsconfig.test.json",
-    },
-  },
+
   modulePathIgnorePatterns: ["<rootDir>/dist/"],
   globalSetup: "<rootDir>/__tests__/globalSetup.ts",
   globalTeardown: "<rootDir>/__tests__/globalTeardown.ts",
@@ -16,15 +12,19 @@ module.exports = {
     "<rootDir>/__tests__/globalTeardown.ts",
     "<rootDir>/__tests__/testUtils.ts",
   ],
+
   transform: {
-    "^.+\\.ts?$": [
+    "^.+\\.(ts|tsx)$": [
       "ts-jest",
       {
         tsconfig: "tsconfig.test.json",
-        isolatedModules: true,
       },
     ],
   },
+
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
+  testMatch: ["**/?(*.)+(spec|test).[tj]s?(x)"],
+
   testTimeout: 30000,
   maxWorkers: 1, // Run tests serially to avoid port conflicts
   detectOpenHandles: true,

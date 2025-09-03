@@ -5,7 +5,8 @@ import {
   HeadObjectCommand,
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
-import { makeKey } from "../../utils/makeKey";
+import { fileExtFrom } from "../../utils/makeKey";
+import { randomUUID } from "crypto";
 import { PromoteGymImageDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
@@ -119,16 +120,11 @@ export class ImagePromotionService {
     }
 
     const splitId = input.splitId ?? gymImg.splitId ?? null;
-    let splitKind: "golden" | "training" = "golden";
-    if (splitId) {
-      const split = await this.prisma.splitType.findUnique({
-        where: { id: splitId },
-        select: { key: true },
-      });
-      if (split?.key?.toLowerCase() === "training") splitKind = "training";
-    }
-    const destKey = makeKey(splitKind, { equipmentId: gymImg.equipmentId }, {});
-
+    const ext = fileExtFrom(gymImg.storageKey);
+    const destKey = `private/global/equipment/${gymImg.equipmentId}/approved/${
+      gymImg.sha256 ?? randomUUID()
+    }.${ext}`;
+    
     if (gymImg.sha256) {
       const existing = await this.prisma.equipmentImage.findFirst({
         where: { equipmentId: gymImg.equipmentId, sha256: gymImg.sha256 },

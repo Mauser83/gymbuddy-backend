@@ -98,6 +98,9 @@ describe("promoteGymImageToGlobal", () => {
     expect(prisma.imageQueue.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ storageKey: res.destinationKey }),
     });
+    expect(res.destinationKey.startsWith("private/global/equipment/20/approved/")).toBe(
+      true,
+    );
   });
 
   it("skips embed queue when gym embedding exists", async () => {
@@ -135,7 +138,7 @@ describe("promoteGymImageToGlobal", () => {
     expect(prisma.$executeRaw).toHaveBeenCalled();
   });
 
-    it("returns existing on duplicate sha", async () => {
+  it("returns existing on duplicate sha", async () => {
     const prisma = createPrismaMock();
     (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
       id: "g1",
@@ -150,32 +153,13 @@ describe("promoteGymImageToGlobal", () => {
       modelName: null,
       modelVersion: null,
     });
-    (prisma.equipmentImage.findFirst as any).mockResolvedValue({ id: "e1", storageKey: "public/golden/20/..." });
+    (prisma.equipmentImage.findFirst as any).mockResolvedValue({
+      id: "e1",
+      storageKey: "private/global/equipment/20/approved/existing.jpg",
+    });
     const svc = new ImagePromotionService(prisma);
     const res = await svc.promoteGymImageToGlobal({ id: "g1" } as any, ctx);
     expect(res.equipmentImage.id).toBe("e1");
     expect(prisma.equipmentImage.create).not.toHaveBeenCalled();
-  });
-
-  it("uses training split when splitId matches", async () => {
-    const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
-      id: "g1",
-      gymId: 10,
-      equipmentId: 20,
-      storageKey: "private/uploads/10/2025/01/img.jpg",
-      sha256: null,
-      status: "APPROVED",
-      isSafe: true,
-      embedding: null,
-      modelVendor: null,
-      modelName: null,
-      modelVersion: null,
-    });
-    (prisma.splitType.findUnique as any).mockResolvedValue({ key: "training" });
-    (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({ id: "e1", storageKey: data.storageKey }));
-    const svc = new ImagePromotionService(prisma);
-    const res = await svc.promoteGymImageToGlobal({ id: "g1", splitId: 2 } as any, ctx);
-    expect(res.destinationKey.startsWith("public/training/20/")).toBe(true);
   });
 });

@@ -5,7 +5,9 @@ process.env.R2_ACCOUNT_ID = "account";
 process.env.R2_ACCESS_KEY_ID = "id";
 process.env.R2_SECRET_ACCESS_KEY = "secret";
 
-jest.spyOn(presigner, "getSignedUrl").mockResolvedValue("https://signed-url.example");
+jest
+  .spyOn(presigner, "getSignedUrl")
+  .mockResolvedValue("https://signed-url.example");
 
 const { MediaService } = require("../../../src/modules/media/media.service");
 
@@ -23,11 +25,24 @@ describe("MediaService.presignGetForKey", () => {
     expect(presigner.getSignedUrl).toHaveBeenCalled();
   });
 
-  it("sets content type from extension", async () => {
-    await svc.presignGetForKey(
-      `public/training/1/2025/01/${UUID}.webp`,
+  it("signs private global key", async () => {
+    const url = await svc.presignGetForKey(
+      `private/global/equipment/1/approved/${UUID}.jpg`,
       60
     );
+    expect(url).toContain("https://signed-url.example");
+  });
+
+  it("signs global upload key", async () => {
+    const url = await svc.presignGetForKey(
+      `private/uploads/global/2/2025/01/${UUID}.jpg`,
+      60
+    );
+    expect(url).toContain("https://signed-url.example");
+  });
+
+  it("sets content type from extension", async () => {
+    await svc.presignGetForKey(`public/training/1/2025/01/${UUID}.webp`, 60);
     const call = (presigner.getSignedUrl as jest.Mock).mock.calls.pop();
     const cmd = call[1];
     expect(cmd.input.ResponseContentType).toBe("image/webp");
@@ -40,10 +55,7 @@ describe("MediaService.presignGetForKey", () => {
   });
 
   it("clamps TTL", async () => {
-    await svc.presignGetForKey(
-      `public/golden/1/2025/01/${UUID}.jpg`,
-      5
-    );
+    await svc.presignGetForKey(`public/golden/1/2025/01/${UUID}.jpg`, 5);
     const call = (presigner.getSignedUrl as jest.Mock).mock.calls.pop();
     expect(call[2].expiresIn).toBeGreaterThanOrEqual(30);
   });
@@ -88,7 +100,9 @@ describe("MediaService.getImageUploadUrl", () => {
       ttlSec: 120,
     });
     expect(out.url).toContain("https://signed-url.example");
-    expect(out.key).toMatch(/^private\/uploads\/7\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.jpg$/);
+    expect(out.key).toMatch(
+      /^private\/uploads\/7\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.jpg$/
+    );
     expect(out.requiredHeaders).toEqual([
       { name: "Content-Type", value: "image/jpeg" },
     ]);

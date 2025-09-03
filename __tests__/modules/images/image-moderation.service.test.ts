@@ -130,7 +130,7 @@ describe("ImageModerationService", () => {
       await prisma.equipmentImage.create({
         data: {
           equipmentId: equipId,
-          storageKey: "public/golden/eq.jpg",
+          storageKey: `private/global/equipment/${equipId}/approved/eq.jpg`,
           mimeType: "image/jpeg",
           width: 0,
           height: 0,

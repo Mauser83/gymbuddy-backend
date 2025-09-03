@@ -1,5 +1,14 @@
 /* eslint-disable no-useless-escape */
-export type KeyKind = "golden" | "training" | "upload";
+
+export type KeyKind =
+  | "golden"
+  | "training"
+  | "upload"
+  | "upload_global"
+  | "approved_gym"
+  | "approved_global"
+  | "quarantine_gym"
+  | "quarantine_global";
 
 export interface MakeKeyOptions {
   now?: Date;
@@ -11,9 +20,11 @@ export type ParsedKey = {
   kind: KeyKind;
   equipmentId?: number;
   gymId?: number;
-  year: number;
-  month: number; // 1-12
-  uuid: string;
+  gymEquipmentId?: number;
+  year?: number;
+  month?: number; // 1-12
+  uuid?: string;
+  sha?: string;
   ext: "jpg" | "png" | "webp";
 };
 
@@ -55,14 +66,22 @@ export const KEY_REGEX = {
     /^public\/training\/(?<equipmentId>\d+)\/(?<yyyy>\d{4})\/(?<mm>\d{2})\/(?<uuid>[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
   upload:
     /^private\/uploads\/(?<gymId>\d+)\/(?<yyyy>\d{4})\/(?<mm>\d{2})\/(?<uuid>[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
-  any:
-    /^(?:public\/(?:golden|training)\/\d+|private\/uploads\/\d+)\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/i,
-};
+  upload_global:
+    /^private\/uploads\/global\/(?<equipmentId>\d+)\/(?<yyyy>\d{4})\/(?<mm>\d{2})\/(?<uuid>[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
+  approved_gym:
+    /^private\/gym\/(?<gymEquipmentId>\d+)\/approved\/(?<id>[0-9a-f]{64}|[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
+  quarantine_gym:
+    /^private\/gym\/(?<gymEquipmentId>\d+)\/quarantine\/(?<id>[0-9a-f]{64}|[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
+  approved_global:
+    /^private\/global\/equipment\/(?<equipmentId>\d+)\/approved\/(?<id>[0-9a-f]{64}|[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
+  quarantine_global:
+    /^private\/global\/equipment\/(?<equipmentId>\d+)\/quarantine\/(?<id>[0-9a-f]{64}|[0-9a-f-]{36})\.(?<ext>jpg|png|webp)$/i,
+} as const;
 
 export function makeKey(
   kind: KeyKind,
   ids: { equipmentId?: number; gymId?: number },
-  opts: MakeKeyOptions = {}
+  opts: MakeKeyOptions = {},
 ): string {
   const now = opts.now ?? new Date();
   const yyyy = now.getUTCFullYear();
@@ -77,10 +96,12 @@ export function makeKey(
     return `private/uploads/${ids.gymId}/${yyyy}/${pad2(mm)}/${uuid}.${ext}`;
   }
 
-  // golden/training
-  assertPositiveInt("equipmentId", ids.equipmentId);
-  const prefix = kind === "golden" ? "public/golden" : "public/training";
-  return `${prefix}/${ids.equipmentId}/${yyyy}/${pad2(mm)}/${uuid}.${ext}`;
+  if (kind === "upload_global") {
+    assertPositiveInt("equipmentId", ids.equipmentId);
+    return `private/uploads/global/${ids.equipmentId}/${yyyy}/${pad2(mm)}/${uuid}.${ext}`;
+  }
+
+  throw new Error(`Unsupported key kind: ${kind}`);
 }
 
 export function parseKey(key: string): ParsedKey | null {
@@ -120,19 +141,84 @@ export function parseKey(key: string): ParsedKey | null {
       ext: ext.toLowerCase(),
     } as ParsedKey;
   }
+m = key.match(KEY_REGEX.upload_global);
+  if (m?.groups) {
+    const { equipmentId, yyyy, mm, uuid, ext } = m.groups as any;
+    return {
+      kind: "upload_global",
+      equipmentId: Number(equipmentId),
+      year: Number(yyyy),
+      month: Number(mm),
+      uuid,
+      ext: ext.toLowerCase(),
+    } as ParsedKey;
+  }
+  m = key.match(KEY_REGEX.approved_gym);
+  if (m?.groups) {
+    const { gymEquipmentId, id, ext } = m.groups as any;
+    return {
+      kind: "approved_gym",
+      gymEquipmentId: Number(gymEquipmentId),
+      uuid: id.length === 36 ? id : undefined,
+      sha: id.length === 64 ? id : undefined,
+      ext: ext.toLowerCase(),
+    } as ParsedKey;
+  }
+  m = key.match(KEY_REGEX.quarantine_gym);
+  if (m?.groups) {
+    const { gymEquipmentId, id, ext } = m.groups as any;
+    return {
+      kind: "quarantine_gym",
+      gymEquipmentId: Number(gymEquipmentId),
+      uuid: id.length === 36 ? id : undefined,
+      sha: id.length === 64 ? id : undefined,
+      ext: ext.toLowerCase(),
+    } as ParsedKey;
+  }
+  m = key.match(KEY_REGEX.approved_global);
+  if (m?.groups) {
+    const { equipmentId, id, ext } = m.groups as any;
+    return {
+      kind: "approved_global",
+      equipmentId: Number(equipmentId),
+      uuid: id.length === 36 ? id : undefined,
+      sha: id.length === 64 ? id : undefined,
+      ext: ext.toLowerCase(),
+    } as ParsedKey;
+  }
+  m = key.match(KEY_REGEX.quarantine_global);
+  if (m?.groups) {
+    const { equipmentId, id, ext } = m.groups as any;
+    return {
+      kind: "quarantine_global",
+      equipmentId: Number(equipmentId),
+      uuid: id.length === 36 ? id : undefined,
+      sha: id.length === 64 ? id : undefined,
+      ext: ext.toLowerCase(),
+    } as ParsedKey;
+  }
   return null;
 }
 
 export function isValidStorageKey(key: string): boolean {
-  if (!KEY_REGEX.any.test(key)) return false;
   const parsed = parseKey(key);
   if (!parsed) return false;
   if (!(parsed.ext === "jpg" || parsed.ext === "png" || parsed.ext === "webp"))
     return false;
-  if (parsed.month < 1 || parsed.month > 12) return false;
-  if (!UUID_RE.test(parsed.uuid)) return false;
-  if (parsed.kind !== "upload" && !parsed.equipmentId) return false;
+  if (parsed.month && (parsed.month < 1 || parsed.month > 12)) return false;
+  if (parsed.uuid && !UUID_RE.test(parsed.uuid)) return false;
   if (parsed.kind === "upload" && !parsed.gymId) return false;
+  if (parsed.kind === "upload_global" && !parsed.equipmentId) return false;
+  if (
+    (parsed.kind === "approved_gym" || parsed.kind === "quarantine_gym") &&
+    !parsed.gymEquipmentId
+  )
+    return false;
+  if (
+    (parsed.kind === "approved_global" || parsed.kind === "quarantine_global") &&
+    !parsed.equipmentId
+  )
+    return false;
   return true;
 }
 
