@@ -353,7 +353,9 @@ export class GymService {
     if (!hasAccess) throw new Error("Unauthorized");
 
     await this.prisma.$transaction(async (tx) => {
-      const deleted = await tx.gymEquipmentImage.delete({ where: { id: imageId } });
+      const deleted = await tx.gymEquipmentImage.delete({
+        where: { id: imageId },
+      });
       if (deleted.isPrimary && deleted.gymEquipmentId) {
         const next = await tx.gymEquipmentImage.findFirst({
           where: { gymEquipmentId: deleted.gymEquipmentId },
@@ -376,8 +378,7 @@ export class GymService {
       where: { id: imageId },
       select: { gymId: true, gymEquipmentId: true },
     });
-    if (!img || !img.gymEquipmentId)
-      throw new Error("Image not found");
+    if (!img || !img.gymEquipmentId) throw new Error("Image not found");
 
     const hasAccess = await this.checkGymPermission(userId, img.gymId);
     if (!hasAccess) throw new Error("Unauthorized");
@@ -506,6 +507,7 @@ export class GymService {
         status: "PENDING",
         capturedAt: new Date(),
         objectUuid,
+        capturedByUserId: userId,
       },
     });
 
@@ -517,6 +519,18 @@ export class GymService {
     image = await this.prisma.gymEquipmentImage.update({
       where: { id: image.id },
       data: { storageKey: approvedKey },
+    });
+
+    await this.prisma.trainingCandidate.create({
+      data: {
+        storageKey: approvedKey,
+        imageId: image.id,
+        gymEquipmentId,
+        gymId: join.gymId,
+        uploaderUserId: userId,
+        source: "gym_equipment",
+        status: "pending",
+      },
     });
 
     const jobs = [

@@ -10,6 +10,7 @@ import {
 import { createSafetyProvider } from "./safety";
 import { hasPerson } from "./safety/local-person";
 import { writeImageEmbedding } from "../cv/embeddingWriter";
+import { userIsTrustedForGym } from "../gym/permission-helpers";
 
 import { ImageJobStatus } from "../../generated/prisma";
 import {
@@ -75,6 +76,10 @@ async function handleHASH(storageKey: string) {
     where: { storageKey, OR: [{ sha256: null }, { sha256: "" }] },
     data: { sha256: sha },
   });
+  await prisma.trainingCandidate.updateMany({
+    where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
+    data: { hash: sha },
+  });
 }
 
 // --- SAFETY ---
@@ -99,6 +104,12 @@ async function handleSAFETY(storageKey: string) {
       hasPerson: personPresent,
     },
   });
+  if (!isSafe) {
+    await prisma.trainingCandidate.updateMany({
+      where: { storageKey },
+      data: { status: "quarantined" },
+    });
+  }
 
   if (!isSafe && storageKey.startsWith("private/gym/")) {
     const parts = storageKey.split("/");
@@ -112,6 +123,10 @@ async function handleSAFETY(storageKey: string) {
     await prisma.gymEquipmentImage.updateMany({
       where: { storageKey },
       data: { storageKey: qKey, status: "QUARANTINED" },
+    });
+    await prisma.trainingCandidate.updateMany({
+      where: { storageKey },
+      data: { storageKey: qKey },
     });
     await prisma.imageQueue.updateMany({
       where: { storageKey, jobType: "EMBED", status: ImageJobStatus.pending },
@@ -168,6 +183,34 @@ async function handleEMBED(storageKey: string) {
     modelName: EMBED_MODEL,
     modelVersion: EMBED_VERSION,
   });
+
+  const candidate = await prisma.trainingCandidate.findFirst({
+    where: { storageKey },
+    select: { id: true, uploaderUserId: true, gymId: true, imageId: true },
+  });
+  if (candidate && candidate.gymId) {
+    const gym = await prisma.gym.findUnique({
+      where: { id: candidate.gymId },
+      select: { autoApproveManagerUploads: true },
+    });
+    const trusted = candidate.uploaderUserId
+      ? await userIsTrustedForGym(candidate.uploaderUserId, candidate.gymId)
+      : false;
+    if (trusted && gym?.autoApproveManagerUploads) {
+      await prisma.trainingCandidate.update({
+        where: { id: candidate.id },
+        data: { status: "approved" },
+      });
+      await prisma.gymEquipmentImage.updateMany({
+        where: { id: candidate.imageId || "" },
+        data: {
+          status: "APPROVED",
+          approvedAt: new Date(),
+          approvedByUserId: candidate.uploaderUserId || undefined,
+        },
+      });
+    }
+  }
 }
 
 export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY ?? 1)) {

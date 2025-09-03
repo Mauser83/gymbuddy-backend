@@ -91,6 +91,7 @@ model User {
   EquipmentImage    EquipmentImage[]
   capturedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageCapturedBy")
   approvedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageApprovedBy")
+  trainingCandidates        TrainingCandidate[] @relation("UserTrainingCandidates")
 }
 
 model WorkoutPlan {
@@ -409,6 +410,8 @@ model Gym {
   phone       String?
   email       String?
   isApproved  Boolean   @default(false)
+  autoApproveManagerUploads Boolean @default(true)
+  requireHumanReviewForPersons Boolean @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -426,6 +429,7 @@ model Gym {
   gymEquipment      GymEquipment[]
   GymEquipmentImage GymEquipmentImage[]
   imageEmbeddings   ImageEmbedding[]
+  trainingCandidates TrainingCandidate[] @relation("GymTrainingCandidates")
   
   @@index([name])
   @@index([city])
@@ -498,6 +502,7 @@ model GymEquipment {
 
   images                 GymEquipmentImage[]
   exerciseLogConnections ExerciseLogEquipment[]
+  trainingCandidates     TrainingCandidate[] @relation("EquipmentTrainingCandidates")
 
   @@unique([gymId, equipmentId])
   @@index([gymId])
@@ -771,6 +776,7 @@ model GymEquipmentImage {
   split          SplitType?    @relation(fields: [splitId], references: [id])
   approvedByUser User?         @relation("GymEquipmentImageApprovedBy", fields: [approvedByUserId], references: [id])
   embeddings     ImageEmbedding[]
+  trainingCandidates TrainingCandidate[] @relation("ImageTrainingCandidates")
 
   @@unique([gymId, equipmentId, imageId])
   @@index([gymId, equipmentId])
@@ -943,27 +949,38 @@ model SplitType {
   gymEquipmentImages GymEquipmentImage[]
 }
 
-model RecognitionAttempt {
-  id             BigInt   @id @default(autoincrement())
-  gymId          Int
-  storageKey     String
-  vectorHash     String
-  bestEquipmentId Int?
-  bestScore      Float
-  createdAt      DateTime @default(now())
-  consent        String   @default("unknown")
+enum TrainingSource {
+  gym_equipment
+  admin
+  user_submission
+}
 
-  trainingCandidates TrainingCandidate[]
+enum TrainingStatus {
+  pending
+  approved
+  quarantined
+  rejected
+  failed
 }
 
 model TrainingCandidate {
-  id          BigInt   @id @default(autoincrement())
-  attempt     RecognitionAttempt @relation(fields: [attemptId], references: [id])
-  attemptId   BigInt
-  gymId       Int
-  equipmentId Int
-  storageKey  String
-  sourceScore Float?
-  createdAt   DateTime @default(now())
-  status      String   @default("PENDING")
+  id            String         @id @default(cuid())
+  storageKey    String
+  imageId       String?
+  gymEquipmentId Int?
+  gymId         Int?
+  uploaderUserId Int?
+  source        TrainingSource @default(gym_equipment)
+  status        TrainingStatus @default(pending)
+  hash          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  image        GymEquipmentImage? @relation("ImageTrainingCandidates", fields: [imageId], references: [id])
+  gymEquipment GymEquipment? @relation("EquipmentTrainingCandidates", fields: [gymEquipmentId], references: [id])
+  gym          Gym?          @relation("GymTrainingCandidates", fields: [gymId], references: [id])
+  uploader     User?         @relation("UserTrainingCandidates", fields: [uploaderUserId], references: [id])
+
+  @@index([status])
+  @@index([hash])
 }
