@@ -1,3 +1,8 @@
+jest.mock("../../../src/modules/images/image-worker", () => ({
+  // Return a resolved Promise to satisfy calls expecting a thenable
+  kickBurstRunner: jest.fn(() => Promise.resolve()),
+}));
+
 import { ImagePromotionService } from "../../../src/modules/images/image-promotion.service";
 import { PrismaClient } from "../../../src/lib/prisma";
 import {

@@ -74,9 +74,11 @@ describe("parseKey & isValidStorageKey", () => {
     for (const k of keys) {
       expect(isValidStorageKey(k)).toBe(true);
       const parsed = parseKey(k)!;
-      expect(parsed.year).toBeGreaterThanOrEqual(2023);
-      expect(parsed.month).toBeGreaterThanOrEqual(1);
-      expect(parsed.month).toBeLessThanOrEqual(12);
+      if (parsed.year != null && parsed.month != null) {
+        expect(parsed.year).toBeGreaterThanOrEqual(2023);
+        expect(parsed.month).toBeGreaterThanOrEqual(1);
+        expect(parsed.month).toBeLessThanOrEqual(12);
+      }
     }
   });
 

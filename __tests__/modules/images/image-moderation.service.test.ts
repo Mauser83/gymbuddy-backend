@@ -1,3 +1,8 @@
+jest.mock("../../../src/modules/images/image-worker", () => ({
+  // Ensure kickBurstRunner returns a Promise so calling code can attach .catch
+  kickBurstRunner: jest.fn(() => Promise.resolve()),
+}));
+
 import { ImageModerationService } from "../../../src/modules/images/image-moderation.service";
 import { PrismaClient } from "../../../src/lib/prisma";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";

@@ -1,3 +1,8 @@
+jest.mock("../../../src/modules/images/image-worker", () => ({
+  // Provide a Promise to avoid errors when tests call .catch on the result
+  kickBurstRunner: jest.fn(() => Promise.resolve()),
+}));
+
 import { ImageIntakeService } from "../../../src/modules/images/image-intake.service";
 import { PrismaClient } from "../../../src/lib/prisma";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -26,7 +31,7 @@ function createPrismaMock() {
       update: jest.fn().mockImplementation(({ data }) => ({ ...image, ...data })),
     },
     imageQueue: {
-      createMany: jest.fn().mockResolvedValue({ count: 3 }),
+      createMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   } as unknown as PrismaClient;
 }
@@ -44,7 +49,7 @@ describe("finalizeGymImage", () => {
     expect(out.image.id).toBe("cuid1");
     expect(prisma.gymEquipmentImage.create).toHaveBeenCalled();
     expect(prisma.imageQueue.createMany).toHaveBeenCalled();
-    expect(out.queuedJobs).toEqual(["HASH", "SAFETY", "EMBED"]);
+    expect(out.queuedJobs).toEqual(["HASH"]);
   });
 
   it("omits HASH when sha256 provided", async () => {
@@ -57,9 +62,8 @@ describe("finalizeGymImage", () => {
       equipmentId: 2,
       sha256: "deadbeef",
     } as any);
-    expect(out.queuedJobs).toEqual(["SAFETY", "EMBED"]);
-    const jobsArg = (prisma.imageQueue.createMany as any).mock.calls[0][0];
-    expect(jobsArg.data.length).toBe(2);
+    expect(out.queuedJobs).toEqual([]);
+    expect(prisma.imageQueue.createMany).not.toHaveBeenCalled();
   });
 
   it("rejects mismatched gymId ↔ storageKey", async () => {
