@@ -147,7 +147,6 @@ export const imagesTypeDefs = `
   extend type Mutation {
     finalizeGymImage(input: FinalizeGymImageInput!): FinalizeGymImageResult!
     finalizeGymImages(input: FinalizeGymImagesInput!): FinalizeGymImagesPayload!
-    finalizeGymImagesAdmin(input: FinalizeGymImagesInput!): FinalizeManyPayload!
     applyTaxonomiesToGymImages(input: ApplyTaxonomiesInput!): ApplyTaxonomiesPayload!
     promoteGymImageToGlobal(input: PromoteGymImageInput!): PromoteGymImagePayload!
     approveGymImage(input: ApproveGymImageInput!): ApproveGymImagePayload!
