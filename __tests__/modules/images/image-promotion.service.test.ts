@@ -101,7 +101,7 @@ describe("promoteGymImageToGlobal", () => {
     expect(res.equipmentImage.id).toBe("e1");
     expect(prisma.equipmentImage.create).toHaveBeenCalled();
     expect(prisma.imageQueue.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ storageKey: res.destinationKey }),
+      data: expect.objectContaining({ imageId: "e1", storageKey: null }),
     });
     expect(res.destinationKey.startsWith("private/global/equipment/20/approved/")).toBe(
       true,

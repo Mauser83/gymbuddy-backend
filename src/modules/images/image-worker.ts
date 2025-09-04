@@ -82,7 +82,7 @@ async function handleHASH(storageKey: string) {
     where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
     data: { hash: sha },
   });
-  return { sha };
+  return { sha, storageKey };
 }
 
 // --- SAFETY ---
@@ -114,6 +114,7 @@ async function handleSAFETY(storageKey: string) {
     });
   }
 
+  let finalKey = storageKey;
   if (!isSafe && storageKey.startsWith("private/gym/")) {
     const parts = storageKey.split("/");
     const gymEqId = parts[2];
@@ -131,8 +132,9 @@ async function handleSAFETY(storageKey: string) {
       where: { storageKey },
       data: { storageKey: qKey },
     });
+    finalKey = qKey;
   }
-  return { safe: isSafe };
+  return { safe: isSafe, storageKey: finalKey };
 }
 
 async function handleEMBED(storageKey: string) {
@@ -211,37 +213,46 @@ async function handleEMBED(storageKey: string) {
 }
 
 async function processJob(job: QueueJob) {
-  if (!job.storageKey) throw new Error("Job missing storageKey");
+  let key = job.storageKey;
+  if (!key && job.imageId) {
+    const img = await prisma.equipmentImage.findUnique({
+      where: { id: job.imageId },
+      select: { storageKey: true },
+    });
+    key = img?.storageKey || null;
+  }
+  if (!key) throw new Error("Job missing storageKey");
+
   const type = (job.jobType ?? "").trim().toUpperCase();
   switch (type) {
     case "HASH": {
-      await handleHASH(job.storageKey);
+      const { storageKey: nextKey } = await handleHASH(key);
       await prisma.imageQueue.create({
         data: {
           jobType: "SAFETY",
           status: ImageJobStatus.pending,
           priority: job.priority ?? 0,
-          storageKey: job.storageKey,
+          storageKey: nextKey,
         },
       });
       break;
     }
     case "SAFETY": {
-      const { safe } = await handleSAFETY(job.storageKey);
+      const { safe, storageKey: nextKey } = await handleSAFETY(key);
       if (safe) {
         await prisma.imageQueue.create({
           data: {
             jobType: "EMBED",
             status: ImageJobStatus.pending,
             priority: job.priority ?? 0,
-            storageKey: job.storageKey,
+            storageKey: nextKey,
           },
         });
       }
       break;
     }
     case "EMBED":
-      await handleEMBED(job.storageKey);
+      await handleEMBED(key);
       break;
     default:
       throw new Error(`Unsupported jobType: ${job.jobType}`);

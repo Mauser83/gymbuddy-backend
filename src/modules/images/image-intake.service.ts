@@ -167,14 +167,20 @@ export class ImageIntakeService {
       create: { gymId: input.gymId, equipmentId: input.equipmentId },
     });
 
-    // 5) Create GymEquipmentImage
-    let image = await this.prisma.gymEquipmentImage.create({
+        // 5) Copy object to approved location and create DB row
+    const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
+      parsed.ext
+    }`;
+    await copyObjectIfMissing(input.storageKey, approvedKey);
+    await deleteObjectIgnoreMissing(input.storageKey);
+
+    const image = await this.prisma.gymEquipmentImage.create({
       data: {
         gymEquipmentId: join.id,
         gymId: input.gymId,
         equipmentId: input.equipmentId,
         status: "PENDING",
-        storageKey: input.storageKey,
+        storageKey: approvedKey,
         sha256: input.sha256 ?? null,
         angleId: input.angleId ?? null,
         heightId: input.heightId ?? null,
@@ -187,17 +193,7 @@ export class ImageIntakeService {
       },
     });
 
-    const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
-      parsed.ext
-    }`;
-    await copyObjectIfMissing(input.storageKey, approvedKey);
-    await deleteObjectIgnoreMissing(input.storageKey);
-    image = await this.prisma.gymEquipmentImage.update({
-      where: { id: image.id },
-      data: { storageKey: approvedKey },
-    });
-
-    // 6) Enqueue HASH, SAFETY, EMBED for gym upload (by approvedKey)
+    // 6) Enqueue HASH for gym upload (by approvedKey)
     const source: "recognition_user" = "recognition_user";
     const priority = priorityFromSource(source);
     const jobs: Prisma.ImageQueueCreateManyInput[] = input.sha256
@@ -208,7 +204,6 @@ export class ImageIntakeService {
             status: ImageJobStatus.pending,
             priority,
             storageKey: approvedKey,
-            imageId: image.id,
           },
         ];
     if (jobs.length) {
@@ -289,7 +284,6 @@ export class ImageIntakeService {
             status: ImageJobStatus.pending,
             priority,
             storageKey: approvedKey,
-            imageId: image.id,
           },
         });
         queued++;
@@ -334,12 +328,18 @@ export class ImageIntakeService {
         );
       }
       const objectUuid = parsed.uuid;
-      let image = await this.prisma.gymEquipmentImage.create({
+      const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
+        parsed.ext
+      }`;
+      await copyObjectIfMissing(it.storageKey, approvedKey);
+      await deleteObjectIgnoreMissing(it.storageKey);
+
+      const image = await this.prisma.gymEquipmentImage.create({
         data: {
           gymId: d.gymId,
           equipmentId: d.equipmentId,
           gymEquipmentId: join.id,
-          storageKey: it.storageKey,
+          storageKey: approvedKey,
           objectUuid,
           sha256: it.sha256 ?? null,
           capturedByUserId: userId ?? null,
@@ -356,16 +356,6 @@ export class ImageIntakeService {
         },
       });
 
-      const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
-        parsed.ext
-      }`;
-      await copyObjectIfMissing(it.storageKey, approvedKey);
-      await deleteObjectIgnoreMissing(it.storageKey);
-      image = await this.prisma.gymEquipmentImage.update({
-        where: { id: image.id },
-        data: { storageKey: approvedKey },
-      });
-
       const jobs: Prisma.ImageQueueCreateManyInput[] = it.sha256
         ? []
         : [
@@ -374,7 +364,6 @@ export class ImageIntakeService {
               status: ImageJobStatus.pending,
               priority,
               storageKey: approvedKey,
-              imageId: image.id,
             },
           ];
       if (jobs.length) {

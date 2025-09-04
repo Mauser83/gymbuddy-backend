@@ -219,7 +219,7 @@ export class ImagePromotionService {
               jobType: "EMBED",
               status: ImageJobStatus.pending,
               priority: 0,
-              storageKey: destKey,
+              storageKey: null,
             },
           });
         }

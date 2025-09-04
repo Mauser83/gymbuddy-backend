@@ -546,27 +546,22 @@ export class GymService {
     const ext = (extRaw || "jpg").toLowerCase();
     const objectUuid = uuidPart;
 
-    let image = await this.prisma.gymEquipmentImage.create({
-      data: {
-        gymEquipmentId,
-        gymId: join.gymId,
-        equipmentId: join.equipmentId,
-        storageKey,
-        status: "PENDING",
-        capturedAt: new Date(),
-        objectUuid,
-        capturedByUserId: userId,
-      },
-    });
-
     const approvedKey = `private/gym/${gymEquipmentId}/approved/${randomUUID()}.${ext}`;
 
     await copyObjectIfMissing(storageKey, approvedKey);
     await deleteObjectIgnoreMissing(storageKey);
 
-    image = await this.prisma.gymEquipmentImage.update({
-      where: { id: image.id },
-      data: { storageKey: approvedKey },
+    const image = await this.prisma.gymEquipmentImage.create({
+      data: {
+        gymEquipmentId,
+        gymId: join.gymId,
+        equipmentId: join.equipmentId,
+        storageKey: approvedKey,
+        status: "PENDING",
+        capturedAt: new Date(),
+        objectUuid,
+        capturedByUserId: userId,
+      },
     });
 
     await this.prisma.trainingCandidate.create({
@@ -590,7 +585,6 @@ export class GymService {
         status: ImageJobStatus.pending,
         priority,
         storageKey: approvedKey,
-        imageId: image.id,
       },
     });
 
