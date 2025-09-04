@@ -220,11 +220,88 @@ export class ImageIntakeService {
     return { image, queuedJobs: jobs.map((j) => j.jobType) };
   }
 
-async finalizeGymImagesAdmin(
+  async finalizeGymImagesAdmin(
     input: FinalizeGymImagesDto,
-    userId: number | null,
+    userId: number | null
   ) {
-    return this.finalizeGymImagesCore(input, userId, "admin");
+    const { defaults, items } = input;
+    const { gymId, equipmentId } = defaults;
+    const priority = priorityFromSource("admin");
+    const now = new Date();
+    const tax = await this.getDefaultTaxonomyIds();
+
+    return this.prisma.$transaction(async (tx) => {
+      const join = await tx.gymEquipment.upsert({
+        where: {
+          gymId_equipmentId: { gymId, equipmentId },
+        },
+        update: {},
+        create: { gymId, equipmentId },
+      });
+
+      const images: Array<{
+        id: string;
+        gymId: number;
+        equipmentId: number;
+        status: string;
+      }> = [];
+      let queued = 0;
+
+      for (const it of items) {
+        const parsed = parseKey(it.storageKey);
+        if (!parsed || parsed.kind !== "upload" || parsed.gymId !== gymId) {
+          throw new Error(
+            "storageKey must be under private/uploads/... and match gymId"
+          );
+        }
+
+        const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
+          parsed.ext
+        }`;
+        await copyObjectIfMissing(it.storageKey, approvedKey);
+        await deleteObjectIgnoreMissing(it.storageKey);
+
+        const image = await tx.gymEquipmentImage.create({
+          data: {
+            gymId,
+            equipmentId,
+            gymEquipmentId: join.id,
+            storageKey: approvedKey,
+            status: "PENDING",
+            objectUuid: parsed.uuid,
+            capturedByUserId: userId ?? null,
+            capturedAt: now,
+            sourceId: tax.sourceId,
+            splitId: tax.splitId,
+            angleId: tax.angleId,
+            heightId: tax.heightId,
+            distanceId: tax.distanceId,
+            lightingId: tax.lightingId,
+            mirrorId: tax.mirrorId,
+            isSafe: false,
+          },
+          select: { id: true, gymId: true, equipmentId: true, status: true },
+        });
+
+        await tx.imageQueue.create({
+          data: {
+            jobType: "HASH",
+            status: ImageJobStatus.pending,
+            priority,
+            storageKey: approvedKey,
+            imageId: image.id,
+          },
+        });
+        queued++;
+        images.push(image);
+      }
+
+      setImmediate(() => {
+        kickBurstRunner().catch((e) => console.error("burst runner error", e));
+      });
+
+      return { images, queuedJobs: queued };
+    });
   }
 
   async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
@@ -234,7 +311,7 @@ async finalizeGymImagesAdmin(
   private async finalizeGymImagesCore(
     input: FinalizeGymImagesDto,
     userId: number | null,
-    source: "recognition_user" | "gym_manager" | "admin" | "backfill",
+    source: "recognition_user" | "gym_manager" | "admin" | "backfill"
   ) {
     const defaults = await this.getDefaultTaxonomyIds();
     const d = input.defaults;
@@ -253,7 +330,7 @@ async finalizeGymImagesAdmin(
       const parsed = parseKey(it.storageKey);
       if (!parsed || parsed.kind !== "upload" || parsed.gymId !== d.gymId) {
         throw new Error(
-          "storageKey must be under private/uploads/... and match gymId",
+          "storageKey must be under private/uploads/... and match gymId"
         );
       }
       const objectUuid = parsed.uuid;
@@ -308,9 +385,7 @@ async finalizeGymImagesAdmin(
     }
     if (queued > 0) {
       setImmediate(() => {
-                kickBurstRunner().catch((e) =>
-          console.error("burst runner error", e),
-              );
+        kickBurstRunner().catch((e) => console.error("burst runner error", e));
       });
     }
     return { images, queuedJobs: queued };
