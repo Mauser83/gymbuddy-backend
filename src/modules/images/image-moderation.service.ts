@@ -121,12 +121,15 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
 
     const where: any = {
       equipmentId: input.equipmentId,
-      status: { in: ["PENDING", "APPROVED"] },
     };
     if (input.gymId != null) where.gymId = input.gymId;
 
-    if (input.status) {
+    if (input.status === "CANDIDATE") {
+      where.status = { in: ["PENDING", "APPROVED"] };
+    } else if (input.status) {
       where.status = input.status;
+    } else {
+      where.status = { in: ["PENDING", "APPROVED"] };
     }
 
     if (input.safety?.state) {

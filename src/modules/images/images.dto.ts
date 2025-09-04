@@ -8,6 +8,7 @@ import {
   Matches,
   Min,
   IsEnum,
+  IsIn,
 } from "class-validator";
 import { GymImageStatusDto } from "../gym/gym.dto";
 
@@ -83,6 +84,12 @@ export class RejectGymImageDto {
   deleteObject?: boolean;
 }
 
+export const CandidateImageStatusValues = [
+  "CANDIDATE",
+  ...Object.values(GymImageStatusDto),
+] as const;
+export type CandidateImageStatus = typeof CandidateImageStatusValues[number];
+
 export class CandidateGlobalImagesDto {
   @IsInt()
   equipmentId!: number;
@@ -100,8 +107,8 @@ export class CandidateGlobalImagesDto {
   gymId?: number;
 
   @IsOptional()
-  @IsEnum(GymImageStatusDto)
-  status?: GymImageStatusDto;
+  @IsIn(CandidateImageStatusValues)
+  status?: CandidateImageStatus;
 
   @IsOptional()
   @IsString()

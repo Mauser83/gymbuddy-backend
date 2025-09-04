@@ -8,6 +8,7 @@ import { PrismaClient } from "../../../src/lib/prisma";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { cleanDB, prisma } from "../../testUtils";
+import { GymImageStatusDto } from "../../../src/modules/gym/gym.dto";
 
 jest.spyOn(S3Client.prototype, "send").mockImplementation((cmd: any) => {
   return Promise.resolve({} as any);
@@ -178,6 +179,14 @@ describe("ImageModerationService", () => {
             storageKey: "d",
             sha256: "x",
           },
+          {
+            id: "img5",
+            gymId: gym.id,
+            equipmentId: equipId,
+            status: "QUARANTINED",
+            storageKey: "e",
+            sha256: "q",
+          },
         ],
       });
     });
@@ -200,6 +209,15 @@ describe("ImageModerationService", () => {
       const approved = res.find((r: any) => r.id === "img3");
       expect(approved.approvedAt).toBeTruthy();
       expect(approved.approvedByUserId).toBe(userId);
+    });
+
+    it("filters by status when provided", async () => {
+      const res = await svc.candidateGlobalImages({
+        equipmentId: equipId,
+        status: GymImageStatusDto.QUARANTINED,
+      });
+      const ids = res.map((r: any) => r.id).sort();
+      expect(ids).toEqual(["img5"]);
     });
   });
 });
