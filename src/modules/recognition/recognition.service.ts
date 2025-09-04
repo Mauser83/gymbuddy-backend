@@ -22,6 +22,10 @@ const TICKET_SECRET = process.env.TICKET_SECRET ?? "test-secret";
 const T_HIGH = 0.85;
 const T_LOW = 0.55;
 
+const PER_EQUIPMENT_IMAGES = 3;
+const OVERSAMPLE_FACTOR = 10;
+const SEARCH_TOPK_MAX = 200;
+const MIN_ALT_SCORE = Number(process.env.RECOG_MIN_ALT_SCORE ?? 0.7);
 type Img = {
   equipmentId: number;
   gymId?: number | null;
@@ -50,50 +54,39 @@ type EquipmentCandidate = {
 
 function groupTopEquipment(
   imgs: Img[],
-  source: "GYM" | "GLOBAL",
-  limitPerEq = 3
+  keepPerEq = PER_EQUIPMENT_IMAGES
 ): EquipmentCandidate[] {
   if (!imgs?.length) return [];
-  const sorted = [...imgs].sort((a, b) => b.score - a.score);
-
-  const buckets = new Map<
-    number,
-    { equipmentId: number; items: Img[]; topScore: number; total: number }
-  >();
+  const sorted = [...imgs].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const buckets = new Map<number, Img[]>();
   for (const it of sorted) {
-    let b = buckets.get(it.equipmentId);
-    if (!b) {
-      b = { equipmentId: it.equipmentId, items: [], topScore: it.score, total: 0 };
-      buckets.set(it.equipmentId, b);
-    }
-    if (b.items.length < limitPerEq) b.items.push(it);
-    b.total += 1;
+    const arr = buckets.get(it.equipmentId) ?? [];
+    if (arr.length < keepPerEq) arr.push(it);
+    buckets.set(it.equipmentId, arr);
   }
-
-  return Array.from(buckets.values())
-    .sort((a, b) => b.topScore - a.topScore)
-    .slice(0, 3)
-    .map((b) => ({
-      equipmentId: b.equipmentId,
+  return Array.from(buckets.entries())
+    .map(([equipmentId, items]) => ({
+      equipmentId,
       equipmentName: undefined,
-      topScore: b.topScore,
+      topScore: items[0].score ?? 0,
       representative: {
-        imageId: b.items[0].imageId,
-        equipmentId: b.equipmentId,
-        gymId: b.items[0].gymId ?? null,
-        storageKey: b.items[0].storageKey,
-        score: b.items[0].score,
+        imageId: items[0].imageId,
+        equipmentId,
+        gymId: items[0].gymId ?? null,
+        storageKey: items[0].storageKey,
+        score: items[0].score,
       },
-      images: b.items.map((it) => ({
+      images: items.map((it) => ({
         imageId: it.imageId,
         equipmentId: it.equipmentId,
         gymId: it.gymId ?? null,
         storageKey: it.storageKey,
         score: it.score,
       })),
-      source,
-      totalImagesConsidered: b.total,
-    }));
+      source: "GYM",
+      totalImagesConsidered: items.length,
+    }))
+    .sort((a, b) => b.topScore - a.topScore);
 }
 
 export class RecognitionService {
@@ -175,47 +168,67 @@ export class RecognitionService {
 
   async recognizeImage(token: string, limit = 5) {
     const { gid: gymId, key: storageKey } = this.verify(token);
-    await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })).catch(() => {
-      throw new Error('Uploaded object not found');
-    });
+    await this.s3
+      .send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }))
+      .catch(() => {
+        throw new Error("Uploaded object not found");
+      });
 
     await this.embedInit;
     const bytes = await this.downloadBytes(storageKey);
     const vecF32 = await embedImage(Buffer.from(bytes));
     const vector = Array.from(vecF32);
     if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIM) {
-      throw new Error('Embedding failed');
+      throw new Error("Embedding failed");
     }
 
     const vecBuf = Buffer.from(vecF32.buffer);
-    const vectorHash = createHash('sha256').update(vecBuf).digest('hex').slice(0, 16);
+    const vectorHash = createHash("sha256")
+      .update(vecBuf)
+      .digest("hex")
+      .slice(0, 16);
 
-    const globalRows = await knnFromVectorGlobal({ vector, limit, gymId });
+    const N = Math.max(1, Math.min(limit ?? 3, 10));
+    const searchTopK = Math.min(
+      SEARCH_TOPK_MAX,
+      N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR
+    );
+
+    const globalRows = await knnFromVectorGlobal({
+      vector,
+      limit: searchTopK,
+      gymId,
+    });
     const gTop = globalRows[0];
-    let decision: 'GLOBAL_ACCEPT' | 'GYM_ACCEPT' | 'GYM_SELECT' | 'RETAKE' = 'RETAKE';
+    let decision: "GLOBAL_ACCEPT" | "GYM_ACCEPT" | "GYM_SELECT" | "RETAKE" =
+      "RETAKE";
     let bestEquipmentId: number | null = null;
     let bestScore = 0;
 
     if (gTop && gTop.score >= T_HIGH) {
-      decision = 'GLOBAL_ACCEPT';
+      decision = "GLOBAL_ACCEPT";
       bestEquipmentId = gTop.equipmentId ?? null;
       bestScore = gTop.score;
     }
 
     let gymRows: typeof globalRows = [];
-    if (decision !== 'GLOBAL_ACCEPT') {
-      gymRows = await knnFromVectorGym({ vector, gymId, limit });
+    if (decision !== "GLOBAL_ACCEPT") {
+      gymRows = await knnFromVectorGym({
+        vector,
+        gymId,
+        limit: searchTopK,
+      });
       const top = gymRows[0];
       if (top && top.score >= T_HIGH) {
-        decision = 'GYM_ACCEPT';
+        decision = "GYM_ACCEPT";
         bestEquipmentId = top.equipmentId ?? null;
         bestScore = top.score;
       } else if (top && top.score >= T_LOW) {
-        decision = 'GYM_SELECT';
+        decision = "GYM_SELECT";
         bestEquipmentId = null;
         bestScore = top.score;
       } else {
-        decision = 'RETAKE';
+        decision = "RETAKE";
         bestEquipmentId = null;
         bestScore = top?.score ?? 0;
       }
@@ -259,17 +272,23 @@ export class RecognitionService {
         imageId: r.id,
       }));
 
-    const gymEq = groupTopEquipment(gymImages, "GYM");
-    let eqCand = gymEq;
-    if (eqCand.length < 3) {
-      const globalOnly = groupTopEquipment(
-        globalImages.filter(
-          (g) => !gymEq.some((x) => x.equipmentId === g.equipmentId)
-        ),
-        "GLOBAL"
-      );
-      eqCand = [...eqCand, ...globalOnly].slice(0, 3);
+    const gymEq = groupTopEquipment(gymImages).filter(
+      (c) => c.topScore >= MIN_ALT_SCORE
+    );
+    gymEq.forEach((c) => (c.source = "GYM"));
+
+    let eqCand = [...gymEq];
+    if (eqCand.length < N) {
+      const taken = new Set(eqCand.map((c) => c.equipmentId));
+      const globalEq = groupTopEquipment(
+        globalImages.filter((i) => !taken.has(i.equipmentId))
+      )
+        .filter((c) => c.topScore >= MIN_ALT_SCORE);
+      globalEq.forEach((c) => (c.source = "GLOBAL"));
+      eqCand = [...eqCand, ...globalEq];
     }
+
+    eqCand = eqCand.slice(0, N);
 
     if (eqCand.length) {
       const ids = eqCand.map((c) => c.equipmentId);
