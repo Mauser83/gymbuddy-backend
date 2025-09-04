@@ -1,0 +1,1 @@
+ALTER TABLE "GymEquipmentImage" ADD COLUMN "safetyReasons" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

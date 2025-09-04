@@ -38,11 +38,29 @@ const safetyProvider = createSafetyProvider();
 const MAX_RETRIES = Number(process.env.WORKER_MAX_RETRIES || 3);
 const BACKOFF_BASE = Number(process.env.QUEUE_BACKOFF_BASE_SEC ?? 5);
 const BACKOFF_MAX = Number(process.env.QUEUE_BACKOFF_MAX_SEC ?? 300);
-const NSFW_FLAG_THRESHOLD = Number(process.env.NSFW_FLAG_THRESHOLD ?? 0.60);
-const NSFW_PERSON_DELTA = Number(process.env.NSFW_PERSON_DELTA ?? 0.0);
+const NSFW_BLOCK = Number(process.env.NSFW_BLOCK ?? 0.8);
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
+
+export type SafetyResult = {
+  nsfwScore: number | null;
+  hasPerson: boolean | null;
+  isSafe: boolean;
+  reasons: string[];
+};
+
+function decideSafety(
+  nsfwScore: number | null,
+  hasPerson: boolean | null,
+): SafetyResult {
+  const reasons: string[] = [];
+  if (hasPerson === true) reasons.push("PERSON_DETECTED");
+  if (nsfwScore != null && nsfwScore >= NSFW_BLOCK)
+    reasons.push(`NSFW_${nsfwScore.toFixed(2)}`);
+  const isSafe = reasons.length === 0;
+  return { nsfwScore, hasPerson, isSafe, reasons };
+}
 
 // helper: download bytes from R2
 async function downloadBytes(key: string): Promise<Uint8Array> {
@@ -85,29 +103,29 @@ async function handleHASH(storageKey: string) {
   return { sha, storageKey };
 }
 
-// --- SAFETY ---
-async function handleSAFETY(storageKey: string) {
+async function runDetectors(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
   const buf = Buffer.from(bytes);
   const base = await safetyProvider.check(buf);
   const personPresent = await hasPerson(buf);
+  return { nsfwScore: base.nsfwScore ?? null, hasPerson: personPresent };
+}
 
-  const t = personPresent
-    ? Math.max(0, NSFW_FLAG_THRESHOLD - NSFW_PERSON_DELTA)
-    : NSFW_FLAG_THRESHOLD;
-
-  const finalScore = base.nsfwScore;
-  const isSafe = finalScore < t;
+// --- SAFETY ---
+async function handleSAFETY(storageKey: string) {
+  const { nsfwScore, hasPerson } = await runDetectors(storageKey);
+  const decision = decideSafety(nsfwScore, hasPerson);
 
   await prisma.gymEquipmentImage.updateMany({
     where: { storageKey },
     data: {
-      isSafe,
-      nsfwScore: finalScore,
-      hasPerson: personPresent,
+      isSafe: decision.isSafe,
+      nsfwScore: decision.nsfwScore,
+      hasPerson: decision.hasPerson,
+      safetyReasons: decision.reasons,
     },
   });
-  if (!isSafe) {
+  if (!decision.isSafe) {
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
       data: { status: "quarantined" },
@@ -115,7 +133,7 @@ async function handleSAFETY(storageKey: string) {
   }
 
   let finalKey = storageKey;
-  if (!isSafe && storageKey.startsWith("private/gym/")) {
+  if (!decision.isSafe && storageKey.startsWith("private/gym/")) {
     const parts = storageKey.split("/");
     const gymEqId = parts[2];
     const file = parts[parts.length - 1];
@@ -130,10 +148,7 @@ async function handleSAFETY(storageKey: string) {
         data: { storageKey: qKey, status: "QUARANTINED" },
       });
     } catch (e) {
-      console.error(
-        "Failed to set QUARANTINED; falling back to REJECTED",
-        e,
-      );
+      console.error("Failed to set QUARANTINED; falling back to REJECTED", e);
       await prisma.gymEquipmentImage.updateMany({
         where: { storageKey },
         data: { storageKey: qKey, status: "REJECTED" },
@@ -145,7 +160,7 @@ async function handleSAFETY(storageKey: string) {
     });
     finalKey = qKey;
   }
-  return { safe: isSafe, storageKey: finalKey };
+  return { safe: decision.isSafe, storageKey: finalKey };
 }
 
 async function handleEMBED(storageKey: string) {

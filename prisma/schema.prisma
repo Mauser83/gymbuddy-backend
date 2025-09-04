@@ -753,6 +753,7 @@ model GymEquipmentImage {
   isSafe           Boolean?
   nsfwScore        Float?
   hasPerson        Boolean?
+  safetyReasons    String[] @default([])
   personCount      Int?
   personBoxes      Json?
   modelVendor      String?

@@ -160,6 +160,9 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
       splitId: true,
       sourceId: true,
       isSafe: true,
+      nsfwScore: true,
+      hasPerson: true,
+      safetyReasons: true,
     } as const;
 
     const status = input.status;
@@ -256,8 +259,8 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
       },
       safety: {
         state: r.isSafe === true ? "COMPLETE" : r.isSafe === false ? "FAILED" : "PENDING",
-        score: null,
-        reasons: [],
+        score: r.nsfwScore ?? null,
+        reasons: r.safetyReasons ?? [],
       },
       dupCount: Math.max((dupTotals.get(r.sha256 ?? "") ?? 1) - 1, 0),
     }));
