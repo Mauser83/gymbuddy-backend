@@ -195,6 +195,7 @@ export enum GymImageStatusDto {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  QUARANTINED = "QUARANTINED",
 }
 
 export class UploadGymImageDto {
@@ -213,7 +214,7 @@ export class UploadGymImageDto {
 
   @IsOptional()
   @IsEnum(GymImageStatusDto, {
-    message: "status must be PENDING | APPROVED | REJECTED",
+    message: "status must be PENDING | APPROVED | REJECTED | QUARANTINED",
   })
   status?: GymImageStatusDto;
 }

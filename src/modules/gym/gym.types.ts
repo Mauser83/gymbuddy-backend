@@ -105,8 +105,12 @@ export interface UpdateGymEquipmentInput {
   note?: string;
 }
 
-export type GymImageStatus = "PENDING" | "APPROVED" | "REJECTED";
-
+export type GymImageStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "QUARANTINED";
+  
 export interface UploadGymImageInput {
   gymId: number;
   equipmentId: number;

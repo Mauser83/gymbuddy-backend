@@ -124,10 +124,21 @@ async function handleSAFETY(storageKey: string) {
     const qKey = `private/gym/${gymEqId}/quarantine/${baseName}.${ext}`;
     await copyObjectIfMissing(storageKey, qKey);
     await deleteObjectIgnoreMissing(storageKey);
-    await prisma.gymEquipmentImage.updateMany({
-      where: { storageKey },
-      data: { storageKey: qKey, status: "QUARANTINED" },
-    });
+    try {
+      await prisma.gymEquipmentImage.updateMany({
+        where: { storageKey },
+        data: { storageKey: qKey, status: "QUARANTINED" },
+      });
+    } catch (e) {
+      console.error(
+        "Failed to set QUARANTINED; falling back to REJECTED",
+        e,
+      );
+      await prisma.gymEquipmentImage.updateMany({
+        where: { storageKey },
+        data: { storageKey: qKey, status: "REJECTED" },
+      });
+    }
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
       data: { storageKey: qKey },
