@@ -191,7 +191,7 @@ describe("ImageModerationService", () => {
       });
     });
 
-it("excludes promoted and includes null sha", async () => {
+    it("excludes promoted and includes null sha", async () => {
       const res = await svc.candidateGlobalImages({ equipmentId: equipId });
       const ids = res.map((r: any) => r.id).sort();
       expect(ids).toEqual(["img2"]);
@@ -206,6 +206,29 @@ it("excludes promoted and includes null sha", async () => {
       const pending = res[0];
       expect(pending.approvedAt).toBeNull();
       expect(pending.approvedByUserId).toBeNull();
+    });
+
+    it("includes images with active jobs", async () => {
+      const gym = await prisma.gym.findFirstOrThrow();
+      await prisma.gymEquipmentImage.create({
+        data: {
+          id: "img6",
+          gymId: gym.id,
+          equipmentId: equipId,
+          status: "APPROVED",
+          storageKey: "job", // unique
+          sha256: "jobsha",
+          approvedAt: new Date(),
+          approvedByUserId: userId,
+        },
+      });
+      await prisma.imageQueue.create({
+        data: { storageKey: "job", jobType: "EMBED", status: "pending" },
+      });
+
+      const res = await svc.candidateGlobalImages({ equipmentId: equipId });
+      const ids = res.map((r: any) => r.id).sort();
+      expect(ids).toEqual(["img2", "img6"]);
     });
 
     it("filters by status when provided", async () => {

@@ -1,4 +1,5 @@
-import { PrismaClient, Prisma } from "../../lib/prisma";
+import { PrismaClient } from "../../lib/prisma";
+import type { Prisma } from "../../generated/prisma";
 import { S3Client, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
@@ -119,37 +120,20 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
     const offset = Math.max(input.offset ?? 0, 0);
 
-    const where: any = {
+    const baseWhere: Prisma.GymEquipmentImageWhereInput = {
       equipmentId: input.equipmentId,
     };
-    if (input.gymId != null) where.gymId = input.gymId;
-
-    const status = input.status;
-    if (status === "CANDIDATE" || status == null) {
-      // UI "Candidate" maps to non-finalized images
-      const candidateStatuses = ["PENDING"] as string[];
-      if ((Prisma.GymImageStatus as any).PROCESSING)
-        candidateStatuses.push("PROCESSING");
-      where.status = { in: candidateStatuses };
-    } else if (
-      status === "APPROVED" ||
-      status === "REJECTED" ||
-      status === "QUARANTINED"
-    ) {
-      where.status = status;
-    } else {
-      throw new Error(`Unsupported status: ${status}`);
-    }
+    if (input.gymId != null) baseWhere.gymId = input.gymId;
 
     if (input.safety?.state) {
-      if (input.safety.state === "COMPLETE") where.isSafe = true;
-      else if (input.safety.state === "FAILED") where.isSafe = false;
-      else where.isSafe = null;
+      if (input.safety.state === "COMPLETE") baseWhere.isSafe = true;
+      else if (input.safety.state === "FAILED") baseWhere.isSafe = false;
+      else baseWhere.isSafe = null;
     }
 
     if (input.search) {
       const s = String(input.search).trim();
-      where.OR = [{ id: s }, { sha256: { startsWith: s } }];
+      baseWhere.OR = [{ id: s }, { sha256: { startsWith: s } }];
     }
 
     const existing = await this.prisma.equipmentImage.findMany({
@@ -158,31 +142,81 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     });
     const existingSet = new Set(existing.map((e) => e.sha256).filter(Boolean));
 
-    const candidates = await this.prisma.gymEquipmentImage.findMany({
-      where,
-      orderBy: { capturedAt: "desc" },
-      skip: offset,
-      take: limit * 2,
-      select: {
-        id: true,
-        gymId: true,
-        equipmentId: true,
-        storageKey: true,
-        sha256: true,
-        status: true,
-        capturedAt: true,
-        approvedAt: true,
-        approvedByUserId: true,
-        angleId: true,
-        heightId: true,
-        distanceId: true,
-        lightingId: true,
-        mirrorId: true,
-        splitId: true,
-        sourceId: true,
-        isSafe: true,
-      },
-    });
+    const select = {
+      id: true,
+      gymId: true,
+      equipmentId: true,
+      storageKey: true,
+      sha256: true,
+      status: true,
+      capturedAt: true,
+      approvedAt: true,
+      approvedByUserId: true,
+      angleId: true,
+      heightId: true,
+      distanceId: true,
+      lightingId: true,
+      mirrorId: true,
+      splitId: true,
+      sourceId: true,
+      isSafe: true,
+    } as const;
+
+    const status = input.status;
+    let candidates: any[] = [];
+    if (status === "CANDIDATE" || status == null) {
+      const pendingWhere: Prisma.GymEquipmentImageWhereInput = {
+        ...baseWhere,
+        status: "PENDING",
+      };
+
+      const jobs = await this.prisma.imageQueue.findMany({
+        where: { status: { in: ["pending", "processing"] } },
+        select: { storageKey: true },
+      });
+      const activeKeys = Array.from(
+        new Set(
+          jobs
+            .map((j) => j.storageKey)
+            .filter((key): key is string => Boolean(key))
+        )
+      );
+
+      candidates = await this.prisma.gymEquipmentImage.findMany({
+        where: pendingWhere,
+        orderBy: { capturedAt: "desc" },
+        skip: offset,
+        take: limit * 2,
+        select,
+      });
+
+      if (activeKeys.length) {
+        const activeRows = await this.prisma.gymEquipmentImage.findMany({
+          where: { ...baseWhere, storageKey: { in: activeKeys } },
+          orderBy: { capturedAt: "desc" },
+          skip: offset,
+          take: limit * 2,
+          select,
+        });
+        const map = new Map(candidates.map((r) => [r.id, r]));
+        for (const r of activeRows) map.set(r.id, r);
+        candidates = Array.from(map.values());
+      }
+    } else if (
+      status === "APPROVED" ||
+      status === "REJECTED" ||
+      status === "QUARANTINED"
+    ) {
+      candidates = await this.prisma.gymEquipmentImage.findMany({
+        where: { ...baseWhere, status },
+        orderBy: { capturedAt: "desc" },
+        skip: offset,
+        take: limit * 2,
+        select,
+      });
+    } else {
+      throw new Error(`Unsupported status: ${status}`);
+    }
 
     const filtered = candidates
       .filter((c) => c.sha256 == null || !existingSet.has(c.sha256))
