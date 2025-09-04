@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../lib/prisma";
+import { PrismaClient, Prisma } from "../../lib/prisma";
 import { S3Client, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
@@ -124,12 +124,21 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     };
     if (input.gymId != null) where.gymId = input.gymId;
 
-    if (input.status === "CANDIDATE") {
-      where.status = { in: ["PENDING", "APPROVED"] };
-    } else if (input.status) {
-      where.status = input.status;
+    const status = input.status;
+    if (status === "CANDIDATE" || status == null) {
+      // UI "Candidate" maps to non-finalized images
+      const candidateStatuses = ["PENDING"] as string[];
+      if ((Prisma.GymImageStatus as any).PROCESSING)
+        candidateStatuses.push("PROCESSING");
+      where.status = { in: candidateStatuses };
+    } else if (
+      status === "APPROVED" ||
+      status === "REJECTED" ||
+      status === "QUARANTINED"
+    ) {
+      where.status = status;
     } else {
-      where.status = { in: ["PENDING", "APPROVED"] };
+      throw new Error(`Unsupported status: ${status}`);
     }
 
     if (input.safety?.state) {

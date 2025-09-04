@@ -8,7 +8,7 @@ import { PrismaClient } from "../../../src/lib/prisma";
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { cleanDB, prisma } from "../../testUtils";
-import { GymImageStatusDto } from "../../../src/modules/gym/gym.dto";
+import { AdminImageListStatusDto } from "../../../src/modules/images/images.dto";
 
 jest.spyOn(S3Client.prototype, "send").mockImplementation((cmd: any) => {
   return Promise.resolve({} as any);
@@ -191,10 +191,10 @@ describe("ImageModerationService", () => {
       });
     });
 
-    it("excludes promoted and includes null sha", async () => {
+it("excludes promoted and includes null sha", async () => {
       const res = await svc.candidateGlobalImages({ equipmentId: equipId });
       const ids = res.map((r: any) => r.id).sort();
-      expect(ids).toEqual(["img2", "img3"]);
+      expect(ids).toEqual(["img2"]);
       res.forEach((r: any) => {
         expect(r).toHaveProperty("createdAt");
         expect(r.gymName).toBe("Gym");
@@ -203,18 +203,15 @@ describe("ImageModerationService", () => {
         expect(r).toHaveProperty("approvedAt");
         expect(r).toHaveProperty("approvedByUserId");
       });
-      const pending = res.find((r: any) => r.id === "img2");
+      const pending = res[0];
       expect(pending.approvedAt).toBeNull();
       expect(pending.approvedByUserId).toBeNull();
-      const approved = res.find((r: any) => r.id === "img3");
-      expect(approved.approvedAt).toBeTruthy();
-      expect(approved.approvedByUserId).toBe(userId);
     });
 
     it("filters by status when provided", async () => {
       const res = await svc.candidateGlobalImages({
         equipmentId: equipId,
-        status: GymImageStatusDto.QUARANTINED,
+        status: AdminImageListStatusDto.QUARANTINED,
       });
       const ids = res.map((r: any) => r.id).sort();
       expect(ids).toEqual(["img5"]);

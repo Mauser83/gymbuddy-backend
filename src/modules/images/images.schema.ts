@@ -1,6 +1,8 @@
 export const imagesTypeDefs = `
   enum SafetyState { PENDING COMPLETE FAILED }
 
+  enum AdminImageListStatus { CANDIDATE APPROVED REJECTED QUARANTINED }
+
   input CandidateSafetyFilter {
     state: SafetyState
     flaggedOnly: Boolean
@@ -107,7 +109,7 @@ export const imagesTypeDefs = `
     limit: Int = 50
     offset: Int = 0
     gymId: Int
-    status: GymImageStatus
+    status: AdminImageListStatus
     search: String
     safety: CandidateSafetyFilter
   }
