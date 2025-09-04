@@ -23,10 +23,29 @@ export const recognitionTypeDefs = `
     storageKey: String!
   }
 
+  type CandidateImage {
+    imageId: ID!
+    equipmentId: Int!
+    gymId: Int
+    storageKey: String!
+    score: Float!
+  }
+
+  type EquipmentCandidate {
+    equipmentId: Int!
+    equipmentName: String
+    topScore: Float!
+    representative: CandidateImage!
+    images: [CandidateImage!]!
+    source: String!
+    totalImagesConsidered: Int!
+  }
+
   type RecognizeImagePayload {
     attempt: RecognitionAttempt!
     globalCandidates: [RecognitionCandidate!]!
     gymCandidates: [RecognitionCandidate!]!
+    equipmentCandidates: [EquipmentCandidate!]!
   }
 
   input ConfirmRecognitionInput {

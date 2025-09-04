@@ -22,6 +22,80 @@ const TICKET_SECRET = process.env.TICKET_SECRET ?? "test-secret";
 const T_HIGH = 0.85;
 const T_LOW = 0.55;
 
+type Img = {
+  equipmentId: number;
+  gymId?: number | null;
+  storageKey: string;
+  score: number;
+  imageId: string;
+};
+
+type CandidateImage = {
+  imageId: string;
+  equipmentId: number;
+  gymId?: number | null;
+  storageKey: string;
+  score: number;
+};
+
+type EquipmentCandidate = {
+  equipmentId: number;
+  equipmentName?: string | null;
+  topScore: number;
+  representative: CandidateImage;
+  images: CandidateImage[];
+  source: string;
+  totalImagesConsidered: number;
+};
+
+function groupTopEquipment(
+  imgs: Img[],
+  source: "GYM" | "GLOBAL",
+  limitPerEq = 3
+): EquipmentCandidate[] {
+  if (!imgs?.length) return [];
+  const sorted = [...imgs].sort((a, b) => b.score - a.score);
+
+  const buckets = new Map<
+    number,
+    { equipmentId: number; items: Img[]; topScore: number; total: number }
+  >();
+  for (const it of sorted) {
+    let b = buckets.get(it.equipmentId);
+    if (!b) {
+      b = { equipmentId: it.equipmentId, items: [], topScore: it.score, total: 0 };
+      buckets.set(it.equipmentId, b);
+    }
+    if (b.items.length < limitPerEq) b.items.push(it);
+    b.total += 1;
+  }
+
+  return Array.from(buckets.values())
+    .sort((a, b) => b.topScore - a.topScore)
+    .slice(0, 3)
+    .map((b) => ({
+      equipmentId: b.equipmentId,
+      equipmentName: undefined,
+      topScore: b.topScore,
+      representative: {
+        imageId: b.items[0].imageId,
+        equipmentId: b.equipmentId,
+        gymId: b.items[0].gymId ?? null,
+        storageKey: b.items[0].storageKey,
+        score: b.items[0].score,
+      },
+      images: b.items.map((it) => ({
+        imageId: it.imageId,
+        equipmentId: it.equipmentId,
+        gymId: it.gymId ?? null,
+        storageKey: it.storageKey,
+        score: it.score,
+      })),
+      source,
+      totalImagesConsidered: b.total,
+    }));
+}
+
 export class RecognitionService {
   private s3 = new S3Client({
     region: "auto",
@@ -165,6 +239,48 @@ export class RecognitionService {
       storageKey: r.storageKey,
     });
 
+    const gymImages: Img[] = gymRows
+      .filter((r) => r.equipmentId != null)
+      .map((r) => ({
+        equipmentId: r.equipmentId!,
+        gymId,
+        storageKey: r.storageKey,
+        score: r.score,
+        imageId: r.id,
+      }));
+
+    const globalImages: Img[] = globalRows
+      .filter((r) => r.equipmentId != null)
+      .map((r) => ({
+        equipmentId: r.equipmentId!,
+        gymId: null,
+        storageKey: r.storageKey,
+        score: r.score,
+        imageId: r.id,
+      }));
+
+    const gymEq = groupTopEquipment(gymImages, "GYM");
+    let eqCand = gymEq;
+    if (eqCand.length < 3) {
+      const globalOnly = groupTopEquipment(
+        globalImages.filter(
+          (g) => !gymEq.some((x) => x.equipmentId === g.equipmentId)
+        ),
+        "GLOBAL"
+      );
+      eqCand = [...eqCand, ...globalOnly].slice(0, 3);
+    }
+
+    if (eqCand.length) {
+      const ids = eqCand.map((c) => c.equipmentId);
+      const eqMap = await prisma.equipment
+        .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+        .then((rows) => new Map(rows.map((r) => [r.id, r.name])));
+      eqCand.forEach((c) => {
+        c.equipmentName = eqMap.get(c.equipmentId) ?? null;
+      });
+    }
+
     return {
       attempt: {
         attemptId: String(attempt.id),           // ← stringify
@@ -177,6 +293,7 @@ export class RecognitionService {
       },
       globalCandidates: globalRows.map(mapRow),
       gymCandidates: gymRows.map(mapRow),
+      equipmentCandidates: eqCand,
     };
   }
 
