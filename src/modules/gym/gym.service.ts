@@ -21,6 +21,7 @@ import {
 } from "../media/media.service";
 import { kickBurstRunner } from "../images/image-worker";
 import { priorityFromSource } from "../images/queue.service";
+import { makeKey } from "../../utils/makeKey";
 
 const fullGymInclude = {
   creator: true,
@@ -493,7 +494,7 @@ export class GymService {
     const ext = params.ext.trim().toLowerCase();
     if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
 
-    const storageKey = `private/uploads/gym/${params.gymId}/${randomUUID()}.${ext}`;
+    const storageKey = makeKey('upload', { gymId: params.gymId }, { ext: ext as 'jpg' | 'png' | 'webp' });
     const contentType = params.contentType || inferContentType(ext);
     const cmd = new PutObjectCommand({
       Bucket: BUCKET,
