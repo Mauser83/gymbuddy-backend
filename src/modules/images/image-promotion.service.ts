@@ -336,7 +336,10 @@ async listTrainingCandidates(
     };
   }
 
-  async approveTrainingCandidate(input: ApproveTrainingCandidateDto, ctx: AuthContext) {
+  async approveTrainingCandidate(
+    input: ApproveTrainingCandidateDto,
+    ctx: AuthContext
+  ) {
     const cand = (await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
       select: {
@@ -346,72 +349,94 @@ async listTrainingCandidates(
         storageKey: true,
         hash: true,
         embedding: true,
+        status: true,
         capturedAt: true,
       } as any,
     })) as any;
-    if (!cand.gymId || !cand.gymEquipmentId || !cand.storageKey || !cand.hash) {
-      throw new Error('Candidate missing required fields');
+
+    if (!cand.gymId || !cand.gymEquipmentId) {
+      throw new Error("Candidate missing required fields");
     }
+    if (cand.status === "quarantined") {
+      throw new Error("Cannot approve quarantined image");
+    }
+    if (!cand.hash || !cand.storageKey) {
+      throw new Error("Candidate not processed yet");
+    }
+
     verifyGymScope(ctx, ctx.permissionService, cand.gymId);
 
-    const ext = fileExtFrom(cand.storageKey);
+    const ext =
+      cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
     const approvedKey = `private/gym/${cand.gymEquipmentId}/approved/${cand.hash}.${ext}`;
-    await this.s3.send(
-      new CopyObjectCommand({
-        Bucket: BUCKET,
-        CopySource: `${BUCKET}/${cand.storageKey}`,
-        Key: approvedKey,
-        MetadataDirective: 'COPY',
-        ACL: 'private',
-      })
-    );
 
-    const gymEq = await this.prisma.gymEquipment.findUniqueOrThrow({
-      where: { id: cand.gymEquipmentId },
-      select: { equipmentId: true },
-    });
-
-    const img = await this.prisma.gymEquipmentImage.create({
-      data: {
-        gymId: cand.gymId,
-        gymEquipmentId: cand.gymEquipmentId,
-        equipmentId: gymEq.equipmentId,
-        storageKey: approvedKey,
-        status: 'APPROVED',
-        approvedAt: new Date(),
-        approvedByUserId: ctx.userId ?? null,
-        sha256: cand.hash,
-        capturedAt: cand.capturedAt ?? new Date(),
-      },
-    });
-
-        if (cand.embedding) {
-      await writeImageEmbedding({
-        target: 'GYM',
-        imageId: img.id,
-        gymId: cand.gymId,
-        vector: cand.embedding,
-        modelVendor: EMBED_VENDOR,
-        modelName: EMBED_MODEL,
-        modelVersion: EMBED_VERSION,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.gymEquipmentImage.findFirst({
+        where: { storageKey: approvedKey },
+        select: { id: true },
       });
-    } else {
-      await this.prisma.imageQueue.create({
+      if (existing) {
+        await tx.trainingCandidate.update({
+          where: { id: cand.id },
+          data: { status: "approved", imageId: existing.id },
+        });
+        return { approved: true, imageId: existing.id, storageKey: approvedKey };
+      }
+
+      const gymEq = await tx.gymEquipment.findUniqueOrThrow({
+        where: { id: cand.gymEquipmentId },
+        select: { equipmentId: true },
+      });
+
+      try {
+        await this.s3.send(
+          new CopyObjectCommand({
+            Bucket: BUCKET,
+            CopySource: `${BUCKET}/${cand.storageKey}`,
+            Key: approvedKey,
+            MetadataDirective: "COPY",
+            ACL: "private",
+          })
+        );
+      } catch (err) {
+        console.error("Copy to approved key failed", err);
+        throw new Error("Failed to copy candidate image");
+      }
+
+      const img = await tx.gymEquipmentImage.create({
         data: {
-          jobType: 'EMBED',
-          status: ImageJobStatus.pending,
-          priority: 100,
-          storageKey: cand.storageKey,
+          gymId: cand.gymId,
+          gymEquipmentId: cand.gymEquipmentId,
+          equipmentId: gymEq.equipmentId,
+          storageKey: approvedKey,
+          status: "APPROVED",
+          approvedAt: new Date(),
+          approvedByUserId: ctx.userId ?? null,
+          sha256: cand.hash,
+          capturedAt: cand.capturedAt ?? new Date(),
         },
+        select: { id: true },
       });
-    }
 
-    await this.prisma.trainingCandidate.update({
-      where: { id: cand.id },
-      data: { status: 'approved', imageId: img.id, storageKey: approvedKey },
+      if (cand.embedding) {
+        await writeImageEmbedding({
+          target: "GYM",
+          imageId: img.id,
+          gymId: cand.gymId,
+          vector: cand.embedding,
+          modelVendor: EMBED_VENDOR,
+          modelName: EMBED_MODEL,
+          modelVersion: EMBED_VERSION,
+        });
+      }
+
+      await tx.trainingCandidate.update({
+        where: { id: cand.id },
+        data: { status: "approved", imageId: img.id },
+      });
+
+      return { approved: true, imageId: img.id, storageKey: approvedKey };
     });
-
-    return { approved: true, imageId: img.id, storageKey: approvedKey };
   }
 
   async rejectTrainingCandidate(input: RejectTrainingCandidateDto, ctx: AuthContext) {
