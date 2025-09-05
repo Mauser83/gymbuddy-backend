@@ -340,6 +340,7 @@ async listTrainingCandidates(
     input: ApproveTrainingCandidateDto,
     ctx: AuthContext
   ) {
+    console.log("approveTrainingCandidate was called!")
     const cand = (await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
       select: {
@@ -363,13 +364,14 @@ async listTrainingCandidates(
     if (!cand.hash || !cand.storageKey) {
       throw new Error("Candidate not processed yet");
     }
-
+    console.log("verifyGymScope was called!")
     verifyGymScope(ctx, ctx.permissionService, cand.gymId);
 
     const ext =
       cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
     const approvedKey = `private/gym/${cand.gymEquipmentId}/approved/${cand.hash}.${ext}`;
 
+    console.log("this.prisma.$transaction was called!")
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.gymEquipmentImage.findFirst({
         where: { storageKey: approvedKey },
@@ -382,7 +384,7 @@ async listTrainingCandidates(
         });
         return { approved: true, imageId: existing.id, storageKey: approvedKey };
       }
-
+      console.log("tx.gymEquipment.findUniqueOrThrow was called!")
       const gymEq = await tx.gymEquipment.findUniqueOrThrow({
         where: { id: cand.gymEquipmentId },
         select: { equipmentId: true },
@@ -403,6 +405,7 @@ async listTrainingCandidates(
         throw new Error("Failed to copy candidate image");
       }
 
+      console.log("tx.gymEquipmentImage.create was called!")
       const img = await tx.gymEquipmentImage.create({
         data: {
           gymId: cand.gymId,
@@ -419,6 +422,7 @@ async listTrainingCandidates(
       });
 
       if (cand.embedding) {
+              console.log("writeImageEmbedding was called!")
         await writeImageEmbedding({
           target: "GYM",
           imageId: img.id,
@@ -430,11 +434,13 @@ async listTrainingCandidates(
         });
       }
 
+              console.log("tx.trainingCandidate.update was called!")
       await tx.trainingCandidate.update({
         where: { id: cand.id },
         data: { status: "approved", imageId: img.id },
       });
 
+              console.log("return was called!")
       return { approved: true, imageId: img.id, storageKey: approvedKey };
     });
   }
