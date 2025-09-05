@@ -316,17 +316,38 @@ export class RecognitionService {
     };
   }
 
-  async confirmRecognition(input: { attemptId: bigint; selectedEquipmentId: number; offerForTraining: boolean }) {
-    const attempt = await prisma.recognitionAttempt.update({
+async confirmRecognition(input: {
+    attemptId: bigint;
+    selectedEquipmentId: number;
+    offerForTraining: boolean;
+  }) {
+    const attempt = await prisma.recognitionAttempt.findUnique({
       where: { id: input.attemptId },
-      data: { consent: input.offerForTraining ? 'granted' : 'denied', bestEquipmentId: input.selectedEquipmentId },
+    });
+    if (!attempt) throw new Error("Attempt not found");
+
+    const gymEquipment = await prisma.gymEquipment.findFirst({
+      where: {
+        gymId: attempt.gymId,
+        equipmentId: input.selectedEquipmentId,
+      },
+    });
+    if (!gymEquipment)
+      throw new Error("Selected equipment is not part of this gym");
+
+    await prisma.recognitionAttempt.update({
+      where: { id: input.attemptId },
+      data: {
+        consent: input.offerForTraining ? "granted" : "denied",
+        bestEquipmentId: input.selectedEquipmentId,
+      },
     });
 
     let promotedStorageKey: string | null = null;
     if (input.offerForTraining) {
-      const parts = attempt.storageKey.split('.');
-      const ext = parts[parts.length - 1] || 'jpg';
-      const targetKey = `private/uploads/${attempt.gymId}/training/${input.selectedEquipmentId}/${randomUUID()}.${ext}`;
+      const parts = attempt.storageKey.split(".");
+      const ext = parts[parts.length - 1] || "jpg";
+      const targetKey = `private/uploads/${attempt.gymId}/training/${gymEquipment.id}/${randomUUID()}.${ext}`;
 
       await this.s3.send(
         new CopyObjectCommand({
@@ -338,10 +359,10 @@ export class RecognitionService {
 
       await prisma.trainingCandidate.create({
         data: {
-          gymId: attempt.gymId,
-          gymEquipmentId: input.selectedEquipmentId,
+          gymId: gymEquipment.gymId,
+          gymEquipmentId: gymEquipment.id,
           storageKey: targetKey,
-          source: 'user_submission',
+          source: "user_submission",
         },
       });
 
