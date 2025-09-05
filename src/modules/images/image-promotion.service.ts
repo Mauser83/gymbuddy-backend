@@ -13,6 +13,7 @@ import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
 import sharp from "sharp";
 import { kickBurstRunner } from "./image-worker";
+import { writeImageEmbedding } from "../cv/embeddingWriter";
 
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
 const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
@@ -384,15 +385,25 @@ async listTrainingCandidates(
       },
     });
 
-    if (cand.embedding) {
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE "GymEquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5`,
-        cand.embedding,
-        EMBED_VENDOR,
-        EMBED_MODEL,
-        EMBED_VERSION,
-        img.id,
-      );
+        if (cand.embedding) {
+      await writeImageEmbedding({
+        target: 'GYM',
+        imageId: img.id,
+        gymId: cand.gymId,
+        vector: cand.embedding,
+        modelVendor: EMBED_VENDOR,
+        modelName: EMBED_MODEL,
+        modelVersion: EMBED_VERSION,
+      });
+    } else {
+      await this.prisma.imageQueue.create({
+        data: {
+          jobType: 'EMBED',
+          status: ImageJobStatus.pending,
+          priority: 100,
+          storageKey: cand.storageKey,
+        },
+      });
     }
 
     await this.prisma.trainingCandidate.update({

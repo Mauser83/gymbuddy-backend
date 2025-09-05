@@ -327,19 +327,22 @@ export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY 
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(Math.min(concurrency, limit));
 
-  for (const job of jobs) {
+for (const job of jobs) {
     try {
       await processJob(job);
     } catch (err) {
       const attempts = job.attempts ?? 0;
       if (attempts >= MAX_RETRIES) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg =
+          err instanceof Error
+            ? `${err.message}\n${err.stack ?? ''}`
+            : String(err);
         await prisma.imageQueue.update({
           where: { id: job.id },
           data: {
             status: ImageJobStatus.failed,
             finishedAt: new Date(),
-            lastError: msg.slice(0, 500),
+            lastError: msg.slice(0, 3000),
           },
         });
       } else {
@@ -401,13 +404,16 @@ export async function kickBurstRunner({
           console.error("job failed", job.id, err);
           const attempts = job.attempts ?? 0;
           if (attempts >= MAX_RETRIES) {
-            const msg = err instanceof Error ? err.message : String(err);
+            const msg =
+              err instanceof Error
+                ? `${err.message}\n${err.stack ?? ''}`
+                : String(err);
             await prisma.imageQueue.update({
               where: { id: job.id },
               data: {
                 status: ImageJobStatus.failed,
                 finishedAt: new Date(),
-                lastError: msg.slice(0, 500),
+                lastError: msg.slice(0, 3000),
               },
             });
           } else {
