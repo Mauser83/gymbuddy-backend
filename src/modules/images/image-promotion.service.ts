@@ -341,7 +341,7 @@ async listTrainingCandidates(
     ctx: AuthContext
   ) {
     console.log("approveTrainingCandidate was called!")
-    const cand = (await this.prisma.trainingCandidate.findUniqueOrThrow({
+    const cand = await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
       select: {
         id: true,
@@ -349,13 +349,18 @@ async listTrainingCandidates(
         gymEquipmentId: true,
         storageKey: true,
         hash: true,
-        embedding: true,
         status: true,
         capturedAt: true,
-      } as any,
-    })) as any;
+      },
+    });
 
-    if (!cand.gymId || !cand.gymEquipmentId) {
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT embedding FROM "TrainingCandidate" WHERE id = $1`,
+      input.id
+    );
+    const candidateVector = rows?.[0]?.embedding ?? null;
+
+    if (cand.gymId == null || cand.gymEquipmentId == null) {
       throw new Error("Candidate missing required fields");
     }
     if (cand.status === "quarantined") {
@@ -363,13 +368,16 @@ async listTrainingCandidates(
     }
     if (!cand.hash || !cand.storageKey) {
       throw new Error("Candidate not processed yet");
-    }
+    }    
+    const gymId = cand.gymId;
+    const gymEquipmentId = cand.gymEquipmentId;
+
     console.log("verifyGymScope was called!")
-    verifyGymScope(ctx, ctx.permissionService, cand.gymId);
+    verifyGymScope(ctx, ctx.permissionService, gymId);
 
     const ext =
       cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
-    const approvedKey = `private/gym/${cand.gymEquipmentId}/approved/${cand.hash}.${ext}`;
+    const approvedKey = `private/gym/${gymEquipmentId}/approved/${cand.hash}.${ext}`;
 
     console.log("this.prisma.$transaction was called!")
     return this.prisma.$transaction(async (tx) => {
@@ -386,7 +394,7 @@ async listTrainingCandidates(
       }
       console.log("tx.gymEquipment.findUniqueOrThrow was called!")
       const gymEq = await tx.gymEquipment.findUniqueOrThrow({
-        where: { id: cand.gymEquipmentId },
+        where: { id: gymEquipmentId },
         select: { equipmentId: true },
       });
 
@@ -408,8 +416,8 @@ async listTrainingCandidates(
       console.log("tx.gymEquipmentImage.create was called!")
       const img = await tx.gymEquipmentImage.create({
         data: {
-          gymId: cand.gymId,
-          gymEquipmentId: cand.gymEquipmentId,
+          gymId,
+          gymEquipmentId,
           equipmentId: gymEq.equipmentId,
           storageKey: approvedKey,
           status: "APPROVED",
@@ -421,13 +429,13 @@ async listTrainingCandidates(
         select: { id: true },
       });
 
-      if (cand.embedding) {
-              console.log("writeImageEmbedding was called!")
+            if (candidateVector) {
+        console.log("writeImageEmbedding was called!");
         await writeImageEmbedding({
           target: "GYM",
           imageId: img.id,
-          gymId: cand.gymId,
-          vector: cand.embedding,
+          gymId,
+          vector: candidateVector,
           modelVendor: EMBED_VENDOR,
           modelName: EMBED_MODEL,
           modelVersion: EMBED_VERSION,
