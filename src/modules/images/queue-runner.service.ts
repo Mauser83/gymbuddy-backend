@@ -93,7 +93,7 @@ export class QueueRunnerService {
   async markFailed(id: string, err: unknown, backoffSeconds = 60) {
     const msg =
       err instanceof Error
-        ? `${err.message}\n${err.stack ?? ''}`
+        ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
         : String(err);
     const next = new Date(Date.now() + backoffSeconds * 1000);
     await this.prisma.imageQueue.update({

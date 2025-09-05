@@ -186,93 +186,106 @@ async function handleSAFETY(storageKey: string) {
   return { safe: decision.isSafe, storageKey: finalKey };
 }
 
-async function handleEMBED(storageKey: string) {
-  // 1) locate image rows for this object
-  const candidate = await prisma.trainingCandidate.findFirst({
-    where: { storageKey },
-    select: { id: true, gymId: true, uploaderUserId: true, imageId: true },
-  });
-  const gymImg = await prisma.gymEquipmentImage.findFirst({
-    where: { storageKey },
-    select: { id: true, gymId: true },
-  });
-  const eqImg = gymImg
-    ? null
-    : await prisma.equipmentImage.findFirst({
-        where: { storageKey },
-        select: { id: true },
-      });
-  if (!gymImg && !eqImg && !candidate) throw new Error("Image not found for storageKey");
-
-  const scopeType = gymImg ? "GYM" : eqImg ? "GLOBAL" : "CANDIDATE";
-  const gymId = gymImg?.gymId ?? candidate?.gymId ?? null;
-
-  // 2) compute vector
+async function embedFromStorageKey(storageKey: string): Promise<number[]> {
   const bytes = await downloadBytes(storageKey);
   await embedInitPromise;
   const vecFloat = await embedImage(Buffer.from(bytes));
   let ss = 0;
   for (let i = 0; i < vecFloat.length; i++) ss += vecFloat[i] * vecFloat[i];
   const norm = Math.sqrt(ss);
-  if (!(norm > 0)) {
-    throw new Error('[embed] zero/invalid norm — refusing to insert');
-  }
+  if (!(norm > 0)) throw new Error('[embed] zero/invalid norm — refusing to insert');
   const vecNorm = new Float32Array(vecFloat.length);
   for (let i = 0; i < vecFloat.length; i++) vecNorm[i] = vecFloat[i] / norm;
   if (process.env.EMBED_LOG === '1') {
     console.log('[db] writing embed sample:', Array.from(vecNorm.slice(0, 8)));
   }
-  const vec = Array.from(vecNorm);
+  return Array.from(vecNorm);
+}
 
-  // 3) write vector to correct table/row
-  if (scopeType === "CANDIDATE") {
-    await prisma.trainingCandidate.update({
-      where: { id: candidate!.id },
-      data: { embedding: vec, processedAt: new Date() } as any,
-    });
-    return { ok: true };
-  }
+async function handleEMBED(job: QueueJob) {
+  const storageKey = job.storageKey;
+  if (!storageKey) throw new Error('EMBED job missing storageKey');
 
-  await writeImageEmbedding({
-    target: scopeType === "GYM" ? "GYM" : "GLOBAL",
-    imageId: scopeType === "GYM" ? gymImg!.id : eqImg!.id,
-    gymId: gymId ?? undefined,
-    vector: vec,
-    modelVendor: EMBED_VENDOR,
-    modelName: EMBED_MODEL,
-    modelVersion: EMBED_VERSION,
+  const candidate = await prisma.trainingCandidate.findFirst({
+    where: { storageKey },
+    select: { id: true, gymId: true, uploaderUserId: true, imageId: true },
   });
-
-  if (candidate && candidate.imageId) {
-        const gym = candidate.gymId
-      ? await prisma.gym.findUnique({
-          where: { id: candidate.gymId },
-          select: { autoApproveManagerUploads: true },
-        })
-      : null;
-    const trusted =
-      candidate.uploaderUserId && candidate.gymId
-        ? await userIsTrustedForGym(
-            candidate.uploaderUserId,
-            candidate.gymId,
-          )
-        : false;
-    if (trusted && gym?.autoApproveManagerUploads) {
-      await prisma.trainingCandidate.update({
-        where: { id: candidate.id },
-        data: { status: "approved" },
-      });
-      await prisma.gymEquipmentImage.updateMany({
-        where: { id: candidate.imageId || "" },
-        data: {
-          status: "APPROVED",
-          approvedAt: new Date(),
-          approvedByUserId: candidate.uploaderUserId || undefined,
-        },
-      });
-    }
+  if (candidate && !candidate.imageId) {
+    const vec = await embedFromStorageKey(storageKey);
+    await prisma.$executeRawUnsafe(
+      `UPDATE "TrainingCandidate" SET embedding = $1, "processedAt" = NOW() WHERE id = $2`,
+      vec,
+      candidate.id,
+    );
+    return;
   }
-  return { ok: true };
+
+  const gymImg = await prisma.gymEquipmentImage.findFirst({
+    where: { storageKey },
+    select: { id: true, gymId: true },
+  });
+  if (gymImg) {
+    const vec = await embedFromStorageKey(storageKey);
+    await writeImageEmbedding({
+      target: 'GYM',
+      imageId: gymImg.id,
+      gymId: gymImg.gymId ?? undefined,
+      vector: vec,
+      modelVendor: EMBED_VENDOR,
+      modelName: EMBED_MODEL,
+      modelVersion: EMBED_VERSION,
+    });
+
+    if (candidate && candidate.imageId === gymImg.id) {
+      const gym = candidate.gymId
+        ? await prisma.gym.findUnique({
+            where: { id: candidate.gymId },
+            select: { autoApproveManagerUploads: true },
+          })
+        : null;
+      const trusted =
+        candidate.uploaderUserId && candidate.gymId
+          ? await userIsTrustedForGym(
+              candidate.uploaderUserId,
+              candidate.gymId,
+            )
+          : false;
+      if (trusted && gym?.autoApproveManagerUploads) {
+        await prisma.trainingCandidate.update({
+          where: { id: candidate.id },
+          data: { status: 'approved' },
+        });
+        await prisma.gymEquipmentImage.updateMany({
+          where: { id: gymImg.id },
+          data: {
+            status: 'APPROVED',
+            approvedAt: new Date(),
+            approvedByUserId: candidate.uploaderUserId || undefined,
+          },
+        });
+      }
+    }
+    return;
+  }
+
+  const eqImg = await prisma.equipmentImage.findFirst({
+    where: { storageKey },
+    select: { id: true },
+  });
+  if (eqImg) {
+    const vec = await embedFromStorageKey(storageKey);
+    await writeImageEmbedding({
+      target: 'GLOBAL',
+      imageId: eqImg.id,
+      vector: vec,
+      modelVendor: EMBED_VENDOR,
+      modelName: EMBED_MODEL,
+      modelVersion: EMBED_VERSION,
+    });
+    return;
+  }
+
+  throw new Error(`EMBED: no entity matches storageKey=${storageKey}`);
 }
 
 async function processJob(job: QueueJob) {
@@ -315,7 +328,7 @@ async function processJob(job: QueueJob) {
       break;
     }
     case "EMBED":
-      await handleEMBED(key);
+      await handleEMBED(job);
       break;
     default:
       throw new Error(`Unsupported jobType: ${job.jobType}`);
@@ -335,7 +348,7 @@ for (const job of jobs) {
       if (attempts >= MAX_RETRIES) {
         const msg =
           err instanceof Error
-            ? `${err.message}\n${err.stack ?? ''}`
+            ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
             : String(err);
         await prisma.imageQueue.update({
           where: { id: job.id },
@@ -404,10 +417,10 @@ export async function kickBurstRunner({
           console.error("job failed", job.id, err);
           const attempts = job.attempts ?? 0;
           if (attempts >= MAX_RETRIES) {
-            const msg =
-              err instanceof Error
-                ? `${err.message}\n${err.stack ?? ''}`
-                : String(err);
+          const msg =
+            err instanceof Error
+              ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
+              : String(err);
             await prisma.imageQueue.update({
               where: { id: job.id },
               data: {
