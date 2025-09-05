@@ -998,6 +998,7 @@ model TrainingCandidate {
   safetyReasons String[]       @default([])
   capturedAt    DateTime?
   processedAt   DateTime?
+  rejectionReason String?
   embedding     Unsupported("vector")?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt

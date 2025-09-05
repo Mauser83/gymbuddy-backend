@@ -3,6 +3,8 @@ export const imagesTypeDefs = `
 
   enum AdminImageListStatus { CANDIDATE APPROVED REJECTED QUARANTINED }
 
+  enum TrainingCandidateStatus { PENDING QUARANTINED APPROVED REJECTED }
+
   input CandidateSafetyFilter {
     state: SafetyState
     flaggedOnly: Boolean
@@ -109,16 +111,48 @@ export const imagesTypeDefs = `
   }
 
   type ApproveTrainingCandidatePayload {
-    gymImage: GymEquipmentImage!
+    approved: Boolean!
+    imageId: ID
+    storageKey: String
   }
 
   input RejectTrainingCandidateInput {
     id: ID!
-    deleteObject: Boolean = false
+    reason: String
   }
 
   type RejectTrainingCandidatePayload {
-    success: Boolean!
+    rejected: Boolean!
+  }
+
+  input ListTrainingCandidatesInput {
+    gymId: Int!
+    status: TrainingCandidateStatus = PENDING
+    equipmentId: Int
+    q: String
+    cursor: String
+    limit: Int = 50
+  }
+
+  type TrainingCandidateRow {
+    id: ID!
+    gymId: Int!
+    gymEquipmentId: Int!
+    equipmentId: Int!
+    equipmentName: String
+    storageKey: String!
+    url: String!
+    status: TrainingCandidateStatus!
+    safetyReasons: [String!]
+    capturedAt: String
+    uploader: User
+    hash: String
+    processedAt: String
+  }
+
+  type TrainingCandidateConnection {
+    items: [TrainingCandidateRow!]!
+    nextCursor: String
   }
 
   input CandidateGlobalImagesInput {
@@ -176,5 +210,6 @@ export const imagesTypeDefs = `
 
   extend type Query {
     candidateGlobalImages(input: CandidateGlobalImagesInput!): [CandidateGymImage!]!
+    listTrainingCandidates(input: ListTrainingCandidatesInput!): TrainingCandidateConnection!
   }
 `;

@@ -9,10 +9,18 @@ import {
   ApproveTrainingCandidateDto,
   RejectTrainingCandidateDto,
   CandidateGlobalImagesDto,
+  ListTrainingCandidatesDto,
 } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 
 export const ImagesResolvers = {
+    TrainingCandidateRow: {
+    url: (
+      src: { storageKey: string },
+      _args: unknown,
+      ctx: AuthContext
+    ) => ctx.mediaService.presignGetForKey(src.storageKey, 300),
+  },
   CandidateGymImage: {
     approvedBy: (
       src: { approvedByUserId?: number; approvedByUser?: any },
@@ -118,6 +126,15 @@ export const ImagesResolvers = {
       const dto = Object.assign(new CandidateGlobalImagesDto(), input);
       await validateOrReject(dto);
       return ctx.imageModerationService.candidateGlobalImages(dto);
+    },
+    listTrainingCandidates: async (
+      _parent: unknown,
+      { input }: { input: ListTrainingCandidatesDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ListTrainingCandidatesDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.listTrainingCandidates(dto, ctx);
     },
   },
 };

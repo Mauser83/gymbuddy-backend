@@ -90,10 +90,37 @@ export class ApproveTrainingCandidateDto {
 export class RejectTrainingCandidateDto {
   @IsString()
   id!: string;
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+export enum TrainingCandidateStatusDto {
+  PENDING = "PENDING",
+  QUARANTINED = "QUARANTINED",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export class ListTrainingCandidatesDto {
+  @IsInt()
+  gymId!: number;
 
   @IsOptional()
-  @IsBoolean()
-  deleteObject?: boolean;
+  @IsEnum(TrainingCandidateStatusDto)
+  status?: TrainingCandidateStatusDto;
+
+  @IsOptional() @IsInt()
+  equipmentId?: number;
+
+  @IsOptional() @IsString()
+  q?: string;
+
+  @IsOptional() @IsString()
+  cursor?: string;
+
+  @IsOptional() @IsInt()
+  limit?: number;
 }
 
 export enum AdminImageListStatusDto {

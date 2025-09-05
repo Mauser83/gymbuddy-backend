@@ -1,14 +1,13 @@
 import { PrismaClient } from "../../lib/prisma";
-import {
-  S3Client,
-  CopyObjectCommand,
-  HeadObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, CopyObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { fileExtFrom } from "../../utils/makeKey";
 import { randomUUID } from "crypto";
-import { PromoteGymImageDto, ApproveTrainingCandidateDto, RejectTrainingCandidateDto } from "./images.dto";
+import {
+  PromoteGymImageDto,
+  ApproveTrainingCandidateDto,
+  RejectTrainingCandidateDto,
+  ListTrainingCandidatesDto,
+} from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
@@ -254,6 +253,88 @@ export class ImagePromotionService {
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };
   }
 
+async listTrainingCandidates(
+    input: ListTrainingCandidatesDto,
+    ctx: AuthContext
+  ) {
+    verifyGymScope(ctx, ctx.permissionService, input.gymId);
+
+    const where: any = {
+      gymId: input.gymId,
+      status: (input.status ?? "PENDING").toLowerCase(),
+    };
+
+    if (input.equipmentId) {
+      where.gymEquipment = { equipmentId: input.equipmentId };
+    }
+
+    if (input.q) {
+      where.gymEquipment = {
+        ...(where.gymEquipment || {}),
+        equipment: {
+          OR: [
+            { name: { contains: input.q, mode: "insensitive" } },
+            { brand: { contains: input.q, mode: "insensitive" } },
+          ],
+        },
+      };
+    }
+
+    const limit = Math.min(input.limit ?? 50, 100);
+
+    let cursorFilter: any = {};
+    if (input.cursor) {
+      const [id, createdAt] = Buffer.from(input.cursor, "base64")
+        .toString("utf8")
+        .split("|");
+      cursorFilter = {
+        OR: [
+          { createdAt: { lt: new Date(createdAt) } },
+          { createdAt: new Date(createdAt), id: { lt: id } },
+        ],
+      };
+    }
+
+    const rows = await this.prisma.trainingCandidate.findMany({
+      where: { ...where, ...cursorFilter },
+      include: {
+        gymEquipment: { include: { equipment: true } },
+        uploader: { select: { id: true, username: true } },
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+    });
+
+    let nextCursor: string | null = null;
+    if (rows.length > limit) {
+      const last = rows.pop()!;
+      nextCursor = Buffer.from(
+        `${last.id}|${last.createdAt.toISOString()}`
+      ).toString("base64");
+    }
+
+    return {
+      items: rows.map(r => ({
+        id: r.id,
+        gymId: r.gymId!,
+        gymEquipmentId: r.gymEquipmentId!,
+        equipmentId: r.gymEquipment?.equipmentId!,
+        equipmentName: r.gymEquipment?.equipment?.name ?? null,
+        storageKey: r.storageKey,
+        status: r.status.toUpperCase(),
+        safetyReasons: r.safetyReasons,
+        capturedAt: r.capturedAt?.toISOString() ?? null,
+        uploader: r.uploader,
+        hash: r.hash,
+        processedAt: r.processedAt?.toISOString() ?? null,
+      })),
+      nextCursor,
+    };
+  }
+
   async approveTrainingCandidate(input: ApproveTrainingCandidateDto, ctx: AuthContext) {
     const cand = (await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
@@ -319,27 +400,21 @@ export class ImagePromotionService {
       data: { status: 'approved', imageId: img.id, storageKey: approvedKey },
     });
 
-    return { gymImage: img };
+    return { approved: true, imageId: img.id, storageKey: approvedKey };
   }
 
   async rejectTrainingCandidate(input: RejectTrainingCandidateDto, ctx: AuthContext) {
     const cand = await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
-      select: { id: true, gymId: true, storageKey: true },
+      select: { id: true, gymId: true },
     });
     if (cand.gymId) verifyGymScope(ctx, ctx.permissionService, cand.gymId);
 
     await this.prisma.trainingCandidate.update({
       where: { id: cand.id },
-      data: { status: 'rejected' },
+      data: { status: 'rejected', rejectionReason: input.reason ?? null },
     });
 
-    if (input.deleteObject && cand.storageKey) {
-      await this.s3
-        .send(new DeleteObjectCommand({ Bucket: BUCKET, Key: cand.storageKey }))
-        .catch(() => {});
-    }
-
-    return { success: true };
+    return { rejected: true };
   }
 }
