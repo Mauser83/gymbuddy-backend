@@ -104,6 +104,23 @@ export const imagesTypeDefs = `
     gymImage: GymEquipmentImage!
   }
 
+  input ApproveTrainingCandidateInput {
+    id: ID!
+  }
+
+  type ApproveTrainingCandidatePayload {
+    gymImage: GymEquipmentImage!
+  }
+
+  input RejectTrainingCandidateInput {
+    id: ID!
+    deleteObject: Boolean = false
+  }
+
+  type RejectTrainingCandidatePayload {
+    success: Boolean!
+  }
+
   input CandidateGlobalImagesInput {
     equipmentId: Int!
     limit: Int = 50
@@ -153,6 +170,8 @@ export const imagesTypeDefs = `
     promoteGymImageToGlobal(input: PromoteGymImageInput!): PromoteGymImagePayload!
     approveGymImage(input: ApproveGymImageInput!): ApproveGymImagePayload!
     rejectGymImage(input: RejectGymImageInput!): RejectGymImagePayload!
+    approveTrainingCandidate(input: ApproveTrainingCandidateInput!): ApproveTrainingCandidatePayload!
+    rejectTrainingCandidate(input: RejectTrainingCandidateInput!): RejectTrainingCandidatePayload!
   }
 
   extend type Query {

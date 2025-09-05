@@ -82,6 +82,20 @@ export class RejectGymImageDto {
   deleteObject?: boolean;
 }
 
+export class ApproveTrainingCandidateDto {
+  @IsString()
+  id!: string;
+}
+
+export class RejectTrainingCandidateDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleteObject?: boolean;
+}
+
 export enum AdminImageListStatusDto {
   CANDIDATE = "CANDIDATE",
   APPROVED = "APPROVED",

@@ -57,7 +57,6 @@ export const recognitionTypeDefs = `
 
   type ConfirmRecognitionPayload {
     saved: Boolean!
-    promotedStorageKey: String
   }
 
   extend type Mutation {

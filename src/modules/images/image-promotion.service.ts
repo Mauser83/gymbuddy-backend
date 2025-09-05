@@ -4,10 +4,11 @@ import {
   CopyObjectCommand,
   HeadObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { fileExtFrom } from "../../utils/makeKey";
 import { randomUUID } from "crypto";
-import { PromoteGymImageDto } from "./images.dto";
+import { PromoteGymImageDto, ApproveTrainingCandidateDto, RejectTrainingCandidateDto } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
 import { ImageJobStatus } from "../../generated/prisma";
@@ -251,5 +252,94 @@ export class ImagePromotionService {
     });
 
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };
+  }
+
+  async approveTrainingCandidate(input: ApproveTrainingCandidateDto, ctx: AuthContext) {
+    const cand = (await this.prisma.trainingCandidate.findUniqueOrThrow({
+      where: { id: input.id },
+      select: {
+        id: true,
+        gymId: true,
+        gymEquipmentId: true,
+        storageKey: true,
+        hash: true,
+        embedding: true,
+        capturedAt: true,
+      } as any,
+    })) as any;
+    if (!cand.gymId || !cand.gymEquipmentId || !cand.storageKey || !cand.hash) {
+      throw new Error('Candidate missing required fields');
+    }
+    verifyGymScope(ctx, ctx.permissionService, cand.gymId);
+
+    const ext = fileExtFrom(cand.storageKey);
+    const approvedKey = `private/gym/${cand.gymEquipmentId}/approved/${cand.hash}.${ext}`;
+    await this.s3.send(
+      new CopyObjectCommand({
+        Bucket: BUCKET,
+        CopySource: `${BUCKET}/${cand.storageKey}`,
+        Key: approvedKey,
+        MetadataDirective: 'COPY',
+        ACL: 'private',
+      })
+    );
+
+    const gymEq = await this.prisma.gymEquipment.findUniqueOrThrow({
+      where: { id: cand.gymEquipmentId },
+      select: { equipmentId: true },
+    });
+
+    const img = await this.prisma.gymEquipmentImage.create({
+      data: {
+        gymId: cand.gymId,
+        gymEquipmentId: cand.gymEquipmentId,
+        equipmentId: gymEq.equipmentId,
+        storageKey: approvedKey,
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        approvedByUserId: ctx.userId ?? null,
+        sha256: cand.hash,
+        capturedAt: cand.capturedAt ?? new Date(),
+      },
+    });
+
+    if (cand.embedding) {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE "GymEquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5`,
+        cand.embedding,
+        EMBED_VENDOR,
+        EMBED_MODEL,
+        EMBED_VERSION,
+        img.id,
+      );
+    }
+
+    await this.prisma.trainingCandidate.update({
+      where: { id: cand.id },
+      data: { status: 'approved', imageId: img.id, storageKey: approvedKey },
+    });
+
+    return { gymImage: img };
+  }
+
+  async rejectTrainingCandidate(input: RejectTrainingCandidateDto, ctx: AuthContext) {
+    const cand = await this.prisma.trainingCandidate.findUniqueOrThrow({
+      where: { id: input.id },
+      select: { id: true, gymId: true, storageKey: true },
+    });
+    if (cand.gymId) verifyGymScope(ctx, ctx.permissionService, cand.gymId);
+
+    await this.prisma.trainingCandidate.update({
+      where: { id: cand.id },
+      data: { status: 'rejected' },
+    });
+
+    if (input.deleteObject && cand.storageKey) {
+      await this.s3
+        .send(new DeleteObjectCommand({ Bucket: BUCKET, Key: cand.storageKey }))
+        .catch(() => {});
+    }
+
+    return { success: true };
   }
 }

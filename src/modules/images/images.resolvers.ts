@@ -6,6 +6,8 @@ import {
   PromoteGymImageDto,
   ApproveGymImageDto,
   RejectGymImageDto,
+  ApproveTrainingCandidateDto,
+  RejectTrainingCandidateDto,
   CandidateGlobalImagesDto,
 } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
@@ -84,6 +86,26 @@ export const ImagesResolvers = {
       const dto = Object.assign(new RejectGymImageDto(), input);
       await validateOrReject(dto);
       return ctx.imageModerationService.rejectGymImage(dto, ctx);
+    },
+
+    approveTrainingCandidate: async (
+      _parent: unknown,
+      { input }: { input: ApproveTrainingCandidateDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ApproveTrainingCandidateDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.approveTrainingCandidate(dto, ctx);
+    },
+
+    rejectTrainingCandidate: async (
+      _parent: unknown,
+      { input }: { input: RejectTrainingCandidateDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new RejectTrainingCandidateDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.rejectTrainingCandidate(dto, ctx);
     },
   },
 

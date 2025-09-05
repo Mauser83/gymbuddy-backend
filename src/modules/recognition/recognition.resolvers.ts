@@ -17,6 +17,7 @@ export const RecognitionResolvers = {
         attemptId: BigInt(input.attemptId),
         selectedEquipmentId: input.selectedEquipmentId,
         offerForTraining: input.offerForTraining ?? false,
+        uploaderUserId: ctx.userId ?? null,
       });
     },
     discardRecognition: async (_: unknown, args: { attemptId: string }, ctx: AuthContext) => {

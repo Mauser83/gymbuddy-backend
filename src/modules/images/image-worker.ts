@@ -90,17 +90,36 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
 async function handleHASH(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
   const sha = createHash("sha256").update(bytes).digest("hex");
-
   // Write sha256 only if missing/empty for the image by storageKey
   await prisma.gymEquipmentImage.updateMany({
     where: { storageKey, OR: [{ sha256: null }, { sha256: "" }] },
     data: { sha256: sha },
   });
-  await prisma.trainingCandidate.updateMany({
-    where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
-    data: { hash: sha },
-  });
-  return { sha, storageKey };
+
+  let finalKey = storageKey;
+  if (storageKey.startsWith("private/gym/") && storageKey.includes("/candidates/")) {
+    const parts = storageKey.split("/");
+    const gymEqId = parts[2];
+    const file = parts[parts.length - 1];
+    const ext = file.split(".").pop() || "jpg";
+    const newKey = `private/gym/${gymEqId}/candidates/${sha}.${ext}`;
+    if (newKey !== storageKey) {
+      await copyObjectIfMissing(storageKey, newKey);
+      await deleteObjectIgnoreMissing(storageKey);
+      finalKey = newKey;
+    }
+    await prisma.trainingCandidate.updateMany({
+      where: { storageKey },
+      data: { storageKey: finalKey, hash: sha, updatedAt: new Date() } as any,
+    });
+  } else {
+    await prisma.trainingCandidate.updateMany({
+      where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
+      data: { hash: sha },
+    });
+  }
+
+  return { sha, storageKey: finalKey };
 }
 
 async function runDetectors(storageKey: string) {
@@ -128,7 +147,11 @@ async function handleSAFETY(storageKey: string) {
   if (!decision.isSafe) {
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
-      data: { status: "quarantined" },
+      data: {
+        status: "quarantined",
+        safetyReasons: decision.reasons,
+        updatedAt: new Date(),
+      } as any,
     });
   }
 
@@ -156,7 +179,7 @@ async function handleSAFETY(storageKey: string) {
     }
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
-      data: { storageKey: qKey },
+      data: { storageKey: qKey } as any,
     });
     finalKey = qKey;
   }
@@ -165,6 +188,10 @@ async function handleSAFETY(storageKey: string) {
 
 async function handleEMBED(storageKey: string) {
   // 1) locate image rows for this object
+  const candidate = await prisma.trainingCandidate.findFirst({
+    where: { storageKey },
+    select: { id: true, gymId: true, uploaderUserId: true, imageId: true },
+  });
   const gymImg = await prisma.gymEquipmentImage.findFirst({
     where: { storageKey },
     select: { id: true, gymId: true },
@@ -175,10 +202,10 @@ async function handleEMBED(storageKey: string) {
         where: { storageKey },
         select: { id: true },
       });
-  if (!gymImg && !eqImg) throw new Error("Image not found for storageKey");
+  if (!gymImg && !eqImg && !candidate) throw new Error("Image not found for storageKey");
 
-  const scopeType = gymImg ? "GYM" : "GLOBAL";
-  const gymId = gymImg?.gymId ?? null;
+  const scopeType = gymImg ? "GYM" : eqImg ? "GLOBAL" : "CANDIDATE";
+  const gymId = gymImg?.gymId ?? candidate?.gymId ?? null;
 
   // 2) compute vector
   const bytes = await downloadBytes(storageKey);
@@ -198,6 +225,14 @@ async function handleEMBED(storageKey: string) {
   const vec = Array.from(vecNorm);
 
   // 3) write vector to correct table/row
+  if (scopeType === "CANDIDATE") {
+    await prisma.trainingCandidate.update({
+      where: { id: candidate!.id },
+      data: { embedding: vec, processedAt: new Date() } as any,
+    });
+    return { ok: true };
+  }
+
   await writeImageEmbedding({
     target: scopeType === "GYM" ? "GYM" : "GLOBAL",
     imageId: scopeType === "GYM" ? gymImg!.id : eqImg!.id,
@@ -208,18 +243,20 @@ async function handleEMBED(storageKey: string) {
     modelVersion: EMBED_VERSION,
   });
 
-  const candidate = await prisma.trainingCandidate.findFirst({
-    where: { storageKey },
-    select: { id: true, uploaderUserId: true, gymId: true, imageId: true },
-  });
-  if (candidate && candidate.gymId) {
-    const gym = await prisma.gym.findUnique({
-      where: { id: candidate.gymId },
-      select: { autoApproveManagerUploads: true },
-    });
-    const trusted = candidate.uploaderUserId
-      ? await userIsTrustedForGym(candidate.uploaderUserId, candidate.gymId)
-      : false;
+  if (candidate && candidate.imageId) {
+        const gym = candidate.gymId
+      ? await prisma.gym.findUnique({
+          where: { id: candidate.gymId },
+          select: { autoApproveManagerUploads: true },
+        })
+      : null;
+    const trusted =
+      candidate.uploaderUserId && candidate.gymId
+        ? await userIsTrustedForGym(
+            candidate.uploaderUserId,
+            candidate.gymId,
+          )
+        : false;
     if (trusted && gym?.autoApproveManagerUploads) {
       await prisma.trainingCandidate.update({
         where: { id: candidate.id },

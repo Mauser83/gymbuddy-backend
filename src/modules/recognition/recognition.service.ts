@@ -15,6 +15,9 @@ import {
   EMBEDDING_DIM,
 } from "../images/embedding/local-openclip-light";
 import { knnFromVectorGlobal, knnFromVectorGym } from "../cv/knn.service";
+import { ImageJobStatus } from "../../generated/prisma";
+import { priorityFromSource } from "../images/queue.service";
+import { kickBurstRunner } from "../images/image-worker";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -320,6 +323,7 @@ async confirmRecognition(input: {
     attemptId: bigint;
     selectedEquipmentId: number;
     offerForTraining: boolean;
+    uploaderUserId: number | null;
   }) {
     const attempt = await prisma.recognitionAttempt.findUnique({
       where: { id: input.attemptId },
@@ -343,33 +347,48 @@ async confirmRecognition(input: {
       },
     });
 
-    let promotedStorageKey: string | null = null;
     if (input.offerForTraining) {
       const parts = attempt.storageKey.split(".");
       const ext = parts[parts.length - 1] || "jpg";
-      const targetKey = `private/uploads/${attempt.gymId}/training/${gymEquipment.id}/${randomUUID()}.${ext}`;
+      const candidatesKey = `private/gym/${gymEquipment.id}/candidates/${randomUUID()}.${ext}`;
 
       await this.s3.send(
         new CopyObjectCommand({
           Bucket: BUCKET,
           CopySource: `/${BUCKET}/${attempt.storageKey}`,
-          Key: targetKey,
+          Key: candidatesKey,
         })
       );
 
-      await prisma.trainingCandidate.create({
+      const tc = await prisma.trainingCandidate.create({
         data: {
-          gymId: gymEquipment.gymId,
+          gymId: attempt.gymId,
           gymEquipmentId: gymEquipment.id,
-          storageKey: targetKey,
-          source: "user_submission",
-        },
+          storageKey: candidatesKey,
+          status: 'pending',
+          source: 'user_submission',
+          uploaderUserId: input.uploaderUserId ?? null,
+          capturedAt: new Date(attempt.createdAt),
+        } as any,
+        select: { id: true, storageKey: true },
       });
 
-      promotedStorageKey = targetKey;
+      await prisma.imageQueue.create({
+        data: {
+          jobType: 'HASH',
+          status: ImageJobStatus.pending,
+          priority: priorityFromSource('recognition_user'),
+          storageKey: tc.storageKey,
+        },
+      });
+      setImmediate(() =>
+        kickBurstRunner({ maxRuntimeMs: 300_000, idleExitMs: 4_000, batchSize: 1 }).catch(
+          console.error,
+        ),
+      );
     }
 
-    return { saved: true, promotedStorageKey };
+    return { saved: true };
   }
 
   async discardRecognition(attemptId: bigint) {
