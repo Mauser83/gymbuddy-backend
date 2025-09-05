@@ -23,6 +23,21 @@ const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
 
+// helper: parse pgvector text like "[0.12, -0.34, 0.56]" → number[]
+function parsePgvectorText(v: string | null | undefined): number[] | null {
+  if (!v) return null;
+  const s = v.trim();
+  if (s.length < 2 || s[0] !== '[' || s[s.length - 1] !== ']') return null;
+  const parts = s.slice(1, -1).split(',');
+  const out: number[] = [];
+  for (const p of parts) {
+    const n = Number(p);
+    if (!Number.isFinite(n)) return null;
+    out.push(n);
+  }
+  return out;
+}
+
 export class ImagePromotionService {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -354,11 +369,13 @@ async listTrainingCandidates(
       },
     });
 
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT embedding FROM "TrainingCandidate" WHERE id = $1`,
+    const rows = await this.prisma.$queryRawUnsafe<
+      Array<{ embedding_text: string }>
+    >(
+      `SELECT embedding::text AS embedding_text FROM "TrainingCandidate" WHERE id = $1`,
       input.id
     );
-    const candidateVector = rows?.[0]?.embedding ?? null;
+    const candidateVector = parsePgvectorText(rows?.[0]?.embedding_text);
 
     if (cand.gymId == null || cand.gymEquipmentId == null) {
       throw new Error("Candidate missing required fields");
@@ -429,7 +446,7 @@ async listTrainingCandidates(
         select: { id: true },
       });
 
-            if (candidateVector) {
+      if (candidateVector && candidateVector.length > 0) {
         console.log("writeImageEmbedding was called!");
         await writeImageEmbedding({
           target: "GYM",
