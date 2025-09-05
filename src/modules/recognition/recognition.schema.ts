@@ -39,6 +39,7 @@ export const recognitionTypeDefs = `
     images: [CandidateImage!]!
     source: String!
     totalImagesConsidered: Int!
+    lowConfidence: Boolean!
   }
 
   type RecognizeImagePayload {

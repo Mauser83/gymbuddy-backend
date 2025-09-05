@@ -25,7 +25,7 @@ const T_LOW = 0.55;
 const PER_EQUIPMENT_IMAGES = 3;
 const OVERSAMPLE_FACTOR = 10;
 const SEARCH_TOPK_MAX = 200;
-const MIN_ALT_SCORE = Number(process.env.RECOG_MIN_ALT_SCORE ?? 0.7);
+const MIN_ALT_SCORE = Number(process.env.RECOG_MIN_ALT_SCORE ?? 0.0); // not used for filtering anymore
 type Img = {
   equipmentId: number;
   gymId?: number | null;
@@ -50,6 +50,7 @@ type EquipmentCandidate = {
   images: CandidateImage[];
   source: string;
   totalImagesConsidered: number;
+  lowConfidence: boolean;
 };
 
 function groupTopEquipment(
@@ -85,6 +86,7 @@ function groupTopEquipment(
       })),
       source: "GYM",
       totalImagesConsidered: items.length,
+      lowConfidence: (items[0].score ?? 0) < 0.7,
     }))
     .sort((a, b) => b.topScore - a.topScore);
 }
@@ -272,9 +274,8 @@ export class RecognitionService {
         imageId: r.id,
       }));
 
-    const gymEq = groupTopEquipment(gymImages).filter(
-      (c) => c.topScore >= MIN_ALT_SCORE
-    );
+    const gymEq = groupTopEquipment(gymImages);
+
     gymEq.forEach((c) => (c.source = "GYM"));
 
     let eqCand = [...gymEq];
@@ -282,8 +283,7 @@ export class RecognitionService {
       const taken = new Set(eqCand.map((c) => c.equipmentId));
       const globalEq = groupTopEquipment(
         globalImages.filter((i) => !taken.has(i.equipmentId))
-      )
-        .filter((c) => c.topScore >= MIN_ALT_SCORE);
+      );
       globalEq.forEach((c) => (c.source = "GLOBAL"));
       eqCand = [...eqCand, ...globalEq];
     }
