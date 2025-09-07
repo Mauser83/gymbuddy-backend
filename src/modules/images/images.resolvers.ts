@@ -10,11 +10,21 @@ import {
   RejectTrainingCandidateDto,
   CandidateGlobalImagesDto,
   ListTrainingCandidatesDto,
+  ListGlobalSuggestionsDto,
+  ApproveGlobalSuggestionDto,
+  RejectGlobalSuggestionDto,
 } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 
 export const ImagesResolvers = {
     TrainingCandidateRow: {
+    url: (
+      src: { storageKey: string },
+      _args: unknown,
+      ctx: AuthContext
+    ) => ctx.mediaService.presignGetForKey(src.storageKey, 300),
+  },
+  GlobalSuggestionRow: {
     url: (
       src: { storageKey: string },
       _args: unknown,
@@ -115,6 +125,24 @@ export const ImagesResolvers = {
       await validateOrReject(dto);
       return ctx.imagePromotionService.rejectTrainingCandidate(dto, ctx);
     },
+    approveGlobalSuggestion: async (
+      _parent: unknown,
+      { input }: { input: ApproveGlobalSuggestionDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ApproveGlobalSuggestionDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.approveGlobalSuggestion(dto, ctx);
+    },
+    rejectGlobalSuggestion: async (
+      _parent: unknown,
+      { input }: { input: RejectGlobalSuggestionDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new RejectGlobalSuggestionDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.rejectGlobalSuggestion(dto, ctx);
+    },
   },
 
   Query: {
@@ -135,6 +163,15 @@ export const ImagesResolvers = {
       const dto = Object.assign(new ListTrainingCandidatesDto(), input);
       await validateOrReject(dto);
       return ctx.imagePromotionService.listTrainingCandidates(dto, ctx);
+    },
+    listGlobalSuggestions: async (
+      _parent: unknown,
+      { input }: { input: ListGlobalSuggestionsDto },
+      ctx: AuthContext
+    ) => {
+      const dto = Object.assign(new ListGlobalSuggestionsDto(), input);
+      await validateOrReject(dto);
+      return ctx.imagePromotionService.listGlobalSuggestions(dto, ctx);
     },
   },
 };

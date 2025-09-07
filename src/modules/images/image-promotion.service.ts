@@ -8,6 +8,9 @@ import {
   ApproveTrainingCandidateDto,
   RejectTrainingCandidateDto,
   ListTrainingCandidatesDto,
+  ListGlobalSuggestionsDto,
+  ApproveGlobalSuggestionDto,
+  RejectGlobalSuggestionDto,
 } from "./images.dto";
 import { AuthContext } from "../auth/auth.types";
 import { verifyGymScope } from "../auth/auth.roles";
@@ -37,6 +40,57 @@ function parsePgvectorText(v: string | null | undefined): number[] | null {
     out.push(n);
   }
   return out;
+}
+
+function cosine(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return 0;
+  let dot = 0,
+    na = 0,
+    nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (!na || !nb) return 0;
+  return dot / Math.sqrt(na * nb);
+}
+
+function scoreGlobalCandidate({
+  globalCount,
+  hiRes,
+  simMax,
+}: {
+  globalCount: number;
+  hiRes: boolean;
+  simMax: number;
+}) {
+  let s = 0;
+  const reasons: string[] = [];
+  if (globalCount === 0) {
+    s += 0.6;
+    reasons.push("NO_GLOBAL");
+  } else if (globalCount < 3) {
+    s += 0.3;
+    reasons.push("LOW_COVERAGE");
+  } else if (globalCount < 15) {
+    s += 0.15;
+    reasons.push("GROWTH");
+  }
+  if (hiRes) {
+    s += 0.1;
+    reasons.push("HI_RES");
+  }
+  s += 0.05;
+  reasons.push("FRESH");
+  if (simMax >= 0.995) {
+    s -= 0.5;
+    reasons.push("NEAR_DUP_STRONG");
+  } else if (simMax >= 0.985) {
+    s -= 0.25;
+    reasons.push("NEAR_DUP");
+  }
+  return { score: Math.max(0, Math.min(1, s)), reasons };
 }
 
 export class ImagePromotionService {
@@ -79,6 +133,101 @@ export class ImagePromotionService {
       height: meta.height ?? 0,
       mime: meta.format ? `image/${meta.format}` : fallbackMime,
     };
+  }
+
+  private async s3CopyIfMissing(srcKey: string, dstKey: string) {
+    try {
+      await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: dstKey }));
+      return;
+    } catch (err: any) {
+      if (err?.$metadata?.httpStatusCode !== 404) throw err;
+    }
+    await this.s3.send(
+      new CopyObjectCommand({
+        Bucket: BUCKET,
+        CopySource: `${BUCKET}/${srcKey}`,
+        Key: dstKey,
+        MetadataDirective: "COPY",
+        ACL: "private",
+      })
+    );
+  }
+
+  private async maybeCreateGlobalSuggestion(params: {
+    equipmentId: number;
+    gymImageId: string;
+    storageKey: string;
+    sha256: string;
+    vector: number[];
+  }) {
+    const { equipmentId, gymImageId, storageKey, sha256, vector } = params;
+    if (!sha256 || !vector || vector.length === 0) return;
+
+    const dup = await this.prisma.equipmentImage.findFirst({
+      where: { sha256 },
+      select: { id: true },
+    });
+    if (dup) return;
+
+    const globalCount = await this.prisma.equipmentImage.count({
+      where: { equipmentId },
+    });
+    if (globalCount >= 15) return;
+
+    const ext = fileExtFrom(storageKey);
+    const globalCandKey = `private/global/candidates/${equipmentId}/${sha256}.${ext}`;
+    await this.s3CopyIfMissing(storageKey, globalCandKey);
+
+    const rows = await this.prisma.$queryRawUnsafe<{ id: string; v: string }[]>(
+      `SELECT id, embedding::text AS v FROM "EquipmentImage" WHERE "equipmentId" = $1 LIMIT 200`,
+      equipmentId
+    );
+    let simMax = 0;
+    let nearDupId: string | null = null;
+    for (const row of rows) {
+      const vec = parsePgvectorText(row.v);
+      if (!vec) continue;
+      const c = cosine(vector, vec);
+      if (c > simMax) {
+        simMax = c;
+        nearDupId = row.id;
+      }
+    }
+
+    let hiRes = false;
+    try {
+      const head = await this.s3.send(
+        new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })
+      );
+      hiRes = (head.ContentLength ?? 0) >= 300 * 1024;
+    } catch {}
+
+    const { score, reasons } = scoreGlobalCandidate({
+      globalCount,
+      hiRes,
+      simMax,
+    });
+
+    await this.prisma.globalImageSuggestion.upsert({
+      where: { sha256 },
+      update: {
+        storageKey: globalCandKey,
+        usefulnessScore: score,
+        reasonCodes: reasons,
+        status: "PENDING",
+        nearDupImageId: simMax >= 0.985 ? nearDupId : null,
+      },
+      create: {
+        equipmentId,
+        gymImageId,
+        storageKey: globalCandKey,
+        sha256,
+        usefulnessScore: score,
+        reasonCodes: reasons,
+        status: "PENDING",
+        nearDupImageId: simMax >= 0.985 ? nearDupId : null,
+      },
+    });
   }
 
   async promoteGymImageToGlobal(
@@ -400,7 +549,7 @@ async listTrainingCandidates(
     const ext =
       cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
     const approvedKey = `private/gym/${gymEquipmentId}/approved/${cand.hash}.${ext}`;
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.gymEquipmentImage.findFirst({
         where: { storageKey: approvedKey },
         select: { id: true },
@@ -410,7 +559,13 @@ async listTrainingCandidates(
           where: { id: cand.id },
           data: { status: "approved", imageId: existing.id },
         });
-        return { approved: true, imageId: existing.id, storageKey: approvedKey };
+        return {
+          approved: true,
+          imageId: existing.id,
+          storageKey: approvedKey,
+          equipmentId: gymEquipmentId,
+          sha256: cand.hash,
+        };
       }
       const gymEq = await tx.gymEquipment.findUniqueOrThrow({
         where: { id: gymEquipmentId },
@@ -485,8 +640,30 @@ async listTrainingCandidates(
         data: { status: "approved", imageId: img.id },
       });
 
-      return { approved: true, imageId: img.id, storageKey: approvedKey };
+      return {
+        approved: true,
+        imageId: img.id,
+        storageKey: approvedKey,
+        equipmentId: gymEq.equipmentId,
+        sha256: cand.hash,
+      };
     });
+
+    if (candidateVector && result.sha256) {
+      await this.maybeCreateGlobalSuggestion({
+        equipmentId: result.equipmentId,
+        gymImageId: result.imageId,
+        storageKey: result.storageKey,
+        sha256: result.sha256,
+        vector: candidateVector,
+      });
+    }
+
+    return {
+      approved: true,
+      imageId: result.imageId,
+      storageKey: result.storageKey,
+    };
   }
 
   async rejectTrainingCandidate(input: RejectTrainingCandidateDto, ctx: AuthContext) {
@@ -499,6 +676,165 @@ async listTrainingCandidates(
     await this.prisma.trainingCandidate.update({
       where: { id: cand.id },
       data: { status: 'rejected', rejectionReason: input.reason ?? null },
+    });
+
+    return { rejected: true };
+  }
+  
+  async listGlobalSuggestions(
+    input: ListGlobalSuggestionsDto,
+    ctx: AuthContext
+  ) {
+    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+
+    const where: any = {};
+    if (input.equipmentId) where.equipmentId = input.equipmentId;
+    if (input.status) where.status = input.status;
+    if (typeof input.minScore === "number")
+      where.usefulnessScore = { gte: input.minScore };
+
+    const take = Math.min(input.limit ?? 50, 50);
+    const items = await this.prisma.globalImageSuggestion.findMany({
+      where,
+      orderBy: { usefulnessScore: "desc" },
+      take: take + 1,
+      skip: input.cursor ? 1 : 0,
+      cursor: input.cursor ? { id: input.cursor } : undefined,
+    });
+
+    let nextCursor: string | null = null;
+    if (items.length > take) {
+      const next = items.pop();
+      nextCursor = next ? next.id : null;
+    }
+
+    return { items, nextCursor };
+  }
+
+  async approveGlobalSuggestion(
+    input: ApproveGlobalSuggestionDto,
+    ctx: AuthContext
+  ) {
+    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+
+    const suggestion = await this.prisma.globalImageSuggestion.findUnique({
+      where: { id: input.id },
+      include: { gymImage: true },
+    });
+    if (!suggestion) throw new Error("Suggestion not found");
+    if (suggestion.status !== "PENDING")
+      throw new Error("Suggestion not pending");
+
+    const existing = await this.prisma.equipmentImage.findFirst({
+      where: { sha256: suggestion.sha256 },
+    });
+    if (existing) {
+      await this.prisma.globalImageSuggestion.update({
+        where: { id: suggestion.id },
+        data: { status: "APPROVED" },
+      });
+      return {
+        approved: true,
+        imageId: existing.id,
+        storageKey: existing.storageKey,
+      };
+    }
+
+    const ext = fileExtFrom(suggestion.storageKey);
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const finalKey = `private/global/approved/${suggestion.equipmentId}/${yyyy}/${mm}/${suggestion.sha256}.${ext}`;
+
+    await this.s3CopyIfMissing(suggestion.storageKey, finalKey);
+
+    const head = await this.s3.send(
+      new HeadObjectCommand({ Bucket: BUCKET, Key: finalKey })
+    );
+    const meta = await this.getImageMeta(finalKey, head.ContentType || "image/jpeg");
+
+    const vecRows = await this.prisma.$queryRawUnsafe<{ v: string }[]>(
+      `SELECT embedding::text AS v FROM "GymEquipmentImage" WHERE id = $1`,
+      suggestion.gymImageId
+    );
+    const vecText = vecRows?.[0]?.v ?? null;
+    const vec = parsePgvectorText(vecText);
+
+    const equipmentImage = await this.prisma.$transaction(async (tx) => {
+      const img = await tx.equipmentImage.create({
+        data: {
+          equipmentId: suggestion.equipmentId,
+          uploadedByUserId:
+            suggestion.gymImage.capturedByUserId ??
+            suggestion.gymImage.approvedByUserId ??
+            ctx.userId ??
+            null,
+          storageKey: finalKey,
+          mimeType: meta.mime,
+          width: meta.width,
+          height: meta.height,
+          sha256: suggestion.sha256,
+          angleId: suggestion.gymImage.angleId ?? null,
+          heightId: suggestion.gymImage.heightId ?? null,
+          lightingId: suggestion.gymImage.lightingId ?? null,
+          mirrorId: suggestion.gymImage.mirrorId ?? null,
+          distanceId: suggestion.gymImage.distanceId ?? null,
+          sourceId: suggestion.gymImage.sourceId ?? null,
+          splitId: suggestion.gymImage.splitId ?? null,
+          hasPerson: suggestion.gymImage.hasPerson ?? null,
+          personCount: suggestion.gymImage.personCount ?? null,
+          personBoxes: suggestion.gymImage.personBoxes
+            ? (suggestion.gymImage.personBoxes as PrismaTypes.InputJsonValue)
+            : Prisma.DbNull,
+          modelVendor: suggestion.gymImage.modelVendor ?? null,
+          modelName: suggestion.gymImage.modelName ?? null,
+          modelVersion: suggestion.gymImage.modelVersion ?? null,
+        },
+      });
+
+      if (vecText) {
+        await tx.$executeRawUnsafe(
+          `UPDATE "EquipmentImage" SET embedding = $1::vector WHERE id = $2`,
+          vecText,
+          img.id
+        );
+      }
+
+      await tx.globalImageSuggestion.update({
+        where: { id: suggestion.id },
+        data: { status: "APPROVED" },
+      });
+
+      return img;
+    });
+
+    if (vec && vec.length > 0) {
+      await writeImageEmbedding({
+        target: "GLOBAL",
+        imageId: equipmentImage.id,
+        vector: vec,
+        modelVendor: suggestion.gymImage.modelVendor ?? EMBED_VENDOR,
+        modelName: suggestion.gymImage.modelName ?? EMBED_MODEL,
+        modelVersion: suggestion.gymImage.modelVersion ?? EMBED_VERSION,
+      });
+    }
+
+    return {
+      approved: true,
+      imageId: equipmentImage.id,
+      storageKey: finalKey,
+    };
+  }
+
+  async rejectGlobalSuggestion(
+    input: RejectGlobalSuggestionDto,
+    ctx: AuthContext
+  ) {
+    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+
+    await this.prisma.globalImageSuggestion.update({
+      where: { id: input.id },
+      data: { status: "REJECTED", rejectedReason: input.reason ?? null },
     });
 
     return { rejected: true };

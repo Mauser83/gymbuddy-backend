@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  IsNumber,
   Min,
   IsEnum,
 } from "class-validator";
@@ -199,4 +200,41 @@ export class ApplyTaxonomiesDto {
   @IsOptional() @IsInt() mirrorId?: number;
   @IsOptional() @IsInt() splitId?: number;
   @IsOptional() @IsInt() sourceId?: number;
+}
+
+export enum GlobalSuggestionStatusDto {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export class ListGlobalSuggestionsDto {
+  @IsOptional() @IsInt()
+  equipmentId?: number;
+
+  @IsOptional() @IsEnum(GlobalSuggestionStatusDto)
+  status?: GlobalSuggestionStatusDto;
+
+  @IsOptional() @IsNumber()
+  minScore?: number;
+
+  @IsOptional() @IsInt()
+  limit?: number;
+
+  @IsOptional() @IsString()
+  cursor?: string;
+}
+
+export class ApproveGlobalSuggestionDto {
+  @IsString()
+  id!: string;
+}
+
+export class RejectGlobalSuggestionDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

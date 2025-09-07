@@ -155,6 +155,40 @@ export const imagesTypeDefs = `
     nextCursor: String
   }
 
+  enum GlobalSuggestionStatus { PENDING APPROVED REJECTED }
+
+  input ListGlobalSuggestionsInput {
+    equipmentId: Int
+    status: GlobalSuggestionStatus = PENDING
+    minScore: Float
+    limit: Int = 50
+    cursor: String
+  }
+
+  type GlobalSuggestionRow {
+    id: ID!
+    equipmentId: Int!
+    gymImageId: ID!
+    storageKey: String!
+    url: String!
+    sha256: String!
+    usefulnessScore: Float!
+    reasonCodes: [String!]!
+    nearDupImageId: ID
+    createdAt: String!
+  }
+
+  type GlobalSuggestionConnection {
+    items: [GlobalSuggestionRow!]!
+    nextCursor: String
+  }
+
+  input ApproveGlobalSuggestionInput { id: ID! }
+  input RejectGlobalSuggestionInput { id: ID!, reason: String }
+
+  type ApproveGlobalSuggestionPayload { approved: Boolean!, imageId: ID, storageKey: String }
+  type RejectGlobalSuggestionPayload { rejected: Boolean! }
+
   input CandidateGlobalImagesInput {
     equipmentId: Int!
     limit: Int = 50
@@ -206,10 +240,13 @@ export const imagesTypeDefs = `
     rejectGymImage(input: RejectGymImageInput!): RejectGymImagePayload!
     approveTrainingCandidate(input: ApproveTrainingCandidateInput!): ApproveTrainingCandidatePayload!
     rejectTrainingCandidate(input: RejectTrainingCandidateInput!): RejectTrainingCandidatePayload!
+    approveGlobalSuggestion(input: ApproveGlobalSuggestionInput!): ApproveGlobalSuggestionPayload!
+    rejectGlobalSuggestion(input: RejectGlobalSuggestionInput!): RejectGlobalSuggestionPayload!
   }
 
   extend type Query {
     candidateGlobalImages(input: CandidateGlobalImagesInput!): [CandidateGymImage!]!
     listTrainingCandidates(input: ListTrainingCandidatesInput!): TrainingCandidateConnection!
+    listGlobalSuggestions(input: ListGlobalSuggestionsInput!): GlobalSuggestionConnection!
   }
 `;

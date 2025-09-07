@@ -719,6 +719,7 @@ model EquipmentImage {
   embeddings ImageEmbedding[]
   links      GymEquipmentImage[]
   ImageQueue ImageQueue[]
+  nearDupSuggestions GlobalImageSuggestion[] @relation("GlobalImageSuggestionNearDup")
 
   @@index([equipmentId, createdAt])
   @@index([uploadedByUserId])
@@ -778,6 +779,7 @@ model GymEquipmentImage {
   approvedByUser User?         @relation("GymEquipmentImageApprovedBy", fields: [approvedByUserId], references: [id])
   embeddings     ImageEmbedding[]
   trainingCandidates TrainingCandidate[] @relation("ImageTrainingCandidates")
+  globalSuggestions GlobalImageSuggestion[]
 
   @@unique([gymId, equipmentId, imageId])
   @@index([gymId, equipmentId])
@@ -974,6 +976,12 @@ enum TrainingStatus {
   failed
 }
 
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model RecognitionAttempt {
   id             BigInt  @id @default(autoincrement())
   gymId          Int
@@ -1019,4 +1027,24 @@ model TrainingCandidate {
 
   @@index([status])
   @@index([hash])
+}
+
+model GlobalImageSuggestion {
+  id              String           @id @default(cuid())
+  equipmentId     Int
+  gymImageId      String
+  storageKey      String
+  sha256          String           @unique
+  usefulnessScore Float
+  reasonCodes     String[]         @default([])
+  status          SuggestionStatus @default(PENDING)
+  rejectedReason  String?
+  nearDupImageId  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  gymImage       GymEquipmentImage @relation(fields: [gymImageId], references: [id], onDelete: Cascade)
+  nearDupImage   EquipmentImage?   @relation("GlobalImageSuggestionNearDup", fields: [nearDupImageId], references: [id])
+
+  @@index([equipmentId, status])
 }
