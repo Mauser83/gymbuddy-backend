@@ -165,9 +165,12 @@ export const imagesTypeDefs = `
     cursor: String
   }
 
+  type EquipmentSummary { id: Int!, name: String! }
+
   type GlobalSuggestionRow {
     id: ID!
     equipmentId: Int!
+    equipment: EquipmentSummary!
     gymImageId: ID!
     storageKey: String!
     url: String!

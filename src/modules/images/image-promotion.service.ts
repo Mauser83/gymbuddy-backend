@@ -694,21 +694,56 @@ async listTrainingCandidates(
       where.usefulnessScore = { gte: input.minScore };
 
     const take = Math.min(input.limit ?? 50, 50);
-    const items = await this.prisma.globalImageSuggestion.findMany({
+    const rows = await this.prisma.globalImageSuggestion.findMany({
       where,
-      orderBy: { usefulnessScore: "desc" },
+      orderBy: [{ usefulnessScore: "desc" }, { id: "desc" }],
       take: take + 1,
       skip: input.cursor ? 1 : 0,
       cursor: input.cursor ? { id: input.cursor } : undefined,
+      select: {
+        id: true,
+        equipmentId: true,
+        gymImageId: true,
+        storageKey: true,
+        sha256: true,
+        usefulnessScore: true,
+        reasonCodes: true,
+        nearDupImageId: true,
+        createdAt: true,
+      },
     });
 
     let nextCursor: string | null = null;
-    if (items.length > take) {
-      const next = items.pop();
+    if (rows.length > take) {
+      const next = rows.pop();
       nextCursor = next ? next.id : null;
     }
 
-    return { items, nextCursor };
+    const eqIds = Array.from(new Set(rows.map(r => r.equipmentId)));
+    const equipments = await this.prisma.equipment.findMany({
+      where: { id: { in: eqIds } },
+      select: { id: true, name: true },
+    });
+    const eqById = new Map(equipments.map(e => [e.id, e]));
+
+    return {
+      items: rows.map(r => ({
+        id: r.id,
+        equipmentId: r.equipmentId,
+        equipment: {
+          id: r.equipmentId,
+          name: eqById.get(r.equipmentId)?.name ?? "Unknown",
+        },
+        gymImageId: r.gymImageId,
+        storageKey: r.storageKey,
+        sha256: r.sha256,
+        usefulnessScore: r.usefulnessScore,
+        reasonCodes: r.reasonCodes,
+        nearDupImageId: r.nearDupImageId,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      nextCursor,
+    };
   }
 
   async approveGlobalSuggestion(
