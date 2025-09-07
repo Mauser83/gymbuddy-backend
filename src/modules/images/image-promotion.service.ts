@@ -382,7 +382,8 @@ async listTrainingCandidates(
       `SELECT embedding::text AS embedding_text FROM "TrainingCandidate" WHERE id = $1`,
       input.id
     );
-    const candidateVector = parsePgvectorText(rows?.[0]?.embedding_text);
+    const candidateVectorText = rows?.[0]?.embedding_text ?? null;
+    const candidateVector = parsePgvectorText(candidateVectorText);
 
     if (cand.gymId == null || cand.gymEquipmentId == null) {
       throw new Error("Candidate missing required fields");
@@ -471,7 +472,15 @@ async listTrainingCandidates(
         });
       }
 
-      await tx.trainingCandidate.update({
+      if (candidateVectorText) {
+        await tx.$executeRawUnsafe(
+          `UPDATE "GymEquipmentImage" SET embedding = $1::vector WHERE id = $2`,
+          candidateVectorText,
+          img.id
+        );
+      }
+
+     await tx.trainingCandidate.update({
         where: { id: cand.id },
         data: { status: "approved", imageId: img.id },
       });
