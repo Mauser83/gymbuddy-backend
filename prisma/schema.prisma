@@ -995,9 +995,18 @@ model TrainingCandidate {
   source        TrainingSource @default(gym_equipment)
   status        TrainingStatus @default(pending)
   hash          String?
+  recognitionScoreAtCapture Float?
+  isSafe       Boolean?
+  nsfwScore    Float?
+  hasPerson    Boolean?
+  personCount  Int?
+  personBoxes  Json?
   safetyReasons String[]       @default([])
   capturedAt    DateTime?
   processedAt   DateTime?
+  embeddingModelVendor String?
+  embeddingModelName   String?
+  embeddingModelVersion String?
   rejectionReason String?
   embedding     Unsupported("vector")?
   createdAt     DateTime       @default(now())

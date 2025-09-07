@@ -144,16 +144,20 @@ async function handleSAFETY(storageKey: string) {
       safetyReasons: decision.reasons,
     },
   });
-  if (!decision.isSafe) {
-    await prisma.trainingCandidate.updateMany({
-      where: { storageKey },
-      data: {
-        status: "quarantined",
-        safetyReasons: decision.reasons,
-        updatedAt: new Date(),
-      } as any,
-    });
-  }
+  const tcData: any = {
+    isSafe: decision.isSafe,
+    nsfwScore: decision.nsfwScore,
+    hasPerson: decision.hasPerson,
+    personCount: null,
+    personBoxes: null,
+    safetyReasons: decision.reasons,
+    updatedAt: new Date(),
+  };
+  if (!decision.isSafe) tcData.status = "quarantined";
+  await prisma.trainingCandidate.updateMany({
+    where: { storageKey },
+    data: tcData,
+  });
 
   let finalKey = storageKey;
   if (!decision.isSafe && storageKey.startsWith("private/gym/")) {
@@ -213,9 +217,12 @@ async function handleEMBED(job: QueueJob) {
   if (candidate && !candidate.imageId) {
     const vec = await embedFromStorageKey(storageKey);
     await prisma.$executeRawUnsafe(
-      `UPDATE "TrainingCandidate" SET embedding = $1, "processedAt" = NOW() WHERE id = $2`,
+      `UPDATE "TrainingCandidate" SET embedding = $1, "processedAt" = NOW(), "embeddingModelVendor" = $3, "embeddingModelName" = $4, "embeddingModelVersion" = $5 WHERE id = $2`,
       vec,
       candidate.id,
+      EMBED_VENDOR,
+      EMBED_MODEL,
+      EMBED_VERSION,
     );
     return;
   }

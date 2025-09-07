@@ -369,6 +369,7 @@ async confirmRecognition(input: {
           source: 'user_submission',
           uploaderUserId: input.uploaderUserId ?? null,
           capturedAt: new Date(attempt.createdAt),
+          recognitionScoreAtCapture: attempt.bestScore ?? null,
         } as any,
         select: { id: true, storageKey: true },
       });

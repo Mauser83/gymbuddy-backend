@@ -1,4 +1,5 @@
-import { PrismaClient } from "../../lib/prisma";
+import { PrismaClient, Prisma } from "../../lib/prisma";
+import type { Prisma as PrismaTypes } from "../../generated/prisma";
 import { S3Client, CopyObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { fileExtFrom } from "../../utils/makeKey";
 import { randomUUID } from "crypto";
@@ -214,11 +215,7 @@ export class ImagePromotionService {
           LIMIT 1
         `;
         const gymEmbeddingText = row?.embedding_text ?? null;
-
-        console.log('creating the equipmentImage object:', data);
         const created = await tx.equipmentImage.create({ data });
-        console.log('created equipmentImage', created.id);
-
         if (gymEmbeddingText) {
           await tx.$executeRaw`
             UPDATE "EquipmentImage"
@@ -355,7 +352,6 @@ async listTrainingCandidates(
     input: ApproveTrainingCandidateDto,
     ctx: AuthContext
   ) {
-    console.log("approveTrainingCandidate was called!")
     const cand = await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
       select: {
@@ -366,6 +362,17 @@ async listTrainingCandidates(
         hash: true,
         status: true,
         capturedAt: true,
+        uploaderUserId: true,
+        recognitionScoreAtCapture: true,
+        isSafe: true,
+        nsfwScore: true,
+        hasPerson: true,
+        personCount: true,
+        personBoxes: true,
+        safetyReasons: true,
+        embeddingModelVendor: true,
+        embeddingModelName: true,
+        embeddingModelVersion: true,
       },
     });
 
@@ -388,15 +395,10 @@ async listTrainingCandidates(
     }    
     const gymId = cand.gymId;
     const gymEquipmentId = cand.gymEquipmentId;
-
-    console.log("verifyGymScope was called!")
     verifyGymScope(ctx, ctx.permissionService, gymId);
-
     const ext =
       cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
     const approvedKey = `private/gym/${gymEquipmentId}/approved/${cand.hash}.${ext}`;
-
-    console.log("this.prisma.$transaction was called!")
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.gymEquipmentImage.findFirst({
         where: { storageKey: approvedKey },
@@ -409,7 +411,6 @@ async listTrainingCandidates(
         });
         return { approved: true, imageId: existing.id, storageKey: approvedKey };
       }
-      console.log("tx.gymEquipment.findUniqueOrThrow was called!")
       const gymEq = await tx.gymEquipment.findUniqueOrThrow({
         where: { id: gymEquipmentId },
         select: { equipmentId: true },
@@ -430,7 +431,6 @@ async listTrainingCandidates(
         throw new Error("Failed to copy candidate image");
       }
 
-      console.log("tx.gymEquipmentImage.create was called!")
       const img = await tx.gymEquipmentImage.create({
         data: {
           gymId,
@@ -442,12 +442,24 @@ async listTrainingCandidates(
           approvedByUserId: ctx.userId ?? null,
           sha256: cand.hash,
           capturedAt: cand.capturedAt ?? new Date(),
+          capturedByUserId: cand.uploaderUserId ?? null,
+          recognitionScoreAtCapture: cand.recognitionScoreAtCapture ?? null,
+          isSafe: cand.isSafe ?? null,
+          nsfwScore: cand.nsfwScore ?? null,
+          hasPerson: cand.hasPerson ?? null,
+          personCount: cand.personCount ?? null,
+          personBoxes: cand.personBoxes
+            ? (cand.personBoxes as PrismaTypes.InputJsonValue)
+            : Prisma.DbNull,
+          safetyReasons: cand.safetyReasons ?? [],
+          modelVendor: cand.embeddingModelVendor ?? null,
+          modelName: cand.embeddingModelName ?? null,
+          modelVersion: cand.embeddingModelVersion ?? null,
         },
         select: { id: true },
       });
 
       if (candidateVector && candidateVector.length > 0) {
-        console.log("writeImageEmbedding was called!");
         await writeImageEmbedding({
           target: "GYM",
           imageId: img.id,
@@ -459,13 +471,11 @@ async listTrainingCandidates(
         });
       }
 
-              console.log("tx.trainingCandidate.update was called!")
       await tx.trainingCandidate.update({
         where: { id: cand.id },
         data: { status: "approved", imageId: img.id },
       });
 
-              console.log("return was called!")
       return { approved: true, imageId: img.id, storageKey: approvedKey };
     });
   }
