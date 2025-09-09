@@ -135,6 +135,13 @@ export class ImageIntakeService {
           { objectUuid: parsed.uuid },
         ],
       },
+      select: {
+        id: true,
+        gymId: true,
+        equipmentId: true,
+        status: true,
+        storageKey: true,
+      },
     });
     if (existing) return { image: existing, queuedJobs: [] };
 
@@ -289,7 +296,7 @@ export class ImageIntakeService {
           status: string;
           storageKey: string;
         };
-        
+
         await tx.imageQueue.create({
           data: {
             jobType: "HASH",
