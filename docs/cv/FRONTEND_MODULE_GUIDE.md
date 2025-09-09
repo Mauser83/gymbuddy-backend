@@ -410,6 +410,19 @@ Legacy/admin-internal endpoints. Prefer the batch session + finalize path and th
 
 `GymEquipmentImage` records are tied to a specific gym's piece of equipment while `EquipmentImage` records represent globally approved training images. Use the following helpers:
 
+Presign mutations (`createAdminUploadTicket`, `createRecognitionUploadTicket`, and `createEquipmentTrainingUploadTicket`) now share the same `UploadTicketInput` shape:
+
+```graphql
+input UploadTicketInput {
+  ext: String!
+  contentType: String
+  contentLength: Int
+  sha256: String
+}
+```
+
+`contentLength` is optional but enforces a 10 MB limit when provided. `contentType` remains supported for back-compat.
+
 - **Legacy/admin-internal (admin only):** Upload an image for global equipment assets:
   ```graphql
   mutation UploadEquipmentImage($input: UploadEquipmentImageInput!) {

@@ -19,6 +19,8 @@ import {
   copyObjectIfMissing,
   deleteObjectIgnoreMissing,
 } from "../media/media.service";
+import { assertSizeWithinLimit } from "../media/media.utils";
+import type { UploadTicketInput } from "../media/media.types";
 import { kickBurstRunner } from "../images/image-worker";
 import { priorityFromSource } from "../images/queue.service";
 import { makeKey } from "../../utils/makeKey";
@@ -486,16 +488,16 @@ export class GymService {
 
   async createAdminUploadTicket(params: {
     gymId: number;
-    ext: string;
-    contentType?: string;
+    upload: UploadTicketInput;
     ttlSec: number;
     requestedByUserId: number;
   }) {
-    const ext = params.ext.trim().toLowerCase();
+    assertSizeWithinLimit(params.upload.contentLength);
+    const ext = params.upload.ext.trim().toLowerCase();
     if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
 
     const storageKey = makeKey('upload', { gymId: params.gymId }, { ext: ext as 'jpg' | 'png' | 'webp' });
-    const contentType = params.contentType || inferContentType(ext);
+    const contentType = params.upload.contentType || inferContentType(ext);
     const cmd = new PutObjectCommand({
       Bucket: BUCKET,
       Key: storageKey,
@@ -515,13 +517,22 @@ export class GymService {
     userId: number,
     gymId: number,
     equipmentId: number,
-    ext: string
+    upload: UploadTicketInput
   ) {
     const hasAccess = await this.checkGymPermission(userId, gymId);
     if (!hasAccess) throw new Error("Unauthorized");
 
+    assertSizeWithinLimit(upload.contentLength);
+    const ext = upload.ext.trim().toLowerCase();
+    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+
     const storageKey = `private/uploads/gym/${equipmentId}/${randomUUID()}.${ext}`;
-    const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: storageKey });
+    const contentType = upload.contentType || inferContentType(ext);
+    const cmd = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: storageKey,
+      ContentType: contentType,
+    });
     const putUrl = await getSignedUrl(this.s3, cmd, { expiresIn: 600 });
     return { putUrl, storageKey };
   }

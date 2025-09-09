@@ -1,3 +1,10 @@
+export interface UploadTicketInput {
+  ext: string;
+  contentType?: string;
+  contentLength?: number;
+  sha256?: string;
+}
+
 export interface GetImageUploadUrlInput {
   gymId: number;
   contentType: "image/jpeg" | "image/png" | "image/webp";

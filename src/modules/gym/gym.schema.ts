@@ -83,8 +83,7 @@ export const gymTypeDefs = `
 
   input CreateAdminUploadTicketInput {
     gymId: Int!
-    ext: String!
-    contentType: String
+    upload: UploadTicketInput!
     ttlSec: Int
   }
 
@@ -185,7 +184,7 @@ export const gymTypeDefs = `
     uploadGymImage(input: UploadGymImageInput!): GymEquipmentImage! @deprecated(reason: "Use createEquipmentTrainingUploadTicket/finalizeEquipmentTrainingImage")
     deleteGymImage(imageId: ID!): Boolean!
     createAdminUploadTicket(input: CreateAdminUploadTicketInput!): AdminUploadTicket!
-    createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, ext: String!): UploadTicket!
+    createEquipmentTrainingUploadTicket(gymId: Int!, equipmentId: Int!, input: UploadTicketInput!): UploadTicket!
     finalizeEquipmentTrainingImage(gymEquipmentId: Int!, storageKey: String!): GymEquipmentImage!
     finalizeGymImagesAdmin(input: FinalizeGymImagesAdminInput!): FinalizeGymImagesPayload!
     setPrimaryGymEquipmentImage(imageId: ID!): GymEquipmentImage!

@@ -12,6 +12,7 @@ import { GraphQLError } from "graphql";
 import { DIContainer } from "../core/di.container";
 import { AuditService } from "../core/audit.service";
 import { makeKey, parseKey } from "../../utils/makeKey";
+import { assertSizeWithinLimit } from "./media.utils";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -135,14 +136,7 @@ export class MediaService {
     contentLength?: number;
     ttlSec?: number;
   }) {
-    if (
-      input.contentLength !== undefined &&
-      input.contentLength > 10_000_000
-    ) {
-      throw new GraphQLError("File too large", {
-        extensions: { code: "PAYLOAD_TOO_LARGE" },
-      });
-    }
+    assertSizeWithinLimit(input.contentLength);
 
     const ttl = clampTtl(input.ttlSec ?? 300);
     const ext = extFromContentType(input.contentType);

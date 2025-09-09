@@ -9,6 +9,7 @@ import {
   CreateAdminUploadTicketInput,
 } from "./gym.types";
 import { UploadGymImageDto } from "./gym.dto";
+import type { UploadTicketInput } from "../media/media.types";
 
 export const GymResolvers = {
   Gym: {
@@ -362,15 +363,14 @@ export const GymResolvers = {
       );
       return service.createAdminUploadTicket({
         gymId: args.input.gymId,
-        ext: args.input.ext,
-        contentType: args.input.contentType,
+        upload: args.input.upload,
         ttlSec: args.input.ttlSec ?? 600,
         requestedByUserId: context.userId,
       });
     },
     createEquipmentTrainingUploadTicket: async (
       _: unknown,
-      args: { gymId: number; equipmentId: number; ext: string },
+      args: { gymId: number; equipmentId: number; input: UploadTicketInput },
       context: AuthContext
     ) => {
       if (!context.userId) throw new Error("Unauthenticated: userId is null.");
@@ -382,7 +382,7 @@ export const GymResolvers = {
         context.userId,
         args.gymId,
         args.equipmentId,
-        args.ext
+        args.input
       );
     },
     finalizeEquipmentTrainingImage: async (

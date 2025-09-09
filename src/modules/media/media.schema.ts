@@ -1,4 +1,11 @@
 export const mediaTypeDefs = `
+  input UploadTicketInput {
+    ext: String!
+    contentType: String
+    contentLength: Int
+    sha256: String
+  }
+
   input GetImageUploadUrlInput {
     gymId: Int!
     contentType: String!

@@ -1,4 +1,5 @@
 import { User } from "../user/user.types";
+import type { UploadTicketInput } from "../media/media.types";
 
 export interface Gym {
   id: number;
@@ -136,8 +137,7 @@ export interface UploadHeaderKV {
 
 export interface CreateAdminUploadTicketInput {
   gymId: number;
-  ext: string;
-  contentType?: string;
+  upload: UploadTicketInput;
   ttlSec?: number;
 }
 

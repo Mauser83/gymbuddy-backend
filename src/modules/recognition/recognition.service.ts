@@ -18,12 +18,32 @@ import { knnFromVectorGlobal, knnFromVectorGym } from "../cv/knn.service";
 import { ImageJobStatus } from "../../generated/prisma";
 import { priorityFromSource } from "../images/queue.service";
 import { kickBurstRunner } from "../images/image-worker";
+import type { UploadTicketInput } from "../media/media.types";
+import { assertSizeWithinLimit } from "../media/media.utils";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const TICKET_SECRET = process.env.TICKET_SECRET ?? "test-secret";
 const T_HIGH = 0.85;
 const T_LOW = 0.55;
+
+const EXT_WHITELIST = new Set(["jpg", "jpeg", "png", "webp", "heic"]);
+
+function inferContentType(ext: string) {
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "heic":
+      return "image/heic";
+    default:
+      return "application/octet-stream";
+  }
+}
 
 const PER_EQUIPMENT_IMAGES = 3;
 const OVERSAMPLE_FACTOR = 10;
@@ -148,14 +168,22 @@ export class RecognitionService {
     return out;
   }
 
-  async createUploadTicket(gymId: number, ext: string) {
+  async createUploadTicket(gymId: number, upload: UploadTicketInput) {
+    assertSizeWithinLimit(upload.contentLength);
+    const ext = upload.ext.trim().toLowerCase();
+    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+
     const now = new Date();
     const yyyy = now.getUTCFullYear();
     const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
     const uuid = randomUUID();
     const storageKey = `private/recognition/${gymId}/${yyyy}/${mm}/${uuid}.${ext}`;
 
-    const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: storageKey });
+    const cmd = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: storageKey,
+      ContentType: upload.contentType || inferContentType(ext),
+    });
     const ttl = 600; // 10 min
     const putUrl = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
     const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
