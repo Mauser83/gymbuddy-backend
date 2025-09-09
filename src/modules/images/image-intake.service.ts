@@ -238,6 +238,7 @@ export class ImageIntakeService {
         gymId: number;
         equipmentId: number;
         status: string;
+        storageKey: string;
       }> = [];
       let queued = 0;
 
@@ -255,7 +256,7 @@ export class ImageIntakeService {
         await copyObjectIfMissing(it.storageKey, approvedKey);
         await deleteObjectIgnoreMissing(it.storageKey);
 
-        const image = await tx.gymEquipmentImage.create({
+        const image = (await tx.gymEquipmentImage.create({
           data: {
             gymId,
             equipmentId,
@@ -274,9 +275,21 @@ export class ImageIntakeService {
             mirrorId: tax.mirrorId,
             isSafe: false,
           },
-          select: { id: true, gymId: true, equipmentId: true, status: true },
-        });
-
+          select: {
+            id: true,
+            gymId: true,
+            equipmentId: true,
+            status: true,
+            storageKey: true,
+          },
+        })) as {
+          id: string;
+          gymId: number;
+          equipmentId: number;
+          status: string;
+          storageKey: string;
+        };
+        
         await tx.imageQueue.create({
           data: {
             jobType: "HASH",

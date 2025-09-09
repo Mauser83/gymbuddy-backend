@@ -3,8 +3,12 @@ jest.mock("../../../src/modules/images/image-worker", () => ({
   kickBurstRunner: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock("../../../src/generated/prisma", () => ({
+  ImageJobStatus: { pending: "PENDING" },
+}));
+
 import { ImageIntakeService } from "../../../src/modules/images/image-intake.service";
-import { PrismaClient } from "../../../src/lib/prisma";
+import type { PrismaClient } from "../../../src/lib/prisma";
 import { S3Client } from "@aws-sdk/client-s3";
 
 // Mock the S3 client's send method so no real network calls are made during tests
@@ -101,5 +105,54 @@ describe("finalizeGymImage", () => {
     const out = await svc.finalizeGymImage(input);
     expect(out.image.id).toBe("cuid1");
     expect(prisma.gymEquipmentImage.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("finalizeGymImagesAdmin", () => {
+  function createAdminPrismaMock() {
+    const prisma: any = {
+      gymEquipment: { upsert: jest.fn().mockResolvedValue({ id: 1 }) },
+      gymEquipmentImage: {
+        create: jest.fn().mockImplementation(({ data, select }) => {
+          const image = { id: "cuid1", ...data };
+          if (select) {
+            const out: any = {};
+            for (const k of Object.keys(select)) if ((select as any)[k]) out[k] = (image as any)[k];
+            return out;
+          }
+          return image;
+        }),
+      },
+      imageQueue: { create: jest.fn() },
+    };
+    prisma.$transaction = jest.fn((fn: any) => fn(prisma));
+    return prisma as unknown as PrismaClient;
+  }
+
+  it("returns storageKey for each finalized image", async () => {
+    const prisma = createAdminPrismaMock();
+    const svc = new ImageIntakeService(prisma);
+    (svc as any).getDefaultTaxonomyIds = jest.fn().mockResolvedValue({
+      sourceId: 1,
+      splitId: 1,
+      angleId: 1,
+      heightId: 1,
+      distanceId: 1,
+      lightingId: 1,
+      mirrorId: 1,
+    });
+    const out = await svc.finalizeGymImagesAdmin(
+      {
+        defaults: { gymId: 1, equipmentId: 2 },
+        items: [
+          {
+            storageKey:
+              "private/uploads/1/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg",
+          },
+        ],
+      },
+      null
+    );
+    expect(out.images[0].storageKey).toBeDefined();
   });
 });
