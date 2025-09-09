@@ -60,6 +60,8 @@ export class MediaService {
 
   private signCounts: Map<number, { count: number; reset: number }> = new Map();
 
+  private uploadKeyBySha: Map<string, string> = new Map();
+
   private clampShortTtl(ttlSec?: number) {
     const MIN = 30;
     const MAX = 900;
@@ -129,12 +131,45 @@ export class MediaService {
     gymId: number;
     contentType: string;
     filename?: string;
+    sha256?: string;
+    contentLength?: number;
     ttlSec?: number;
   }) {
+    if (
+      input.contentLength !== undefined &&
+      input.contentLength > 10_000_000
+    ) {
+      throw new GraphQLError("File too large", {
+        extensions: { code: "PAYLOAD_TOO_LARGE" },
+      });
+    }
+
     const ttl = clampTtl(input.ttlSec ?? 300);
     const ext = extFromContentType(input.contentType);
 
-    const key = makeKey("upload", { gymId: input.gymId }, { ext });
+    let key: string;
+    if (input.sha256) {
+      const mapKey = `${input.gymId}:${input.sha256}`;
+      const existingKey = this.uploadKeyBySha.get(mapKey);
+      if (existingKey) {
+        key = existingKey;
+      } else {
+        key = makeKey("upload", { gymId: input.gymId }, { ext });
+        this.uploadKeyBySha.set(mapKey, key);
+      }
+    } else {
+      key = makeKey("upload", { gymId: input.gymId }, { ext });
+    }
+
+    let alreadyUploaded = false;
+    if (input.sha256) {
+      try {
+        await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+        alreadyUploaded = true;
+      } catch (err: any) {
+        if (err?.$metadata?.httpStatusCode !== 404) throw err;
+      }
+    }
 
     const cmd = new PutObjectCommand({
       Bucket: BUCKET,
@@ -146,12 +181,15 @@ export class MediaService {
     });
 
     const url = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
-    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+    const expiresAtMs = Date.now() + ttl * 1000;
+    const expiresAt = new Date(expiresAtMs).toISOString();
 
     return {
       url,
       key,
       expiresAt,
+      expiresAtMs,
+      alreadyUploaded,
       requiredHeaders: [{ name: "Content-Type", value: input.contentType }],
     };
   }
@@ -169,7 +207,8 @@ export class MediaService {
       throw new Error("contentTypes length must equal count");
 
     const ttl = 900; // ~15 minutes
-    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+    const expiresAtMs = Date.now() + ttl * 1000;
+    const expiresAt = new Date(expiresAtMs).toISOString();
 
     const items = await Promise.all(
       input.contentTypes.map(async (ct) => {
@@ -183,6 +222,8 @@ export class MediaService {
           url: presign.url,
           storageKey: presign.key,
           expiresAt: presign.expiresAt,
+          expiresAtMs: presign.expiresAtMs,
+          alreadyUploaded: presign.alreadyUploaded,
           requiredHeaders: presign.requiredHeaders,
         };
       })
@@ -192,6 +233,7 @@ export class MediaService {
       sessionId: randomUUID(),
       items,
       expiresAt,
+      expiresAtMs,
     };
   }
 

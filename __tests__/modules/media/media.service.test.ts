@@ -125,4 +125,25 @@ describe("MediaService.getImageUploadUrl", () => {
     const call = (presigner.getSignedUrl as jest.Mock).mock.calls.pop();
     expect(call[2].expiresIn).toBeGreaterThanOrEqual(30);
   });
+
+  it("is idempotent and flags alreadyUploaded", async () => {
+    (svc as any).s3.send = jest
+      .fn()
+      .mockRejectedValueOnce({ $metadata: { httpStatusCode: 404 } })
+      .mockResolvedValueOnce({});
+    const first = await svc.getImageUploadUrl({
+      gymId: 5,
+      contentType: "image/jpeg",
+      sha256: "abc123",
+      contentLength: 1234,
+    });
+    expect(first.alreadyUploaded).toBe(false);
+    const second = await svc.getImageUploadUrl({
+      gymId: 5,
+      contentType: "image/jpeg",
+      sha256: "abc123",
+    });
+    expect(second.key).toBe(first.key);
+    expect(second.alreadyUploaded).toBe(true);
+  });
 });

@@ -22,6 +22,8 @@ export const MediaResolvers = {
         gymId: dto.gymId,
         contentType: dto.contentType,
         filename: dto.filename,
+        sha256: dto.sha256,
+        contentLength: dto.contentLength,
         ttlSec: dto.ttlSec,
       });
     },

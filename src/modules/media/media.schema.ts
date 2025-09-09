@@ -3,6 +3,8 @@ export const mediaTypeDefs = `
     gymId: Int!
     contentType: String!
     filename: String
+    sha256: String
+    contentLength: Int
     ttlSec: Int = 300
   }
 
@@ -15,6 +17,8 @@ export const mediaTypeDefs = `
     url: String!
     key: String!
     expiresAt: DateTime!
+    expiresAtMs: Float!
+    alreadyUploaded: Boolean!
     requiredHeaders: [HeaderKV!]!
   }
 
@@ -30,6 +34,8 @@ export const mediaTypeDefs = `
     url: String!
     storageKey: String!
     expiresAt: DateTime!
+    expiresAtMs: Float!
+    alreadyUploaded: Boolean!
     requiredHeaders: [HeaderKV!]!
   }
 
@@ -37,6 +43,7 @@ export const mediaTypeDefs = `
     sessionId: ID!
     items: [PresignItem!]!
     expiresAt: DateTime!
+    expiresAtMs: Float!
   }
 
   type ImageUrlItem {

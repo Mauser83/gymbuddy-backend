@@ -125,14 +125,22 @@ export class ImageIntakeService {
     if (parsed.gymId !== input.gymId)
       throw new Error("storageKey gymId does not match input.gymId");
 
-    // 2) HEAD the object
+// 2) Idempotency: return existing row if same sha256/object already finalized
+    const existing = await this.prisma.gymEquipmentImage.findFirst({
+      where: {
+        gymId: input.gymId,
+        equipmentId: input.equipmentId,
+        OR: [
+          ...(input.sha256 ? [{ sha256: input.sha256 }] : []),
+          { objectUuid: parsed.uuid },
+        ],
+      },
+    });
+    if (existing) return { image: existing, queuedJobs: [] };
+
+    // 3) HEAD the object
     const head = await this.s3
-      .send(
-        new HeadObjectCommand({
-          Bucket: BUCKET,
-          Key: input.storageKey,
-        })
-      )
+      .send(new HeadObjectCommand({ Bucket: BUCKET, Key: input.storageKey }))
       .catch((err) => {
         if (err?.$metadata?.httpStatusCode === 404)
           throw new Error("Uploaded object not found. Did the PUT succeed?");
@@ -145,15 +153,6 @@ export class ImageIntakeService {
       throw new Error(`Unsupported contentType: ${contentType}`);
     if (!(size > 0 && Number.isFinite(size)))
       throw new Error("Object size invalid or zero");
-
-    // 3) Dedup by sha256 if provided
-    if (input.sha256) {
-      const existing = await this.prisma.gymEquipmentImage.findFirst({
-        where: { sha256: input.sha256 },
-        select: { id: true },
-      });
-      if (existing) throw new Error("Duplicate image (sha256 already exists)");
-    }
 
     // 4) Ensure gymEquipment join exists
     const join = await this.prisma.gymEquipment.upsert({
@@ -328,6 +327,34 @@ export class ImageIntakeService {
         );
       }
       const objectUuid = parsed.uuid;
+      const existing = await this.prisma.gymEquipmentImage.findFirst({
+        where: {
+          gymId: d.gymId,
+          equipmentId: d.equipmentId,
+          OR: [
+            ...(it.sha256 ? [{ sha256: it.sha256 }] : []),
+            { objectUuid },
+          ],
+        },
+      });
+      if (existing) {
+        images.push(existing);
+        continue;
+      }
+      const head = await this.s3
+        .send(new HeadObjectCommand({ Bucket: BUCKET, Key: it.storageKey }))
+        .catch((err) => {
+          if (err?.$metadata?.httpStatusCode === 404)
+            throw new Error("Uploaded object not found. Did the PUT succeed?");
+          throw err;
+        });
+      const contentType = head.ContentType || "";
+      const size = Number(head.ContentLength ?? 0);
+      if (!allowedContentType(contentType))
+        throw new Error(`Unsupported contentType: ${contentType}`);
+      if (!(size > 0 && Number.isFinite(size)))
+        throw new Error("Object size invalid or zero");
+
       const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
         parsed.ext
       }`;

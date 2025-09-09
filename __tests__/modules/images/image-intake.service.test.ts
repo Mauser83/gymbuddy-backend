@@ -78,4 +78,28 @@ describe("finalizeGymImage", () => {
       } as any)
     ).rejects.toThrow(/does not match/i);
   });
+
+  it("is idempotent on repeated finalize", async () => {
+    const prisma = createPrismaMock();
+    const svc = new ImageIntakeService(prisma);
+    const input = {
+      storageKey:
+        "private/uploads/1/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg",
+      gymId: 1,
+      equipmentId: 2,
+      sha256: "deadbeef",
+    } as any;
+    await svc.finalizeGymImage(input);
+    const existing = {
+      id: "cuid1",
+      gymId: 1,
+      equipmentId: 2,
+      storageKey: "approved/key.jpg",
+      status: "PENDING",
+    };
+    (prisma.gymEquipmentImage.findFirst as any).mockResolvedValue(existing);
+    const out = await svc.finalizeGymImage(input);
+    expect(out.image.id).toBe("cuid1");
+    expect(prisma.gymEquipmentImage.create).toHaveBeenCalledTimes(1);
+  });
 });

@@ -20,6 +20,10 @@ export class GetImageUploadUrlDto {
 
   @IsOptional() @IsString() filename?: string;
 
+  @IsOptional() @IsString() sha256?: string;
+
+  @IsOptional() @IsInt() @Min(1) contentLength?: number;
+
   @IsOptional() @IsInt() @Min(30) ttlSec?: number; // clamp later (30..604800)
 }
 
