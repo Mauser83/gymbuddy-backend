@@ -113,6 +113,7 @@ describe("finalizeGymImagesAdmin", () => {
     const prisma: any = {
       gymEquipment: { upsert: jest.fn().mockResolvedValue({ id: 1 }) },
       gymEquipmentImage: {
+        findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation(({ data, select }) => {
           const image = { id: "cuid1", ...data };
           if (select) {
@@ -125,7 +126,7 @@ describe("finalizeGymImagesAdmin", () => {
       },
       imageQueue: { create: jest.fn() },
     };
-    prisma.$transaction = jest.fn((fn: any) => fn(prisma));
+    prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     return prisma as unknown as PrismaClient;
   }
 

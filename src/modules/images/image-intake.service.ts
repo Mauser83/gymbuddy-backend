@@ -1,6 +1,6 @@
 import type { PrismaClient } from "../../lib/prisma";
 import type { Prisma } from "../../generated/prisma";
-import { ImageJobStatus } from "../../generated/prisma";
+import { ImageJobStatus, GymImageStatus } from "../../generated/prisma";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { parseKey } from "../../utils/makeKey";
 import { randomUUID } from "crypto";
@@ -231,90 +231,162 @@ export class ImageIntakeService {
     const now = new Date();
     const tax = await this.getDefaultTaxonomyIds();
 
-    return this.prisma.$transaction(async (tx) => {
-      const join = await tx.gymEquipment.upsert({
-        where: {
-          gymId_equipmentId: { gymId, equipmentId },
-        },
-        update: {},
-        create: { gymId, equipmentId },
-      });
+// Preflight: ensure join exists and copy objects outside txn
+    const join = await this.prisma.gymEquipment.upsert({
+      where: { gymId_equipmentId: { gymId, equipmentId } },
+      update: {},
+      create: { gymId, equipmentId },
+    });
 
-      const images: Array<{
-        id: string;
-        gymId: number;
-        equipmentId: number;
-        status: string;
-        storageKey: string;
-      }> = [];
-      let queued = 0;
+    type ReadyItem = {
+      approvedKey: string;
+      objectUuid: string;
+      uploadKey: string;
+      sha256?: string;
+    };
+    const ready: ReadyItem[] = [];
+    const CONCURRENCY = 4;
+    for (let i = 0; i < items.length; i += CONCURRENCY) {
+      const batch = items.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map(async (it) => {
+          try {
+            const parsed = parseKey(it.storageKey);
+            if (!parsed || parsed.kind !== "upload" || parsed.gymId !== gymId) {
+              throw new Error(
+                "storageKey must be under private/uploads/... and match gymId"
+              );
+            }
+            const head = await this.s3
+              .send(new HeadObjectCommand({ Bucket: BUCKET, Key: it.storageKey }))
+              .catch((err) => {
+                if (err?.$metadata?.httpStatusCode === 404)
+                  throw new Error(
+                    "Uploaded object not found. Did the PUT succeed?"
+                  );
+                throw err;
+              });
+            const contentType = head.ContentType || "";
+            const size = Number(head.ContentLength ?? 0);
+            if (!allowedContentType(contentType))
+              throw new Error(`Unsupported contentType: ${contentType}`);
+            if (!(size > 0 && Number.isFinite(size)))
+              throw new Error("Object size invalid or zero");
 
-      for (const it of items) {
-        const parsed = parseKey(it.storageKey);
-        if (!parsed || parsed.kind !== "upload" || parsed.gymId !== gymId) {
-          throw new Error(
-            "storageKey must be under private/uploads/... and match gymId"
-          );
-        }
+            const approvedKey = `private/gym/${join.id}/approved/${parsed.uuid}.${
+              parsed.ext
+            }`;
+            await copyObjectIfMissing(it.storageKey, approvedKey);
+            return {
+              approvedKey,
+              objectUuid: parsed.uuid,
+              uploadKey: it.storageKey,
+              sha256: it.sha256,
+            } as ReadyItem;
+          } catch (e) {
+            console.error("finalize copy failed", e);
+            return null;
+          }
+        })
+      );
+      for (const r of results) if (r) ready.push(r);
+    }
 
-        const approvedKey = `private/gym/${join.id}/approved/${randomUUID()}.${
-          parsed.ext
-        }`;
-        await copyObjectIfMissing(it.storageKey, approvedKey);
-        await deleteObjectIgnoreMissing(it.storageKey);
-
-        const image = (await tx.gymEquipmentImage.create({
-          data: {
-            gymId,
-            equipmentId,
-            gymEquipmentId: join.id,
-            storageKey: approvedKey,
-            status: "PENDING",
-            objectUuid: parsed.uuid,
-            capturedByUserId: userId ?? null,
-            capturedAt: now,
-            sourceId: tax.sourceId,
-            splitId: tax.splitId,
-            angleId: tax.angleId,
-            heightId: tax.heightId,
-            distanceId: tax.distanceId,
-            lightingId: tax.lightingId,
-            mirrorId: tax.mirrorId,
-            isSafe: false,
-          },
-          select: {
-            id: true,
-            gymId: true,
-            equipmentId: true,
-            status: true,
-            storageKey: true,
-          },
-        })) as {
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const images: Array<{
           id: string;
           gymId: number;
           equipmentId: number;
-          status: string;
-          storageKey: string;
-        };
+          status: GymImageStatus;
+          storageKey: string | null;
+        }> = [];
+        let queued = 0;
+        for (const r of ready) {
+          const existing = await tx.gymEquipmentImage.findFirst({
+            where: {
+              gymId,
+              equipmentId,
+              OR: [
+                ...(r.sha256 ? [{ sha256: r.sha256 }] : []),
+                { objectUuid: r.objectUuid },
+              ],
+            },
+            select: {
+              id: true,
+              gymId: true,
+              equipmentId: true,
+              status: true,
+              storageKey: true,
+            },
+          });
+          if (existing) {
+            images.push(existing);
+            continue;
+          }
+          const image = (await tx.gymEquipmentImage.create({
+            data: {
+              gymId,
+              equipmentId,
+              gymEquipmentId: join.id,
+              storageKey: r.approvedKey,
+              status: "PENDING",
+              objectUuid: r.objectUuid,
+              sha256: r.sha256 ?? null,
+              capturedByUserId: userId ?? null,
+              capturedAt: now,
+              sourceId: tax.sourceId,
+              splitId: tax.splitId,
+              angleId: tax.angleId,
+              heightId: tax.heightId,
+              distanceId: tax.distanceId,
+              lightingId: tax.lightingId,
+              mirrorId: tax.mirrorId,
+              isSafe: false,
+            },
+            select: {
+              id: true,
+              gymId: true,
+              equipmentId: true,
+              status: true,
+              storageKey: true,
+            },
+          })) as {
+            id: string;
+            gymId: number;
+            equipmentId: number;
+            status: GymImageStatus;
+            storageKey: string | null;
+          };
+          await tx.imageQueue.create({
+            data: {
+              jobType: "HASH",
+              status: ImageJobStatus.pending,
+              priority,
+              storageKey: r.approvedKey,
+            },
+          });
+          queued++;
+          images.push(image);
+        }
+        return { images, queuedJobs: queued };
+      },
+      { timeout: 15000, maxWait: 5000 }
+    );
 
-        await tx.imageQueue.create({
-          data: {
-            jobType: "HASH",
-            status: ImageJobStatus.pending,
-            priority,
-            storageKey: approvedKey,
-          },
-        });
-        queued++;
-        images.push(image);
-      }
+    // Delete originals after DB commit
+    for (let i = 0; i < ready.length; i += CONCURRENCY) {
+      const batch = ready.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map((r) => deleteObjectIgnoreMissing(r.uploadKey).catch(() => {}))
+      );
+    }
 
-      setImmediate(() => {
-        kickBurstRunner().catch((e) => console.error("burst runner error", e));
-      });
-
-      return { images, queuedJobs: queued };
+    setImmediate(() => {
+      kickBurstRunner().catch((e) => console.error("burst runner error", e));
     });
+
+    return result;
   }
 
   async finalizeGymImages(input: FinalizeGymImagesDto, userId: number | null) {
