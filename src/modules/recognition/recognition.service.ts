@@ -78,8 +78,9 @@ type EquipmentCandidate = {
 
 function groupTopEquipment(
   imgs: Img[],
-  keepPerEq = PER_EQUIPMENT_IMAGES
+  options: { keepPerEq?: number; source?: string; totalImages?: number } = {}
 ): EquipmentCandidate[] {
+  const { keepPerEq = PER_EQUIPMENT_IMAGES, source = "GYM", totalImages = imgs.length } = options;
   if (!imgs?.length) return [];
   const sorted = [...imgs].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const buckets = new Map<number, Img[]>();
@@ -107,8 +108,8 @@ function groupTopEquipment(
         storageKey: it.storageKey,
         score: it.score,
       })),
-      source: "GYM",
-      totalImagesConsidered: items.length,
+      source,
+      totalImagesConsidered: totalImages,
       lowConfidence: (items[0].score ?? 0) < 0.7,
     }))
     .sort((a, b) => b.topScore - a.topScore);
@@ -199,7 +200,7 @@ export class RecognitionService {
     return { ticketToken, storageKey, putUrl, expiresAt };
   }
 
-  async recognizeImage(token: string, limit = 5) {
+  async recognizeImage(token: string, limit = 3) {
     const { gid: gymId, key: storageKey } = this.verify(token);
     await this.s3
       .send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }))
@@ -227,44 +228,102 @@ export class RecognitionService {
       N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR
     );
 
-    const globalRows = await knnFromVectorGlobal({
-      vector,
-      limit: searchTopK,
-      gymId,
-    });
-    const gTop = globalRows[0];
-    let decision: "GLOBAL_ACCEPT" | "GYM_ACCEPT" | "GYM_SELECT" | "RETAKE" =
-      "RETAKE";
-    let bestEquipmentId: number | null = null;
-    let bestScore = 0;
+    const [gymRows, globalRows] = await Promise.all([
+      knnFromVectorGym({ vector, gymId, limit: searchTopK }),
+      knnFromVectorGlobal({ vector, limit: searchTopK, gymId }),
+    ]);
 
-    if (gTop && gTop.score >= T_HIGH) {
+    const mapRow = (r: any, gym: boolean): CandidateImage => ({
+      imageId: r.id,
+      equipmentId: r.equipmentId!,
+      gymId: gym ? gymId : null,
+      storageKey: r.storageKey,
+      score: r.score,
+    });
+
+    const gymImages: CandidateImage[] = gymRows
+      .filter((r) => r.equipmentId != null)
+      .map((r) => mapRow(r, true))
+      .sort((a, b) => b.score - a.score);
+
+    const globalImages: CandidateImage[] = globalRows
+      .filter((r) => r.equipmentId != null)
+      .map((r) => mapRow(r, false))
+      .sort((a, b) => b.score - a.score);
+
+    const gymTop = gymImages[0];
+    const globalTop = globalImages[0];
+
+    let decision: "GYM_ACCEPT" | "GLOBAL_ACCEPT" | "REJECT" = "REJECT";
+    if (gymTop && (!globalTop || gymTop.score >= globalTop.score) && gymTop.score >= T_HIGH) {
+      decision = "GYM_ACCEPT";
+    } else if (globalTop && globalTop.score >= T_HIGH) {
       decision = "GLOBAL_ACCEPT";
-      bestEquipmentId = gTop.equipmentId ?? null;
-      bestScore = gTop.score;
     }
 
-    let gymRows: typeof globalRows = [];
-    if (decision !== "GLOBAL_ACCEPT") {
-      gymRows = await knnFromVectorGym({
-        vector,
-        gymId,
-        limit: searchTopK,
-      });
-      const top = gymRows[0];
-      if (top && top.score >= T_HIGH) {
-        decision = "GYM_ACCEPT";
-        bestEquipmentId = top.equipmentId ?? null;
-        bestScore = top.score;
-      } else if (top && top.score >= T_LOW) {
-        decision = "GYM_SELECT";
-        bestEquipmentId = null;
-        bestScore = top.score;
-      } else {
-        decision = "RETAKE";
-        bestEquipmentId = null;
-        bestScore = top?.score ?? 0;
+    let chosen: CandidateImage[] = [];
+    let sourceTag = "DECISION";
+    if (decision === "GYM_ACCEPT") {
+      chosen = gymImages;
+      sourceTag = "GYM";
+    } else if (decision === "GLOBAL_ACCEPT") {
+      chosen = globalImages;
+      sourceTag = "GLOBAL";
+    }
+
+    if (decision !== "REJECT" && chosen.length === 0) {
+      const alt = decision === "GYM_ACCEPT" ? globalImages : gymImages;
+      if (alt.length) {
+        chosen = alt;
+        sourceTag = "DECISION";
       }
+    }
+
+    let equipmentCandidates = groupTopEquipment(chosen, {
+      source: sourceTag,
+      totalImages: chosen.length,
+    }).slice(0, N);
+
+    let bestEquipmentId = equipmentCandidates[0]?.equipmentId ?? null;
+    let bestScore = equipmentCandidates[0]?.topScore ?? 0;
+
+    if (decision !== "REJECT" && equipmentCandidates.length === 0) {
+      const fallbackBest =
+        decision === "GYM_ACCEPT" ? gymTop ?? globalTop : globalTop ?? gymTop;
+      if (fallbackBest) {
+        bestEquipmentId = fallbackBest.equipmentId;
+        bestScore = fallbackBest.score;
+        const rep =
+          gymImages.concat(globalImages).find((i) => i.equipmentId === fallbackBest.equipmentId) ?? {
+            imageId: "synthetic",
+            equipmentId: fallbackBest.equipmentId,
+            gymId: decision === "GYM_ACCEPT" ? gymId : null,
+            storageKey,
+            score: bestScore,
+          };
+        equipmentCandidates = [
+          {
+            equipmentId: fallbackBest.equipmentId,
+            equipmentName: undefined,
+            topScore: bestScore,
+            representative: rep,
+            images: [rep],
+            source: "ATTEMPT",
+            totalImagesConsidered: gymImages.length + globalImages.length,
+            lowConfidence: bestScore < 0.7,
+          },
+        ];
+      }
+    }
+
+    if (equipmentCandidates.length) {
+      const ids = equipmentCandidates.map((c) => c.equipmentId);
+      const eqMap = await prisma.equipment
+        .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+        .then((rows) => new Map(rows.map((r) => [r.id, r.name])));
+      equipmentCandidates.forEach((c) => {
+        c.equipmentName = eqMap.get(c.equipmentId) ?? null;
+      });
     }
 
     const attempt = await prisma.recognitionAttempt.create({
@@ -274,66 +333,27 @@ export class RecognitionService {
         vectorHash,
         bestEquipmentId,
         bestScore,
+        decision,
         consent: 'unknown',
       },
     });
 
-    const mapRow = (r: any) => ({
-      imageId: r.id,
-      equipmentId: r.equipmentId ?? null,
-      score: r.score,
-      storageKey: r.storageKey,
+    console.log('recognizeImage:', {
+      gymTop: gymTop ? { equipmentId: gymTop.equipmentId, score: gymTop.score } : null,
+      globalTop: globalTop ? { equipmentId: globalTop.equipmentId, score: globalTop.score } : null,
+      decision,
+      best: { equipmentId: bestEquipmentId, score: bestScore },
+      equipCandidates: equipmentCandidates.map((c) => ({
+        equipmentId: c.equipmentId,
+        topScore: c.topScore,
+        source: c.source,
+      })),
+      counts: { gymImages: gymImages.length, globalImages: globalImages.length },
     });
-
-    const gymImages: Img[] = gymRows
-      .filter((r) => r.equipmentId != null)
-      .map((r) => ({
-        equipmentId: r.equipmentId!,
-        gymId,
-        storageKey: r.storageKey,
-        score: r.score,
-        imageId: r.id,
-      }));
-
-    const globalImages: Img[] = globalRows
-      .filter((r) => r.equipmentId != null)
-      .map((r) => ({
-        equipmentId: r.equipmentId!,
-        gymId: null,
-        storageKey: r.storageKey,
-        score: r.score,
-        imageId: r.id,
-      }));
-
-    const gymEq = groupTopEquipment(gymImages);
-
-    gymEq.forEach((c) => (c.source = "GYM"));
-
-    let eqCand = [...gymEq];
-    if (eqCand.length < N) {
-      const taken = new Set(eqCand.map((c) => c.equipmentId));
-      const globalEq = groupTopEquipment(
-        globalImages.filter((i) => !taken.has(i.equipmentId))
-      );
-      globalEq.forEach((c) => (c.source = "GLOBAL"));
-      eqCand = [...eqCand, ...globalEq];
-    }
-
-    eqCand = eqCand.slice(0, N);
-
-    if (eqCand.length) {
-      const ids = eqCand.map((c) => c.equipmentId);
-      const eqMap = await prisma.equipment
-        .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
-        .then((rows) => new Map(rows.map((r) => [r.id, r.name])));
-      eqCand.forEach((c) => {
-        c.equipmentName = eqMap.get(c.equipmentId) ?? null;
-      });
-    }
 
     return {
       attempt: {
-        attemptId: String(attempt.id),           // ← stringify
+        attemptId: String(attempt.id), // ← stringify
         storageKey: attempt.storageKey,
         vectorHash: attempt.vectorHash,
         bestEquipmentId: attempt.bestEquipmentId,
@@ -341,9 +361,9 @@ export class RecognitionService {
         createdAt: attempt.createdAt,
         decision,
       },
-      globalCandidates: globalRows.map(mapRow),
-      gymCandidates: gymRows.map(mapRow),
-      equipmentCandidates: eqCand,
+      gymCandidates: gymImages,
+      globalCandidates: globalImages,
+      equipmentCandidates,
     };
   }
 

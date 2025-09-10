@@ -982,6 +982,12 @@ enum SuggestionStatus {
   REJECTED
 }
 
+enum RecognitionDecision {
+  GYM_ACCEPT
+  GLOBAL_ACCEPT
+  REJECT
+}
+
 model RecognitionAttempt {
   id             BigInt  @id @default(autoincrement())
   gymId          Int
@@ -989,6 +995,7 @@ model RecognitionAttempt {
   vectorHash     String
   bestEquipmentId Int?
   bestScore      Float
+  decision       RecognitionDecision @default(REJECT)
   createdAt      DateTime @default(now())
   consent        String   @default("unknown")
 }

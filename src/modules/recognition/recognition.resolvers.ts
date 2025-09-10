@@ -6,8 +6,23 @@ export const RecognitionResolvers = {
     createRecognitionUploadTicket: async (_: unknown, args: { gymId: number; input: UploadTicketInput }, ctx: AuthContext) => {
       return ctx.recognitionService.createUploadTicket(args.gymId, args.input);
     },
-    recognizeImage: async (_: unknown, args: { ticketToken: string; limit?: number }, ctx: AuthContext) => {
-      return ctx.recognitionService.recognizeImage(args.ticketToken, args.limit);
+    recognizeImage: async (
+      _: unknown,
+      args: { ticketToken: string; limit?: number },
+      ctx: AuthContext
+    ) => {
+      const rawLimit = args.limit ?? 3;
+      const limit = Math.min(Math.max(rawLimit, 1), 10);
+      const res = await ctx.recognitionService.recognizeImage(
+        args.ticketToken,
+        limit
+      );
+      return {
+        ...res,
+        gymCandidates: res.gymCandidates ?? [],
+        globalCandidates: res.globalCandidates ?? [],
+        equipmentCandidates: res.equipmentCandidates ?? [],
+      };
     },
     confirmRecognition: async (
       _: unknown,
