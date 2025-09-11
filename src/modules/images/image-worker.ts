@@ -40,7 +40,7 @@ const BACKOFF_BASE = Number(process.env.QUEUE_BACKOFF_BASE_SEC ?? 5);
 const BACKOFF_MAX = Number(process.env.QUEUE_BACKOFF_MAX_SEC ?? 300);
 const NSFW_BLOCK = Number(process.env.NSFW_BLOCK ?? 0.8);
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
-const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
+const EMBED_MODEL = process.env.EMBED_MODEL || "openclip-vit-b32";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
 
 export type SafetyResult = {

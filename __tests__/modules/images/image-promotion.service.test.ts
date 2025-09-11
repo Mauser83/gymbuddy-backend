@@ -14,7 +14,7 @@ import {
 import { AuthContext, UserRole } from "../../../src/modules/auth/auth.types";
 
 process.env.EMBED_VENDOR = "local";
-process.env.EMBED_MODEL = "mobileCLIP-S0";
+process.env.EMBED_MODEL = "openclip-vit-b32";
 process.env.EMBED_VERSION = "1.0";
 
 const ONE_BY_ONE_PNG = Buffer.from(

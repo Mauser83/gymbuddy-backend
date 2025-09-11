@@ -20,7 +20,7 @@ import { kickBurstRunner } from "./image-worker";
 import { writeImageEmbedding } from "../cv/embeddingWriter";
 
 const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
-const EMBED_MODEL = process.env.EMBED_MODEL || "mobileCLIP-S0";
+const EMBED_MODEL = process.env.EMBED_MODEL || "openclip-vit-b32";
 const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
 
 const BUCKET = process.env.R2_BUCKET!;

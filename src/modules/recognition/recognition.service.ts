@@ -23,7 +23,7 @@ import { assertSizeWithinLimit } from "../media/media.utils";
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
-const TICKET_SECRET = process.env.TICKET_SECRET ?? "test-secret";
+const TICKET_SECRET = process.env.TICKET_SECRET;
 const T_HIGH = 0.85;
 const T_LOW = 0.55;
 
