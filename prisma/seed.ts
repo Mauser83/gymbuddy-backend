@@ -10,7 +10,9 @@ async function main() {
   const password = process.env.ADMIN_PASSWORD;
 
   if (!username || !email || !password) {
-    console.error('ADMIN_USERNAME, ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set.');
+    console.error(
+      "ADMIN_USERNAME, ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set."
+    );
     process.exit(1);
   }
 
@@ -28,31 +30,35 @@ async function main() {
         email: email,
         username: username,
         password: hashedPassword,
-        appRole: 'ADMIN',
-        userRole: 'USER'
+        appRole: "ADMIN",
+        userRole: "USER",
       },
     });
 
-    console.log(`Created user with id: ${user.id}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Created demo user");
+    }
   } else {
-    console.log(`User with username ${username} already exists`);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Demo user already exists");
+    }
   }
-  
+
   await prisma.experienceLevel.createMany({
     data: [
       {
-        name: 'Beginner',
-        key: 'beginner',
+        name: "Beginner",
+        key: "beginner",
         isDefault: true,
       },
       {
-        name: 'Intermediate',
-        key: 'intermediate',
+        name: "Intermediate",
+        key: "intermediate",
         isDefault: false,
       },
       {
-        name: 'Advanced',
-        key: 'advanced',
+        name: "Advanced",
+        key: "advanced",
         isDefault: false,
       },
     ],
@@ -62,10 +68,10 @@ async function main() {
 
 main()
   .then(async () => {
-    await prisma.$disconnect()
+    await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error(e)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
