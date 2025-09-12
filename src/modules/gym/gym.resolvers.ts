@@ -426,10 +426,6 @@ export const GymResolvers = {
         normalized,
         context.userId ?? null
       );
-      console.log(
-        "finalizeGymImagesAdmin returning",
-        result.images.map((i) => ({ id: i.id, storageKey: i.storageKey }))
-      );
       return result;
     },
     setPrimaryGymEquipmentImage: async (
