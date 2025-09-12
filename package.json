@@ -7,7 +7,7 @@
     "prisma:test:generate": "prisma generate --schema=prisma/test/schema.prisma",
     "build": "tsc -p .",
     "start": "node dist/server.js",
-    "dev": "nodemon server.ts",
+    "dev": "nodemon src/server.ts",
     "migrate:deploy": "dotenv -e .env.production npx prisma migrate deploy",
     "seed": "ts-node prisma/seed.ts",
     "test": "npm run prisma:test:generate && dotenv -e .env.test jest --detectOpenHandles --runInBand",
@@ -23,6 +23,9 @@
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20 <21"
+  },
   "dependencies": {
     "@apollo/server": "^4.12.0",
     "@apollo/server-plugin-landing-page-graphql-playground": "^4.0.1",
