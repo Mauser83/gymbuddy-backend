@@ -1,6 +1,6 @@
-import { prisma } from "../src/lib/prisma";
-import * as bcrypt from "bcrypt";
-import * as dotenv from "dotenv";
+import { prisma } from '../src/lib/prisma';
+import bcrypt from "bcrypt";
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
