@@ -9,7 +9,7 @@ GraphQL/Express backend for managing workouts, gyms, exercises, users, and media
 - Modular GraphQL schema: gyms, workouts, exercises, users, auth, media.
 - WebSocket subscriptions for user and gym events.
 - Prisma ORM with DI-registered services (permissions, users, media).
-- Express middleware: CORS, CSRF (prod), input sanitization, logging, Prometheus metrics.
+- Express middleware: CORS, input sanitization, logging, Prometheus metrics.
 - REST proxy endpoints to Google Places (autocomplete, place details).
 - Image pipeline (ONNX) with background workers for embeddings/moderation.
 - Health and metrics endpoints for uptime and observability.
@@ -37,7 +37,7 @@ Node.js • Express • Apollo Server • GraphQL • Prisma ORM • PostgreSQL 
 ```
 
 ## API overview
-- **Auth:** Bearer JWT for GraphQL. CSRF token required for state-changing REST calls in production.
+- **Auth:** Bearer JWT for GraphQL. Header-based auth means CSRF tokens aren't required.
 - **Errors:** REST returns `{ error, message }`; GraphQL uses the standard `errors` array.
 
 **Flagship endpoints**
@@ -100,7 +100,7 @@ CI is supported via GitHub Actions (badge not included).
 ## Security posture
 - Secrets via environment variables only; none are committed.
 - CORS restricted to approved origins; credentials required for allowed hosts.
-- CSRF protection enabled for non-GET REST requests in production.
+- Stateless JWT auth in headers; cookies aren't used, minimizing CSRF risk.
 - Request input sanitized; logs avoid PII and tokens.
 
 ## Performance & reliability

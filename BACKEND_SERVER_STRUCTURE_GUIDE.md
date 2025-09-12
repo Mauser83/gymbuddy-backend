@@ -37,7 +37,7 @@ This document explains how the backend server of Gymbuddy is structured, how it 
 
 * Express and Apollo middleware for:
 
-  * `csrf.ts`, `logger.ts`, `metrics.ts`, `validation.ts`, `sanitization.ts`, `errorHandler.ts`
+  * `logger.ts`, `metrics.ts`, `validation.ts`, `sanitization.ts`, `errorHandler.ts`
 * Grouped by purpose, modular and reusable
 
 ### 6. **Domain Modules**: `modules/<feature>`
