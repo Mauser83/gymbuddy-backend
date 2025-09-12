@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { sanitizeInput } from '../../src/middlewares/sanitization';
-import { conditionalCsrf } from '../../src/middlewares/csrf';
 import { errorHandler } from '../../src/middlewares/errorHandler';
 import { GraphQLError } from 'graphql';
 
@@ -9,11 +8,6 @@ describe('middlewares', () => {
     const req = { body: { a: '<script>' }, query: {}, params: {} } as unknown as Request;
     sanitizeInput(req, {} as Response, () => {});
     expect(req.body.a).not.toContain('<script>');
-  });
-
-  test('conditionalCsrf skips for GET', done => {
-    const req = { method: 'GET', path: '/', csrfToken: jest.fn() } as any;
-    conditionalCsrf(req, {} as Response, done);
   });
 
   test('errorHandler sends GraphQL errors as 400', () => {

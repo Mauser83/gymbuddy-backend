@@ -19,7 +19,6 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { errorLogger, requestLogger } from "./middlewares/logger";
 import { metricsMiddleware } from "./middlewares/metrics";
 import { sanitizeInput } from "./middlewares/sanitization";
-import { conditionalCsrf, csrfTokenRoute } from "./middlewares/csrf";
 
 import { setupApollo } from "./graphql/setupApollo";
 import { setupWebSocket } from "./graphql/setupWebsocket";
@@ -61,10 +60,6 @@ app.use("/api", apiRouter);
 
 // === Security + Middlewares ===
 app.use(cookieParser(JWT_SECRET));
-if (process.env.NODE_ENV === "production") {
-  app.use(conditionalCsrf);
-  app.get("/csrf-token", csrfTokenRoute);
-}
 app.use(sanitizeInput);
 app.use(express.json());
 app.use(metricsMiddleware);
