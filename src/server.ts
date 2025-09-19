@@ -1,29 +1,29 @@
-import dotenv from "dotenv";
-dotenv.config();
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import { config as loadEnv } from 'dotenv';
+import express, { json } from 'express';
+import http from 'http';
+import { register as promRegister } from 'prom-client';
 
-import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import http from "http";
-import { PrismaClient } from "./lib/prisma";
-import { PermissionService } from "./modules/core/permission.service";
-import { DIContainer } from "./modules/core/di.container";
-import { MediaService } from "./modules/media/media.service";
-import { ImageIntakeService } from "./modules/images/image-intake.service";
-import { ImagePromotionService } from "./modules/images/image-promotion.service";
-import { ImageModerationService } from "./modules/images/image-moderation.service";
-import { RecognitionService } from "./modules/recognition/recognition.service";
-import { initLocalOpenCLIP } from "./modules/images/embedding/local-openclip-light";
+loadEnv();
 
-import { errorHandler } from "./middlewares/errorHandler";
-import { errorLogger, requestLogger } from "./middlewares/logger";
-import { metricsMiddleware } from "./middlewares/metrics";
-import { sanitizeInput } from "./middlewares/sanitization";
-
-import { setupApollo } from "./graphql/setupApollo";
-import { setupWebSocket } from "./graphql/setupWebsocket";
-import apiRouter from "./api/apiRouter";
-import { startMemoryLogger } from "./utils/memoryTracker";
+import apiRouter from './api/apiRouter';
+import { setupApollo } from './graphql/setupApollo';
+import { setupWebSocket } from './graphql/setupWebsocket';
+import { PrismaClient } from './lib/prisma';
+import { errorHandler } from './middlewares/errorHandler';
+import { errorLogger, requestLogger } from './middlewares/logger';
+import { metricsMiddleware } from './middlewares/metrics';
+import { sanitizeInput } from './middlewares/sanitization';
+import { DIContainer } from './modules/core/di.container';
+import { PermissionService } from './modules/core/permission.service';
+import { initLocalOpenCLIP } from './modules/images/embedding/local-openclip-light';
+import { ImageIntakeService } from './modules/images/image-intake.service';
+import { ImageModerationService } from './modules/images/image-moderation.service';
+import { ImagePromotionService } from './modules/images/image-promotion.service';
+import { MediaService } from './modules/media/media.service';
+import { RecognitionService } from './modules/recognition/recognition.service';
+import { startMemoryLogger } from './utils/memoryTracker';
 
 export const app = express();
 
@@ -34,69 +34,68 @@ app.use(
       if (!origin) return callback(null, true);
       // Allow web from localhost for Expo web
       if (
-        origin === "http://localhost:8081" ||
-        origin === "http://localhost:19006"
+        origin === 'http://localhost:8081' ||
+        origin === 'http://localhost:19006'
         // add more as needed
       ) {
         return callback(null, true);
       }
       // Otherwise, block it
-      return callback(new Error("Not allowed by CORS"));
+      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
-  })
+  }),
 );
 
-app.set("trust proxy", true);
+app.set('trust proxy', true);
 export const JWT_SECRET = process.env.JWT_SECRET;
 const PORT = process.env.PORT || 4000;
 
 if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required");
+  throw new Error('JWT_SECRET environment variable is required');
 }
 
 // === API Routes ===
-app.use("/api", apiRouter);
+app.use('/api', apiRouter);
 
 // === Security + Middlewares ===
 app.use(cookieParser(JWT_SECRET));
 app.use(sanitizeInput);
-app.use(express.json());
+app.use(json());
 app.use(metricsMiddleware);
 app.use(requestLogger);
 
 // === DI Container Services ===
 const container = DIContainer.getInstance();
-const prisma = container.resolve<PrismaClient>("PrismaClient");
-const permissionService =
-  container.resolve<PermissionService>("PermissionService");
-const mediaService = container.resolve<MediaService>("MediaService");
+const prisma = container.resolve<PrismaClient>('PrismaClient');
+const permissionService = container.resolve<PermissionService>('PermissionService');
+const mediaService = container.resolve<MediaService>('MediaService');
 const imageIntakeService = new ImageIntakeService(prisma);
 const imagePromotionService = new ImagePromotionService(prisma);
 const imageModerationService = new ImageModerationService(prisma);
 const recognitionService = new RecognitionService();
 
 // === Health & Metrics ===
-app.get("/health", (_req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
-    status: "healthy",
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
 });
 
-app.get("/metrics", async (_req, res) => {
+app.get('/metrics', async (_req, res) => {
   try {
-    res.set("Content-Type", "text/plain");
-    res.end(await require("prom-client").register.metrics());
+    res.set('Content-Type', 'text/plain');
+    res.end(await promRegister.metrics());
   } catch {
-    res.status(500).end("Error collecting metrics");
+    res.status(500).end('Error collecting metrics');
   }
 });
 
 // === Start Server ===
 async function startApolloServer() {
-  console.log("Starting Apollo Server...");
+  console.log('Starting Apollo Server...');
   await initLocalOpenCLIP();
   await setupApollo(
     app,
@@ -106,9 +105,9 @@ async function startApolloServer() {
     imageIntakeService,
     imagePromotionService,
     imageModerationService,
-    recognitionService
+    recognitionService,
   );
-  console.log("Apollo ready.");
+  console.log('Apollo ready.');
 
   const httpServer = http.createServer(app);
 
@@ -120,38 +119,38 @@ async function startApolloServer() {
     imageIntakeService,
     imagePromotionService,
     imageModerationService,
-    recognitionService
+    recognitionService,
   );
-    
+
   httpServer.listen(PORT, () => {
-    type Stage = "development" | "staging" | "production";
-    const stage = (process.env.APP_ENV ?? "production").toLowerCase() as Stage;
+    type Stage = 'development' | 'staging' | 'production';
+    const stage = (process.env.APP_ENV ?? 'production').toLowerCase() as Stage;
     console.log(`running on ${stage} stage`);
 
-    console.log("DB host:", new URL(process.env.DATABASE_URL!).host);
+    console.log('DB host:', new URL(process.env.DATABASE_URL!).host);
   });
 
   // Graceful shutdown
   const shutdown = () => {
-    console.log("🔻 Shutting down...");
+    console.log('🔻 Shutting down...');
     httpServer.close(() => {
-      console.log("✅ Server closed");
+      console.log('✅ Server closed');
       process.exit(0);
     });
   };
 
-  process.on("SIGTERM", shutdown);
-  process.on("SIGINT", shutdown);
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 app.use(errorLogger);
 app.use(errorHandler);
 
 // === Boot (skip for tests) ===
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== 'test') {
   startMemoryLogger();
   startApolloServer().catch((err) => {
-    console.error("❌ Failed to start server:", err);
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   });
 }

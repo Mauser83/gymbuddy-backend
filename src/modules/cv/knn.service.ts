@@ -1,6 +1,6 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from '../../lib/prisma';
 
-type Scope = "GLOBAL" | "GYM" | "AUTO";
+type Scope = 'GLOBAL' | 'GYM' | 'AUTO';
 
 type Row = { id: string; equipmentId: number | null; score: number; storageKey: string };
 
@@ -17,15 +17,15 @@ export async function knnSearchService(input: {
   const limit = Math.max(1, Math.min(input.limit ?? 10, 100));
   const minScore = clamp01(input.minScore ?? 0.72);
 
-  if ((scope === "GYM" || scope === "AUTO") && !gymId) {
-    throw new Error("gymId is required for this scope");
+  if ((scope === 'GYM' || scope === 'AUTO') && !gymId) {
+    throw new Error('gymId is required for this scope');
   }
 
-  if (scope === "GLOBAL") {
+  if (scope === 'GLOBAL') {
     return searchGlobalFromSourceId({ sourceId: imageId, excludeId: imageId, limit });
   }
 
-  if (scope === "GYM") {
+  if (scope === 'GYM') {
     return searchGymFromSourceId({ sourceId: imageId, gymId: gymId!, excludeId: imageId, limit });
   }
 
@@ -78,7 +78,7 @@ async function searchGlobalFromSourceId(opts: {
     `,
     sourceId,
     excludeId,
-    limit
+    limit,
   );
 }
 
@@ -123,7 +123,7 @@ async function searchGymFromSourceId(opts: {
     sourceId,
     gymId,
     excludeId,
-    limit
+    limit,
   );
 }
 
@@ -162,7 +162,7 @@ export async function knnFromVectorGlobal(params: {
      LIMIT $2
     `,
     vector,
-    Math.max(1, Math.min(limit, 100))
+    Math.max(1, Math.min(limit, 100)),
   );
 }
 
@@ -190,6 +190,6 @@ export async function knnFromVectorGym(params: {
     `,
     vector,
     gymId,
-    Math.max(1, Math.min(limit, 100))
+    Math.max(1, Math.min(limit, 100)),
   );
 }

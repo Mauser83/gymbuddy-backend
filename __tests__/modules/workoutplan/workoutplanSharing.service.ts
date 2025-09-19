@@ -1,8 +1,8 @@
-import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
 import { PrismaClient } from '../../../src/lib/prisma';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import { PermissionType } from '../../../src/modules/auth/auth.types';
+import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 
 describe('SharingService', () => {
   let prisma: DeepMockProxy<PrismaClient>;
@@ -32,7 +32,7 @@ describe('SharingService', () => {
       permissionType: PermissionType.OWNERSHIP,
       userId: 1,
       userRoles: {},
-      resource: { ownerId: 2 }
+      resource: { ownerId: 2 },
     });
     expect(result).toBe(true);
   });

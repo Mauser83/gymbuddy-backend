@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { EquipmentResolvers } from '../../../src/modules/equipment/equipment.resolvers';
 import { EquipmentService } from '../../../src/modules/equipment/equipment.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/equipment/equipment.service');
 
@@ -76,13 +76,19 @@ describe('EquipmentResolvers', () => {
       const ctx = createContext();
       ctx.prisma.equipmentImage.findMany.mockResolvedValue([{ id: 1 }]);
       const res = await EquipmentResolvers.Equipment.images({ id: 3 }, {}, ctx);
-      expect(ctx.prisma.equipmentImage.findMany).toHaveBeenCalledWith({ where: { equipmentId: 3 } });
+      expect(ctx.prisma.equipmentImage.findMany).toHaveBeenCalledWith({
+        where: { equipmentId: 3 },
+      });
       expect(res).toEqual([{ id: 1 }]);
     });
 
     test('Equipment.compatibleExercises empty when no subcategory', async () => {
       const ctx = createContext();
-      const res = await EquipmentResolvers.Equipment.compatibleExercises({ subcategoryId: undefined }, {}, ctx);
+      const res = await EquipmentResolvers.Equipment.compatibleExercises(
+        { subcategoryId: undefined },
+        {},
+        ctx,
+      );
       expect(res).toEqual([]);
       expect(ctx.prisma.exercise.findMany).not.toHaveBeenCalled();
     });
@@ -90,7 +96,11 @@ describe('EquipmentResolvers', () => {
     test('Equipment.compatibleExercises queries when subcategory present', async () => {
       const ctx = createContext();
       ctx.prisma.exercise.findMany.mockResolvedValue([{ id: 1 }]);
-      const res = await EquipmentResolvers.Equipment.compatibleExercises({ subcategoryId: 4 }, {}, ctx);
+      const res = await EquipmentResolvers.Equipment.compatibleExercises(
+        { subcategoryId: 4 },
+        {},
+        ctx,
+      );
       expect(ctx.prisma.exercise.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
@@ -110,7 +120,9 @@ describe('EquipmentResolvers', () => {
       const ctx = createContext();
       ctx.prisma.equipmentSubcategory.findMany.mockResolvedValue([]);
       await EquipmentResolvers.EquipmentCategory.subcategories({ id: 5 }, {}, ctx);
-      expect(ctx.prisma.equipmentSubcategory.findMany).toHaveBeenCalledWith({ where: { categoryId: 5 } });
+      expect(ctx.prisma.equipmentSubcategory.findMany).toHaveBeenCalledWith({
+        where: { categoryId: 5 },
+      });
     });
 
     test('EquipmentSubcategory.category', async () => {
@@ -142,14 +154,18 @@ describe('EquipmentResolvers', () => {
       const ctx = createContext();
       ctx.prisma.equipmentCategory.findMany.mockResolvedValue([]);
       await EquipmentResolvers.Query.equipmentCategories(null as any, {}, ctx);
-      expect(ctx.prisma.equipmentCategory.findMany).toHaveBeenCalledWith({ include: { subcategories: true } });
+      expect(ctx.prisma.equipmentCategory.findMany).toHaveBeenCalledWith({
+        include: { subcategories: true },
+      });
     });
 
     test('equipmentSubcategories queries prisma with optional categoryId', async () => {
       const ctx = createContext();
       ctx.prisma.equipmentSubcategory.findMany.mockResolvedValue([]);
       await EquipmentResolvers.Query.equipmentSubcategories(null as any, { categoryId: 2 }, ctx);
-      expect(ctx.prisma.equipmentSubcategory.findMany).toHaveBeenCalledWith({ where: { categoryId: 2 } });
+      expect(ctx.prisma.equipmentSubcategory.findMany).toHaveBeenCalledWith({
+        where: { categoryId: 2 },
+      });
     });
 
     test('gymEquipmentByGymId uses service', async () => {
@@ -214,7 +230,11 @@ describe('EquipmentResolvers', () => {
       const serviceInstance = { updateEquipmentCategory: jest.fn() } as any;
       mockedService.mockImplementation(() => serviceInstance);
       const ctx = createContext();
-      await EquipmentResolvers.Mutation.updateEquipmentCategory(null as any, { id: 1, input: {} }, ctx);
+      await EquipmentResolvers.Mutation.updateEquipmentCategory(
+        null as any,
+        { id: 1, input: {} },
+        ctx,
+      );
       expect(serviceInstance.updateEquipmentCategory).toHaveBeenCalled();
     });
 
@@ -238,7 +258,11 @@ describe('EquipmentResolvers', () => {
       const serviceInstance = { updateEquipmentSubcategory: jest.fn() } as any;
       mockedService.mockImplementation(() => serviceInstance);
       const ctx = createContext();
-      await EquipmentResolvers.Mutation.updateEquipmentSubcategory(null as any, { id: 1, input: {} }, ctx);
+      await EquipmentResolvers.Mutation.updateEquipmentSubcategory(
+        null as any,
+        { id: 1, input: {} },
+        ctx,
+      );
       expect(serviceInstance.updateEquipmentSubcategory).toHaveBeenCalled();
     });
 

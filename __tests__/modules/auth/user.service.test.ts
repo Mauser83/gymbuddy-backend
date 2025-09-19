@@ -28,7 +28,10 @@ describe('UserService', () => {
     permissionService.verifyAppRoles.mockReturnValue(true);
     prisma.user.findMany.mockResolvedValue([{ id: 1 }]);
     const result = await service.getUsers(1);
-    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: {} , select: { id: true, email: true, createdAt: true }});
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {},
+      select: { id: true, email: true, createdAt: true },
+    });
     expect(result).toEqual([{ id: 1 }]);
   });
 
@@ -37,7 +40,10 @@ describe('UserService', () => {
     permissionService.verifyAppRoles.mockReturnValue(false);
     prisma.user.findMany.mockResolvedValue([{ id: 1 }]);
     const result = await service.getUsers(1);
-    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: { id: 1 }, select: { id: true, email: true, createdAt: true } });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { id: 1 },
+      select: { id: true, email: true, createdAt: true },
+    });
     expect(result).toEqual([{ id: 1 }]);
   });
 

@@ -1,10 +1,10 @@
-import { PrismaClient, User } from "../../lib/prisma";
-import { PermissionService } from "../core/permission.service";
-import { MediaService } from "../media/media.service";
-import { ImageIntakeService } from "../images/image-intake.service";
-import { ImagePromotionService } from "../images/image-promotion.service";
-import { ImageModerationService } from "../images/image-moderation.service";
-import { RecognitionService } from "../recognition/recognition.service";
+import { PrismaClient, User } from '../../lib/prisma';
+import { PermissionService } from '../core/permission.service';
+import { ImageIntakeService } from '../images/image-intake.service';
+import { ImageModerationService } from '../images/image-moderation.service';
+import { ImagePromotionService } from '../images/image-promotion.service';
+import { MediaService } from '../media/media.service';
+import { RecognitionService } from '../recognition/recognition.service';
 
 // Existing GraphQL-related types
 export interface RegisterInput {
@@ -39,26 +39,26 @@ export interface AuthPayload {
 
 // ✅ Consolidated Role + Context Types
 export enum AppRole {
-  ADMIN = "ADMIN",
-  MODERATOR = "MODERATOR",
+  ADMIN = 'ADMIN',
+  MODERATOR = 'MODERATOR',
 }
 
 export enum UserRole {
-  USER = "USER",
-  PREMIUM_USER = "PREMIUM_USER",
-  PERSONAL_TRAINER = "PERSONAL_TRAINER",
+  USER = 'USER',
+  PREMIUM_USER = 'PREMIUM_USER',
+  PERSONAL_TRAINER = 'PERSONAL_TRAINER',
 }
 
 export enum GymRole {
-  GYM_ADMIN = "GYM_ADMIN",
-  GYM_MODERATOR = "GYM_MODERATOR",
+  GYM_ADMIN = 'GYM_ADMIN',
+  GYM_MODERATOR = 'GYM_MODERATOR',
 }
 
 export enum PermissionType {
-  OWNERSHIP = "OWNERSHIP",
-  GYM_SCOPE = "GYM_SCOPE",
-  APP_SCOPE = "APP_SCOPE",
-  PREMIUM_FEATURE = "PREMIUM_FEATURE",
+  OWNERSHIP = 'OWNERSHIP',
+  GYM_SCOPE = 'GYM_SCOPE',
+  APP_SCOPE = 'APP_SCOPE',
+  PREMIUM_FEATURE = 'PREMIUM_FEATURE',
 }
 
 export interface JwtPayload {

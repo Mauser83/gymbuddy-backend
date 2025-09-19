@@ -1,11 +1,31 @@
+# .github/workflows/ci.yml
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch: {}
 
 permissions:
-  contents: read   # ✅ minimal for build/lint/test
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  ci:
+    name: build+typecheck+lint+prettier
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,6 +34,11 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: npm run lint --if-present
-      - run: npm run typecheck --if-present
+      - name: Build
+        run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Prettier (check)
+        run: npm run format:check

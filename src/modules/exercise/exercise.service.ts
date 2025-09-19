@@ -1,25 +1,3 @@
-import { PrismaClient } from "../../lib/prisma";
-import { PermissionService } from "../core/permission.service";
-import { validateInput } from "../../middlewares/validation";
-import { ExerciseQueryFilters } from "./exercise.types";
-import { verifyRoles } from "../auth/auth.roles";
-import { AuthContext } from "../auth/auth.types";
-
-import {
-  CreateExerciseInput,
-  UpdateExerciseInput,
-  CreateExerciseTypeInput,
-  UpdateExerciseTypeInput,
-  CreateExerciseDifficultyInput,
-  UpdateExerciseDifficultyInput,
-  CreateBodyPartInput,
-  UpdateBodyPartInput,
-  CreateMuscleInput,
-  UpdateMuscleInput,
-  CreateMetricInput,
-  UpdateMetricInput,
-} from "./exercise.types";
-
 import {
   CreateExerciseDto,
   UpdateExerciseDto,
@@ -33,7 +11,27 @@ import {
   UpdateMuscleDto,
   CreateMetricDto,
   UpdateMetricDto,
-} from "./exercise.dto";
+} from './exercise.dto';
+import {
+  ExerciseQueryFilters,
+  CreateExerciseInput,
+  UpdateExerciseInput,
+  CreateExerciseTypeInput,
+  UpdateExerciseTypeInput,
+  CreateExerciseDifficultyInput,
+  UpdateExerciseDifficultyInput,
+  CreateBodyPartInput,
+  UpdateBodyPartInput,
+  CreateMuscleInput,
+  UpdateMuscleInput,
+  CreateMetricInput,
+  UpdateMetricInput,
+} from './exercise.types';
+import { PrismaClient } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
+import { verifyRoles } from '../auth/auth.roles';
+import { AuthContext } from '../auth/auth.types';
+import { PermissionService } from '../core/permission.service';
 
 export class ExerciseService {
   private prisma: PrismaClient;
@@ -53,19 +51,15 @@ export class ExerciseService {
     });
 
     if (!exercise || exercise.userId !== userId) {
-      throw new Error("Unauthorized exercise access");
+      throw new Error('Unauthorized exercise access');
     }
   }
 
-  async createExercise(
-    context: AuthContext,
-    input: CreateExerciseInput,
-    userId: number
-  ) {
+  async createExercise(context: AuthContext, input: CreateExerciseInput, userId: number) {
     await validateInput(input, CreateExerciseDto);
 
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
 
     const {
@@ -122,14 +116,12 @@ export class ExerciseService {
 
     // Add full-text-like search
     if (search) {
-      const orClause: any[] = [
-        { name: { contains: search, mode: "insensitive" as const } },
-      ];
+      const orClause: any[] = [{ name: { contains: search, mode: 'insensitive' as const } }];
 
       if (!filters?.difficulty?.length) {
         orClause.push({
           difficulty: {
-            level: { contains: search, mode: "insensitive" as const },
+            level: { contains: search, mode: 'insensitive' as const },
           },
         });
       }
@@ -137,7 +129,7 @@ export class ExerciseService {
       if (!filters?.exerciseType?.length) {
         orClause.push({
           exerciseType: {
-            name: { contains: search, mode: "insensitive" as const },
+            name: { contains: search, mode: 'insensitive' as const },
           },
         });
       }
@@ -147,17 +139,17 @@ export class ExerciseService {
           {
             primaryMuscles: {
               some: {
-                name: { contains: search, mode: "insensitive" as const },
+                name: { contains: search, mode: 'insensitive' as const },
               },
             },
           },
           {
             secondaryMuscles: {
               some: {
-                name: { contains: search, mode: "insensitive" as const },
+                name: { contains: search, mode: 'insensitive' as const },
               },
             },
-          }
+          },
         );
       }
 
@@ -167,7 +159,7 @@ export class ExerciseService {
             primaryMuscles: {
               some: {
                 bodyPart: {
-                  name: { contains: search, mode: "insensitive" as const },
+                  name: { contains: search, mode: 'insensitive' as const },
                 },
               },
             },
@@ -176,11 +168,11 @@ export class ExerciseService {
             secondaryMuscles: {
               some: {
                 bodyPart: {
-                  name: { contains: search, mode: "insensitive" as const },
+                  name: { contains: search, mode: 'insensitive' as const },
                 },
               },
             },
-          }
+          },
         );
       }
 
@@ -240,7 +232,7 @@ export class ExerciseService {
 
     return this.prisma.exercise.findMany({
       where: whereClause,
-      orderBy: { name: "asc" },
+      orderBy: { name: 'asc' },
       include: {
         difficulty: true,
         primaryMuscles: { include: { bodyPart: true } },
@@ -279,7 +271,7 @@ export class ExerciseService {
           },
         },
         equipmentSlots: {
-          orderBy: { slotIndex: "asc" },
+          orderBy: { slotIndex: 'asc' },
           include: {
             options: {
               include: {
@@ -337,12 +329,12 @@ export class ExerciseService {
         ...(search && {
           name: {
             contains: search,
-            mode: "insensitive",
+            mode: 'insensitive',
           },
         }),
         deletedAt: null,
       },
-      orderBy: { name: "asc" },
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -494,10 +486,7 @@ export class ExerciseService {
     return this.prisma.exerciseDifficulty.create({ data: input });
   }
 
-  async updateExerciseDifficulty(
-    id: number,
-    input: UpdateExerciseDifficultyInput
-  ) {
+  async updateExerciseDifficulty(id: number, input: UpdateExerciseDifficultyInput) {
     await validateInput(input, UpdateExerciseDifficultyDto);
     return this.prisma.exerciseDifficulty.update({
       where: { id },

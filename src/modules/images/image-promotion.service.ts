@@ -1,8 +1,13 @@
-import { PrismaClient, Prisma } from "../../lib/prisma";
-import type { Prisma as PrismaTypes } from "../../generated/prisma";
-import { S3Client, CopyObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { fileExtFrom } from "../../utils/makeKey";
-import { randomUUID } from "crypto";
+import {
+  S3Client,
+  CopyObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { randomUUID } from 'crypto';
+import sharp from 'sharp';
+
+import { kickBurstRunner } from './image-worker';
 import {
   PromoteGymImageDto,
   ApproveTrainingCandidateDto,
@@ -11,21 +16,22 @@ import {
   ListGlobalSuggestionsDto,
   ApproveGlobalSuggestionDto,
   RejectGlobalSuggestionDto,
-} from "./images.dto";
-import { AuthContext } from "../auth/auth.types";
-import { verifyGymScope } from "../auth/auth.roles";
-import { ImageJobStatus } from "../../generated/prisma";
-import sharp from "sharp";
-import { kickBurstRunner } from "./image-worker";
-import { writeImageEmbedding } from "../cv/embeddingWriter";
+} from './images.dto';
+import { ImageJobStatus } from '../../generated/prisma';
+import type { Prisma as PrismaTypes } from '../../generated/prisma';
+import { PrismaClient, Prisma } from '../../lib/prisma';
+import { fileExtFrom } from '../../utils/makeKey';
+import { verifyGymScope } from '../auth/auth.roles';
+import { AuthContext } from '../auth/auth.types';
+import { writeImageEmbedding } from '../cv/embeddingWriter';
 
-const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
-const EMBED_MODEL = process.env.EMBED_MODEL || "openclip-vit-b32";
-const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
+const EMBED_VENDOR = process.env.EMBED_VENDOR || 'local';
+const EMBED_MODEL = process.env.EMBED_MODEL || 'openclip-vit-b32';
+const EMBED_VERSION = process.env.EMBED_VERSION || '1.0';
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
-if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
+if (!BUCKET || !ACCOUNT_ID) throw new Error('R2_BUCKET/R2_ACCOUNT_ID must be set');
 
 // helper: parse pgvector text like "[0.12, -0.34, 0.56]" → number[]
 function parsePgvectorText(v: string | null | undefined): number[] | null {
@@ -69,26 +75,26 @@ function scoreGlobalCandidate({
   const reasons: string[] = [];
   if (globalCount === 0) {
     s += 0.6;
-    reasons.push("NO_GLOBAL");
+    reasons.push('NO_GLOBAL');
   } else if (globalCount < 3) {
     s += 0.3;
-    reasons.push("LOW_COVERAGE");
+    reasons.push('LOW_COVERAGE');
   } else if (globalCount < 15) {
     s += 0.15;
-    reasons.push("GROWTH");
+    reasons.push('GROWTH');
   }
   if (hiRes) {
     s += 0.1;
-    reasons.push("HI_RES");
+    reasons.push('HI_RES');
   }
   s += 0.05;
-  reasons.push("FRESH");
+  reasons.push('FRESH');
   if (simMax >= 0.995) {
     s -= 0.5;
-    reasons.push("NEAR_DUP_STRONG");
+    reasons.push('NEAR_DUP_STRONG');
   } else if (simMax >= 0.985) {
     s -= 0.25;
-    reasons.push("NEAR_DUP");
+    reasons.push('NEAR_DUP');
   }
   return { score: Math.max(0, Math.min(1, s)), reasons };
 }
@@ -97,7 +103,7 @@ export class ImagePromotionService {
   constructor(private readonly prisma: PrismaClient) {}
 
   private s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -107,12 +113,10 @@ export class ImagePromotionService {
   });
 
   private async getImageMeta(key: string, fallbackMime: string) {
-    const res = await this.s3.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: key })
-    );
+    const res = await this.s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
     const body: any = res.Body;
     let bytes: Uint8Array;
-    if (typeof body?.transformToByteArray === "function") {
+    if (typeof body?.transformToByteArray === 'function') {
       bytes = await body.transformToByteArray();
     } else {
       const chunks: Uint8Array[] = [];
@@ -147,9 +151,9 @@ export class ImagePromotionService {
         Bucket: BUCKET,
         CopySource: `${BUCKET}/${srcKey}`,
         Key: dstKey,
-        MetadataDirective: "COPY",
-        ACL: "private",
-      })
+        MetadataDirective: 'COPY',
+        ACL: 'private',
+      }),
     );
   }
 
@@ -180,7 +184,7 @@ export class ImagePromotionService {
 
     const rows = await this.prisma.$queryRawUnsafe<{ id: string; v: string }[]>(
       `SELECT id, embedding::text AS v FROM "EquipmentImage" WHERE "equipmentId" = $1 LIMIT 200`,
-      equipmentId
+      equipmentId,
     );
     let simMax = 0;
     let nearDupId: string | null = null;
@@ -196,11 +200,13 @@ export class ImagePromotionService {
 
     let hiRes = false;
     try {
-      const head = await this.s3.send(
-        new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })
-      );
+      const head = await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
       hiRes = (head.ContentLength ?? 0) >= 300 * 1024;
-    } catch {}
+    } catch (err) {
+      if ((err as any)?.$metadata?.httpStatusCode !== 404) {
+        console.warn('Failed to determine image resolution from storage key', err);
+      }
+    }
 
     const { score, reasons } = scoreGlobalCandidate({
       globalCount,
@@ -214,7 +220,7 @@ export class ImagePromotionService {
         storageKey: globalCandKey,
         usefulnessScore: score,
         reasonCodes: reasons,
-        status: "PENDING",
+        status: 'PENDING',
         nearDupImageId: simMax >= 0.985 ? nearDupId : null,
       },
       create: {
@@ -224,16 +230,13 @@ export class ImagePromotionService {
         sha256,
         usefulnessScore: score,
         reasonCodes: reasons,
-        status: "PENDING",
+        status: 'PENDING',
         nearDupImageId: simMax >= 0.985 ? nearDupId : null,
       },
     });
   }
 
-  async promoteGymImageToGlobal(
-    input: PromoteGymImageDto,
-    ctx: AuthContext
-  ) {
+  async promoteGymImageToGlobal(input: PromoteGymImageDto, ctx: AuthContext) {
     const gymImg = (await this.prisma.gymEquipmentImage.findUnique({
       where: { id: input.id },
       select: {
@@ -263,26 +266,26 @@ export class ImagePromotionService {
       },
     } as any)) as any;
 
-    if (!gymImg) throw new Error("Gym image not found");
+    if (!gymImg) throw new Error('Gym image not found');
 
-    if (ctx.appRole !== "ADMIN") {
+    if (ctx.appRole !== 'ADMIN') {
       verifyGymScope(ctx, ctx.permissionService, gymImg.gymId);
     }
-    if (input.force && ctx.appRole !== "ADMIN") {
-      throw new Error("force requires admin role");
+    if (input.force && ctx.appRole !== 'ADMIN') {
+      throw new Error('force requires admin role');
     }
 
     if (!input.force) {
-      if (gymImg.status !== "APPROVED") {
-        throw new Error("Image must be APPROVED before promotion");
+      if (gymImg.status !== 'APPROVED') {
+        throw new Error('Image must be APPROVED before promotion');
       }
       if (gymImg.isSafe !== true) {
-        throw new Error("Image failed safety checks");
+        throw new Error('Image failed safety checks');
       }
     }
 
     if (!gymImg.equipmentId || !gymImg.storageKey) {
-      throw new Error("Gym image missing equipmentId/storageKey");
+      throw new Error('Gym image missing equipmentId/storageKey');
     }
 
     const splitId = input.splitId ?? gymImg.splitId ?? null;
@@ -290,18 +293,18 @@ export class ImagePromotionService {
     const destKey = `private/global/equipment/${gymImg.equipmentId}/approved/${
       gymImg.sha256 ?? randomUUID()
     }.${ext}`;
-    
+
     if (gymImg.sha256) {
       const existing = await this.prisma.equipmentImage.findFirst({
         where: { equipmentId: gymImg.equipmentId, sha256: gymImg.sha256 },
       });
       if (existing) {
-        if (gymImg.status !== "APPROVED") {
+        if (gymImg.status !== 'APPROVED') {
           await this.prisma.gymEquipmentImage.update({
             where: { id: gymImg.id },
-            data: { status: "APPROVED" },
+            data: { status: 'APPROVED' },
           });
-          gymImg.status = "APPROVED";
+          gymImg.status = 'APPROVED';
         }
         return { equipmentImage: existing, gymImage: gymImg, destinationKey: existing.storageKey };
       }
@@ -310,20 +313,19 @@ export class ImagePromotionService {
     const head = await this.s3
       .send(new HeadObjectCommand({ Bucket: BUCKET, Key: gymImg.storageKey }))
       .catch((err) => {
-        if (err?.$metadata?.httpStatusCode === 404)
-          throw new Error("Source object not found");
+        if (err?.$metadata?.httpStatusCode === 404) throw new Error('Source object not found');
         throw err;
       });
-    const contentType = head.ContentType || "image/jpeg";
+    const contentType = head.ContentType || 'image/jpeg';
 
     await this.s3.send(
       new CopyObjectCommand({
         Bucket: BUCKET,
         CopySource: `${BUCKET}/${gymImg.storageKey}`,
         Key: destKey,
-        MetadataDirective: "COPY",
-        ACL: "private",
-      })
+        MetadataDirective: 'COPY',
+        ACL: 'private',
+      }),
     );
 
     const meta = await this.getImageMeta(destKey, contentType);
@@ -331,11 +333,7 @@ export class ImagePromotionService {
     const equipmentImage = await this.prisma.$transaction(async (tx) => {
       const data = {
         equipmentId: gymImg.equipmentId,
-        uploadedByUserId:
-          gymImg.capturedByUserId ??
-          gymImg.approvedByUserId ??
-          ctx.userId ??
-          null,
+        uploadedByUserId: gymImg.capturedByUserId ?? gymImg.approvedByUserId ?? ctx.userId ?? null,
         storageKey: destKey,
         mimeType: meta.mime,
         width: meta.width,
@@ -378,7 +376,7 @@ export class ImagePromotionService {
           await tx.imageQueue.create({
             data: {
               imageId: created.id,
-              jobType: "EMBED",
+              jobType: 'EMBED',
               status: ImageJobStatus.pending,
               priority: 0,
               storageKey: null,
@@ -386,12 +384,12 @@ export class ImagePromotionService {
           });
         }
 
-        if (gymImg.status !== "APPROVED") {
+        if (gymImg.status !== 'APPROVED') {
           await tx.gymEquipmentImage.update({
             where: { id: gymImg.id },
-            data: { status: "APPROVED" },
+            data: { status: 'APPROVED' },
           });
-          gymImg.status = "APPROVED";
+          gymImg.status = 'APPROVED';
         }
 
         return created;
@@ -407,23 +405,18 @@ export class ImagePromotionService {
     });
 
     setImmediate(() => {
-      kickBurstRunner().catch((e) =>
-        console.error("burst runner error", e)
-      );
+      kickBurstRunner().catch((e) => console.error('burst runner error', e));
     });
 
     return { equipmentImage, gymImage: gymImg, destinationKey: destKey };
   }
 
-async listTrainingCandidates(
-    input: ListTrainingCandidatesDto,
-    ctx: AuthContext
-  ) {
+  async listTrainingCandidates(input: ListTrainingCandidatesDto, ctx: AuthContext) {
     verifyGymScope(ctx, ctx.permissionService, input.gymId);
 
     const where: any = {
       gymId: input.gymId,
-      status: (input.status ?? "PENDING").toLowerCase(),
+      status: (input.status ?? 'PENDING').toLowerCase(),
     };
 
     if (input.equipmentId) {
@@ -435,8 +428,8 @@ async listTrainingCandidates(
         ...(where.gymEquipment || {}),
         equipment: {
           OR: [
-            { name: { contains: input.q, mode: "insensitive" } },
-            { brand: { contains: input.q, mode: "insensitive" } },
+            { name: { contains: input.q, mode: 'insensitive' } },
+            { brand: { contains: input.q, mode: 'insensitive' } },
           ],
         },
       };
@@ -446,9 +439,7 @@ async listTrainingCandidates(
 
     let cursorFilter: any = {};
     if (input.cursor) {
-      const [id, createdAt] = Buffer.from(input.cursor, "base64")
-        .toString("utf8")
-        .split("|");
+      const [id, createdAt] = Buffer.from(input.cursor, 'base64').toString('utf8').split('|');
       cursorFilter = {
         OR: [
           { createdAt: { lt: new Date(createdAt) } },
@@ -463,44 +454,44 @@ async listTrainingCandidates(
         gymEquipment: { include: { equipment: true } },
         uploader: { select: { id: true, username: true } },
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
     });
 
     let nextCursor: string | null = null;
     if (rows.length > limit) {
-      const last = rows.pop()!;
-      nextCursor = Buffer.from(
-        `${last.id}|${last.createdAt.toISOString()}`
-      ).toString("base64");
+      const last = rows.pop();
+      if (last) {
+        nextCursor = Buffer.from(`${last.id}|${last.createdAt.toISOString()}`).toString('base64');
+      }
     }
 
     return {
-      items: rows.map(r => ({
-        id: r.id,
-        gymId: r.gymId!,
-        gymEquipmentId: r.gymEquipmentId!,
-        equipmentId: r.gymEquipment?.equipmentId!,
-        equipmentName: r.gymEquipment?.equipment?.name ?? null,
-        storageKey: r.storageKey,
-        status: r.status.toUpperCase(),
-        safetyReasons: r.safetyReasons,
-        capturedAt: r.capturedAt?.toISOString() ?? null,
-        uploader: r.uploader,
-        hash: r.hash,
-        processedAt: r.processedAt?.toISOString() ?? null,
-      })),
+      items: rows.map((r) => {
+        if (r.gymId == null || r.gymEquipmentId == null || r.gymEquipment?.equipmentId == null) {
+          throw new Error('Training candidate missing required associations');
+        }
+
+        return {
+          id: r.id,
+          gymId: r.gymId,
+          gymEquipmentId: r.gymEquipmentId,
+          equipmentId: r.gymEquipment.equipmentId,
+          equipmentName: r.gymEquipment?.equipment?.name ?? null,
+          storageKey: r.storageKey,
+          status: r.status.toUpperCase(),
+          safetyReasons: r.safetyReasons,
+          capturedAt: r.capturedAt?.toISOString() ?? null,
+          uploader: r.uploader,
+          hash: r.hash,
+          processedAt: r.processedAt?.toISOString() ?? null,
+        };
+      }),
       nextCursor,
     };
   }
 
-  async approveTrainingCandidate(
-    input: ApproveTrainingCandidateDto,
-    ctx: AuthContext
-  ) {
+  async approveTrainingCandidate(input: ApproveTrainingCandidateDto, ctx: AuthContext) {
     const cand = await this.prisma.trainingCandidate.findUniqueOrThrow({
       where: { id: input.id },
       select: {
@@ -525,29 +516,26 @@ async listTrainingCandidates(
       },
     });
 
-    const rows = await this.prisma.$queryRawUnsafe<
-      Array<{ embedding_text: string }>
-    >(
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ embedding_text: string }>>(
       `SELECT embedding::text AS embedding_text FROM "TrainingCandidate" WHERE id = $1`,
-      input.id
+      input.id,
     );
     const candidateVectorText = rows?.[0]?.embedding_text ?? null;
     const candidateVector = parsePgvectorText(candidateVectorText);
 
     if (cand.gymId == null || cand.gymEquipmentId == null) {
-      throw new Error("Candidate missing required fields");
+      throw new Error('Candidate missing required fields');
     }
-    if (cand.status === "quarantined") {
-      throw new Error("Cannot approve quarantined image");
+    if (cand.status === 'quarantined') {
+      throw new Error('Cannot approve quarantined image');
     }
     if (!cand.hash || !cand.storageKey) {
-      throw new Error("Candidate not processed yet");
-    }    
+      throw new Error('Candidate not processed yet');
+    }
     const gymId = cand.gymId;
     const gymEquipmentId = cand.gymEquipmentId;
     verifyGymScope(ctx, ctx.permissionService, gymId);
-    const ext =
-      cand.storageKey.split(".").pop()?.toLowerCase() || "jpg";
+    const ext = cand.storageKey.split('.').pop()?.toLowerCase() || 'jpg';
     const approvedKey = `private/gym/${gymEquipmentId}/approved/${cand.hash}.${ext}`;
     const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.gymEquipmentImage.findFirst({
@@ -557,7 +545,7 @@ async listTrainingCandidates(
       if (existing) {
         await tx.trainingCandidate.update({
           where: { id: cand.id },
-          data: { status: "approved", imageId: existing.id },
+          data: { status: 'approved', imageId: existing.id },
         });
         return {
           approved: true,
@@ -578,13 +566,13 @@ async listTrainingCandidates(
             Bucket: BUCKET,
             CopySource: `${BUCKET}/${cand.storageKey}`,
             Key: approvedKey,
-            MetadataDirective: "COPY",
-            ACL: "private",
-          })
+            MetadataDirective: 'COPY',
+            ACL: 'private',
+          }),
         );
       } catch (err) {
-        console.error("Copy to approved key failed", err);
-        throw new Error("Failed to copy candidate image");
+        console.error('Copy to approved key failed', err);
+        throw new Error('Failed to copy candidate image');
       }
 
       const img = await tx.gymEquipmentImage.create({
@@ -593,7 +581,7 @@ async listTrainingCandidates(
           gymEquipmentId,
           equipmentId: gymEq.equipmentId,
           storageKey: approvedKey,
-          status: "APPROVED",
+          status: 'APPROVED',
           approvedAt: new Date(),
           approvedByUserId: ctx.userId ?? null,
           sha256: cand.hash,
@@ -617,7 +605,7 @@ async listTrainingCandidates(
 
       if (candidateVector && candidateVector.length > 0) {
         await writeImageEmbedding({
-          target: "GYM",
+          target: 'GYM',
           imageId: img.id,
           gymId,
           vector: candidateVector,
@@ -631,13 +619,13 @@ async listTrainingCandidates(
         await tx.$executeRawUnsafe(
           `UPDATE "GymEquipmentImage" SET embedding = $1::vector WHERE id = $2`,
           candidateVectorText,
-          img.id
+          img.id,
         );
       }
 
-     await tx.trainingCandidate.update({
+      await tx.trainingCandidate.update({
         where: { id: cand.id },
-        data: { status: "approved", imageId: img.id },
+        data: { status: 'approved', imageId: img.id },
       });
 
       return {
@@ -680,23 +668,19 @@ async listTrainingCandidates(
 
     return { rejected: true };
   }
-  
-  async listGlobalSuggestions(
-    input: ListGlobalSuggestionsDto,
-    ctx: AuthContext
-  ) {
-    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+
+  async listGlobalSuggestions(input: ListGlobalSuggestionsDto, ctx: AuthContext) {
+    if (ctx.appRole !== 'ADMIN') throw new Error('Forbidden');
 
     const where: any = {};
     if (input.equipmentId) where.equipmentId = input.equipmentId;
     if (input.status) where.status = input.status;
-    if (typeof input.minScore === "number")
-      where.usefulnessScore = { gte: input.minScore };
+    if (typeof input.minScore === 'number') where.usefulnessScore = { gte: input.minScore };
 
     const take = Math.min(input.limit ?? 50, 50);
     const rows = await this.prisma.globalImageSuggestion.findMany({
       where,
-      orderBy: [{ usefulnessScore: "desc" }, { id: "desc" }],
+      orderBy: [{ usefulnessScore: 'desc' }, { id: 'desc' }],
       take: take + 1,
       skip: input.cursor ? 1 : 0,
       cursor: input.cursor ? { id: input.cursor } : undefined,
@@ -719,20 +703,20 @@ async listTrainingCandidates(
       nextCursor = next ? next.id : null;
     }
 
-    const eqIds = Array.from(new Set(rows.map(r => r.equipmentId)));
+    const eqIds = Array.from(new Set(rows.map((r) => r.equipmentId)));
     const equipments = await this.prisma.equipment.findMany({
       where: { id: { in: eqIds } },
       select: { id: true, name: true },
     });
-    const eqById = new Map(equipments.map(e => [e.id, e]));
+    const eqById = new Map(equipments.map((e) => [e.id, e]));
 
     return {
-      items: rows.map(r => ({
+      items: rows.map((r) => ({
         id: r.id,
         equipmentId: r.equipmentId,
         equipment: {
           id: r.equipmentId,
-          name: eqById.get(r.equipmentId)?.name ?? "Unknown",
+          name: eqById.get(r.equipmentId)?.name ?? 'Unknown',
         },
         gymImageId: r.gymImageId,
         storageKey: r.storageKey,
@@ -746,19 +730,15 @@ async listTrainingCandidates(
     };
   }
 
-  async approveGlobalSuggestion(
-    input: ApproveGlobalSuggestionDto,
-    ctx: AuthContext
-  ) {
-    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+  async approveGlobalSuggestion(input: ApproveGlobalSuggestionDto, ctx: AuthContext) {
+    if (ctx.appRole !== 'ADMIN') throw new Error('Forbidden');
 
     const suggestion = await this.prisma.globalImageSuggestion.findUnique({
       where: { id: input.id },
       include: { gymImage: true },
     });
-    if (!suggestion) throw new Error("Suggestion not found");
-    if (suggestion.status !== "PENDING")
-      throw new Error("Suggestion not pending");
+    if (!suggestion) throw new Error('Suggestion not found');
+    if (suggestion.status !== 'PENDING') throw new Error('Suggestion not pending');
 
     const existing = await this.prisma.equipmentImage.findFirst({
       where: { sha256: suggestion.sha256 },
@@ -766,7 +746,7 @@ async listTrainingCandidates(
     if (existing) {
       await this.prisma.globalImageSuggestion.update({
         where: { id: suggestion.id },
-        data: { status: "APPROVED" },
+        data: { status: 'APPROVED' },
       });
       return {
         approved: true,
@@ -778,19 +758,17 @@ async listTrainingCandidates(
     const ext = fileExtFrom(suggestion.storageKey);
     const now = new Date();
     const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
     const finalKey = `private/global/approved/${suggestion.equipmentId}/${yyyy}/${mm}/${suggestion.sha256}.${ext}`;
 
     await this.s3CopyIfMissing(suggestion.storageKey, finalKey);
 
-    const head = await this.s3.send(
-      new HeadObjectCommand({ Bucket: BUCKET, Key: finalKey })
-    );
-    const meta = await this.getImageMeta(finalKey, head.ContentType || "image/jpeg");
+    const head = await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: finalKey }));
+    const meta = await this.getImageMeta(finalKey, head.ContentType || 'image/jpeg');
 
     const vecRows = await this.prisma.$queryRawUnsafe<{ v: string }[]>(
       `SELECT embedding::text AS v FROM "GymEquipmentImage" WHERE id = $1`,
-      suggestion.gymImageId
+      suggestion.gymImageId,
     );
     const vecText = vecRows?.[0]?.v ?? null;
     const vec = parsePgvectorText(vecText);
@@ -831,13 +809,13 @@ async listTrainingCandidates(
         await tx.$executeRawUnsafe(
           `UPDATE "EquipmentImage" SET embedding = $1::vector WHERE id = $2`,
           vecText,
-          img.id
+          img.id,
         );
       }
 
       await tx.globalImageSuggestion.update({
         where: { id: suggestion.id },
-        data: { status: "APPROVED" },
+        data: { status: 'APPROVED' },
       });
 
       return img;
@@ -845,7 +823,7 @@ async listTrainingCandidates(
 
     if (vec && vec.length > 0) {
       await writeImageEmbedding({
-        target: "GLOBAL",
+        target: 'GLOBAL',
         imageId: equipmentImage.id,
         vector: vec,
         modelVendor: suggestion.gymImage.modelVendor ?? EMBED_VENDOR,
@@ -861,15 +839,12 @@ async listTrainingCandidates(
     };
   }
 
-  async rejectGlobalSuggestion(
-    input: RejectGlobalSuggestionDto,
-    ctx: AuthContext
-  ) {
-    if (ctx.appRole !== "ADMIN") throw new Error("Forbidden");
+  async rejectGlobalSuggestion(input: RejectGlobalSuggestionDto, ctx: AuthContext) {
+    if (ctx.appRole !== 'ADMIN') throw new Error('Forbidden');
 
     await this.prisma.globalImageSuggestion.update({
       where: { id: input.id },
-      data: { status: "REJECTED", rejectedReason: input.reason ?? null },
+      data: { status: 'REJECTED', rejectedReason: input.reason ?? null },
     });
 
     return { rejected: true };

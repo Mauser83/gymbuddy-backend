@@ -5,7 +5,9 @@ export function isPublicIp(ip: string): boolean {
   if (!ipaddr.isValid(ip)) return false;
   const addr = ipaddr.parse(ip);
   const range = addr.range();
-  return !['private', 'loopback', 'linkLocal', 'multicast', 'reserved', 'uniqueLocal'].includes(range);
+  return !['private', 'loopback', 'linkLocal', 'multicast', 'reserved', 'uniqueLocal'].includes(
+    range,
+  );
 }
 
 export async function allResolvedIpsArePublic(host: string): Promise<boolean> {

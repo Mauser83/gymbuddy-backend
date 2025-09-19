@@ -1,22 +1,15 @@
-import { prisma } from "../../lib/prisma";
-import { QueueRunnerService, type QueueJob } from "./queue-runner.service";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { createHash } from "crypto";
-import {
-  initLocalOpenCLIP,
-  embedImage,
-  EMBEDDING_DIM,
-} from "./embedding/local-openclip-light";
-import { createSafetyProvider } from "./safety";
-import { hasPerson } from "./safety/local-person";
-import { writeImageEmbedding } from "../cv/embeddingWriter";
-import { userIsTrustedForGym } from "../gym/permission-helpers";
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createHash } from 'crypto';
 
-import { ImageJobStatus } from "../../generated/prisma";
-import {
-  copyObjectIfMissing,
-  deleteObjectIgnoreMissing,
-} from "../media/media.service";
+import { initLocalOpenCLIP, embedImage } from './embedding/local-openclip-light';
+import { QueueRunnerService, type QueueJob } from './queue-runner.service';
+import { createSafetyProvider } from './safety';
+import { hasPerson } from './safety/local-person';
+import { ImageJobStatus } from '../../generated/prisma';
+import { prisma } from '../../lib/prisma';
+import { writeImageEmbedding } from '../cv/embeddingWriter';
+import { userIsTrustedForGym } from '../gym/permission-helpers';
+import { copyObjectIfMissing, deleteObjectIgnoreMissing } from '../media/media.service';
 
 const queue = new QueueRunnerService(prisma);
 
@@ -24,7 +17,7 @@ const queue = new QueueRunnerService(prisma);
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const BUCKET = process.env.R2_BUCKET!;
 const s3 = new S3Client({
-  region: "auto",
+  region: 'auto',
   endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
   forcePathStyle: true,
   credentials: {
@@ -39,9 +32,9 @@ const MAX_RETRIES = Number(process.env.WORKER_MAX_RETRIES || 3);
 const BACKOFF_BASE = Number(process.env.QUEUE_BACKOFF_BASE_SEC ?? 5);
 const BACKOFF_MAX = Number(process.env.QUEUE_BACKOFF_MAX_SEC ?? 300);
 const NSFW_BLOCK = Number(process.env.NSFW_BLOCK ?? 0.8);
-const EMBED_VENDOR = process.env.EMBED_VENDOR || "local";
-const EMBED_MODEL = process.env.EMBED_MODEL || "openclip-vit-b32";
-const EMBED_VERSION = process.env.EMBED_VERSION || "1.0";
+const EMBED_VENDOR = process.env.EMBED_VENDOR || 'local';
+const EMBED_MODEL = process.env.EMBED_MODEL || 'openclip-vit-b32';
+const EMBED_VERSION = process.env.EMBED_VERSION || '1.0';
 
 export type SafetyResult = {
   nsfwScore: number | null;
@@ -50,14 +43,10 @@ export type SafetyResult = {
   reasons: string[];
 };
 
-function decideSafety(
-  nsfwScore: number | null,
-  hasPerson: boolean | null,
-): SafetyResult {
+function decideSafety(nsfwScore: number | null, hasPerson: boolean | null): SafetyResult {
   const reasons: string[] = [];
-  if (hasPerson === true) reasons.push("PERSON_DETECTED");
-  if (nsfwScore != null && nsfwScore >= NSFW_BLOCK)
-    reasons.push(`NSFW_${nsfwScore.toFixed(2)}`);
+  if (hasPerson === true) reasons.push('PERSON_DETECTED');
+  if (nsfwScore != null && nsfwScore >= NSFW_BLOCK) reasons.push(`NSFW_${nsfwScore.toFixed(2)}`);
   const isSafe = reasons.length === 0;
   return { nsfwScore, hasPerson, isSafe, reasons };
 }
@@ -68,8 +57,7 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   const body: any = res.Body;
 
   // Node 18+ AWS SDK v3 has transformToByteArray(); fallback to stream -> buffer
-  if (typeof body?.transformToByteArray === "function")
-    return body.transformToByteArray();
+  if (typeof body?.transformToByteArray === 'function') return body.transformToByteArray();
 
   const chunks: Uint8Array[] = [];
   for await (const chunk of body as AsyncIterable<Uint8Array>) {
@@ -89,19 +77,19 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
 // --- HASH handler ---
 async function handleHASH(storageKey: string) {
   const bytes = await downloadBytes(storageKey);
-  const sha = createHash("sha256").update(bytes).digest("hex");
+  const sha = createHash('sha256').update(bytes).digest('hex');
   // Write sha256 only if missing/empty for the image by storageKey
   await prisma.gymEquipmentImage.updateMany({
-    where: { storageKey, OR: [{ sha256: null }, { sha256: "" }] },
+    where: { storageKey, OR: [{ sha256: null }, { sha256: '' }] },
     data: { sha256: sha },
   });
 
   let finalKey = storageKey;
-  if (storageKey.startsWith("private/gym/") && storageKey.includes("/candidates/")) {
-    const parts = storageKey.split("/");
+  if (storageKey.startsWith('private/gym/') && storageKey.includes('/candidates/')) {
+    const parts = storageKey.split('/');
     const gymEqId = parts[2];
     const file = parts[parts.length - 1];
-    const ext = file.split(".").pop() || "jpg";
+    const ext = file.split('.').pop() || 'jpg';
     const newKey = `private/gym/${gymEqId}/candidates/${sha}.${ext}`;
     if (newKey !== storageKey) {
       await copyObjectIfMissing(storageKey, newKey);
@@ -114,7 +102,7 @@ async function handleHASH(storageKey: string) {
     });
   } else {
     await prisma.trainingCandidate.updateMany({
-      where: { storageKey, OR: [{ hash: null }, { hash: "" }] },
+      where: { storageKey, OR: [{ hash: null }, { hash: '' }] },
       data: { hash: sha },
     });
   }
@@ -153,32 +141,32 @@ async function handleSAFETY(storageKey: string) {
     safetyReasons: decision.reasons,
     updatedAt: new Date(),
   };
-  if (!decision.isSafe) tcData.status = "quarantined";
+  if (!decision.isSafe) tcData.status = 'quarantined';
   await prisma.trainingCandidate.updateMany({
     where: { storageKey },
     data: tcData,
   });
 
   let finalKey = storageKey;
-  if (!decision.isSafe && storageKey.startsWith("private/gym/")) {
-    const parts = storageKey.split("/");
+  if (!decision.isSafe && storageKey.startsWith('private/gym/')) {
+    const parts = storageKey.split('/');
     const gymEqId = parts[2];
     const file = parts[parts.length - 1];
-    const ext = file.split(".").pop() || "jpg";
-    const baseName = file.split(".")[0];
+    const ext = file.split('.').pop() || 'jpg';
+    const baseName = file.split('.')[0];
     const qKey = `private/gym/${gymEqId}/quarantine/${baseName}.${ext}`;
     await copyObjectIfMissing(storageKey, qKey);
     await deleteObjectIgnoreMissing(storageKey);
     try {
       await prisma.gymEquipmentImage.updateMany({
         where: { storageKey },
-        data: { storageKey: qKey, status: "QUARANTINED" },
+        data: { storageKey: qKey, status: 'QUARANTINED' },
       });
     } catch (e) {
-      console.error("Failed to set QUARANTINED; falling back to REJECTED", e);
+      console.error('Failed to set QUARANTINED; falling back to REJECTED', e);
       await prisma.gymEquipmentImage.updateMany({
         where: { storageKey },
-        data: { storageKey: qKey, status: "REJECTED" },
+        data: { storageKey: qKey, status: 'REJECTED' },
       });
     }
     await prisma.trainingCandidate.updateMany({
@@ -252,10 +240,7 @@ async function handleEMBED(job: QueueJob) {
         : null;
       const trusted =
         candidate.uploaderUserId && candidate.gymId
-          ? await userIsTrustedForGym(
-              candidate.uploaderUserId,
-              candidate.gymId,
-            )
+          ? await userIsTrustedForGym(candidate.uploaderUserId, candidate.gymId)
           : false;
       if (trusted && gym?.autoApproveManagerUploads) {
         await prisma.trainingCandidate.update({
@@ -304,15 +289,15 @@ async function processJob(job: QueueJob) {
     });
     key = img?.storageKey || null;
   }
-  if (!key) throw new Error("Job missing storageKey");
+  if (!key) throw new Error('Job missing storageKey');
 
-  const type = (job.jobType ?? "").trim().toUpperCase();
+  const type = (job.jobType ?? '').trim().toUpperCase();
   switch (type) {
-    case "HASH": {
+    case 'HASH': {
       const { storageKey: nextKey } = await handleHASH(key);
       await prisma.imageQueue.create({
         data: {
-          jobType: "SAFETY",
+          jobType: 'SAFETY',
           status: ImageJobStatus.pending,
           priority: job.priority ?? 0,
           storageKey: nextKey,
@@ -320,12 +305,12 @@ async function processJob(job: QueueJob) {
       });
       break;
     }
-    case "SAFETY": {
+    case 'SAFETY': {
       const { safe, storageKey: nextKey } = await handleSAFETY(key);
       if (safe) {
         await prisma.imageQueue.create({
           data: {
-            jobType: "EMBED",
+            jobType: 'EMBED',
             status: ImageJobStatus.pending,
             priority: job.priority ?? 0,
             storageKey: nextKey,
@@ -334,7 +319,7 @@ async function processJob(job: QueueJob) {
       }
       break;
     }
-    case "EMBED":
+    case 'EMBED':
       await handleEMBED(job);
       break;
     default:
@@ -347,16 +332,14 @@ export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY 
   const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 1));
   const jobs = await queue.claimBatch(Math.min(concurrency, limit));
 
-for (const job of jobs) {
+  for (const job of jobs) {
     try {
       await processJob(job);
     } catch (err) {
       const attempts = job.attempts ?? 0;
       if (attempts >= MAX_RETRIES) {
         const msg =
-          err instanceof Error
-            ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
-            : String(err);
+          err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ''}` : String(err);
         await prisma.imageQueue.update({
           where: { id: job.id },
           data: {
@@ -421,13 +404,13 @@ export async function kickBurstRunner({
         try {
           await processJob(job);
         } catch (err) {
-          console.error("job failed", job.id, err);
+          console.error('job failed', job.id, err);
           const attempts = job.attempts ?? 0;
           if (attempts >= MAX_RETRIES) {
-          const msg =
-            err instanceof Error
-              ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
-              : String(err);
+            const msg =
+              err instanceof Error
+                ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
+                : String(err);
             await prisma.imageQueue.update({
               where: { id: job.id },
               data: {
@@ -437,10 +420,7 @@ export async function kickBurstRunner({
               },
             });
           } else {
-            const backoff = Math.min(
-              BACKOFF_BASE * 2 ** Math.max(attempts - 1, 0),
-              BACKOFF_MAX
-            );
+            const backoff = Math.min(BACKOFF_BASE * 2 ** Math.max(attempts - 1, 0), BACKOFF_MAX);
             await queue.markFailed(job.id, err, backoff);
           }
         } finally {

@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { sanitizeInput } from '../../src/middlewares/sanitization';
-import { errorHandler } from '../../src/middlewares/errorHandler';
 import { GraphQLError } from 'graphql';
+
+import { errorHandler } from '../../src/middlewares/errorHandler';
+import { sanitizeInput } from '../../src/middlewares/sanitization';
 
 describe('middlewares', () => {
   test('sanitizeInput cleans strings', () => {

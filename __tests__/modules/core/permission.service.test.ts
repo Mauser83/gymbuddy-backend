@@ -1,7 +1,8 @@
-import { PermissionService } from '../../../src/modules/core/permission.service';
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
 import { PrismaClient, AppRole, UserRole, GymRole } from '../../../src/lib/prisma';
 import { PermissionType } from '../../../src/modules/auth/auth.types';
-import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import { PermissionService } from '../../../src/modules/core/permission.service';
 
 describe('PermissionService', () => {
   let prisma: DeepMockProxy<PrismaClient>;
@@ -59,9 +60,7 @@ describe('PermissionService', () => {
     });
 
     test('verifyGymRoles checks roles per gym', () => {
-      const map = new Map<number, GymRole[]>([
-        [1, [GymRole.GYM_ADMIN]],
-      ]);
+      const map = new Map<number, GymRole[]>([[1, [GymRole.GYM_ADMIN]]]);
       expect(service.verifyGymRoles(map, 1, [GymRole.GYM_ADMIN])).toBe(true);
       expect(service.verifyGymRoles(map, 2, [GymRole.GYM_ADMIN])).toBe(false);
     });

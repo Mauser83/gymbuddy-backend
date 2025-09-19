@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { ExerciseLogResolvers } from '../../../src/modules/exerciselog/exerciselog.resolvers';
 import { ExerciseLogService } from '../../../src/modules/exerciselog/exerciselog.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/exerciselog/exerciselog.service');
 
@@ -39,7 +39,11 @@ describe('ExerciseLogResolvers', () => {
   describe('field resolvers', () => {
     test('workoutSession returns null when missing id', async () => {
       const ctx = createContext();
-      const res = await ExerciseLogResolvers.ExerciseLog.workoutSession({ workoutSessionId: null }, {}, ctx);
+      const res = await ExerciseLogResolvers.ExerciseLog.workoutSession(
+        { workoutSessionId: null },
+        {},
+        ctx,
+      );
       expect(res).toBeNull();
       expect(ctx.prisma.workoutSession.findUnique).not.toHaveBeenCalled();
     });
@@ -47,18 +51,22 @@ describe('ExerciseLogResolvers', () => {
     test('workoutSession fetches when id present', async () => {
       const ctx = createContext();
       ctx.prisma.workoutSession.findUnique.mockResolvedValue({ id: 1 });
-      const res = await ExerciseLogResolvers.ExerciseLog.workoutSession({ workoutSessionId: 1 }, {}, ctx);
+      const res = await ExerciseLogResolvers.ExerciseLog.workoutSession(
+        { workoutSessionId: 1 },
+        {},
+        ctx,
+      );
       expect(ctx.prisma.workoutSession.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(res).toEqual({ id: 1 });
     });
 
     test('equipmentIds maps ids', async () => {
       const ctx = createContext();
-      ctx.prisma.exerciseLogEquipment.findMany.mockResolvedValue([
-        { gymEquipmentId: 2 },
-      ]);
+      ctx.prisma.exerciseLogEquipment.findMany.mockResolvedValue([{ gymEquipmentId: 2 }]);
       const res = await ExerciseLogResolvers.ExerciseLog.equipmentIds({ id: 5 }, {}, ctx);
-      expect(ctx.prisma.exerciseLogEquipment.findMany).toHaveBeenCalledWith({ where: { exerciseLogId: 5 } });
+      expect(ctx.prisma.exerciseLogEquipment.findMany).toHaveBeenCalledWith({
+        where: { exerciseLogId: 5 },
+      });
       expect(res).toEqual([2]);
     });
 
@@ -98,7 +106,9 @@ describe('ExerciseLogResolvers', () => {
     test('exerciseLogs throws when unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Query.exerciseLogs(null as any, {}, ctx)).rejects.toThrow('Unauthorized');
+      await expect(ExerciseLogResolvers.Query.exerciseLogs(null as any, {}, ctx)).rejects.toThrow(
+        'Unauthorized',
+      );
     });
 
     test('workoutSessionById queries prisma', async () => {
@@ -132,7 +142,9 @@ describe('ExerciseLogResolvers', () => {
     test('activeWorkoutSession unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Query.activeWorkoutSession(null as any, { userId: 1 }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Query.activeWorkoutSession(null as any, { userId: 1 }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
   });
 
@@ -148,7 +160,9 @@ describe('ExerciseLogResolvers', () => {
     test('createExerciseLog unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Mutation.createExerciseLog(null as any, { input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Mutation.createExerciseLog(null as any, { input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('updateExerciseLog uses service', async () => {
@@ -162,7 +176,9 @@ describe('ExerciseLogResolvers', () => {
     test('updateExerciseLog unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Mutation.updateExerciseLog(null as any, { id: 1, input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Mutation.updateExerciseLog(null as any, { id: 1, input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('deleteExerciseLog uses service', async () => {
@@ -176,7 +192,9 @@ describe('ExerciseLogResolvers', () => {
     test('deleteExerciseLog unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Mutation.deleteExerciseLog(null as any, { id: 1 }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Mutation.deleteExerciseLog(null as any, { id: 1 }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('createWorkoutSession uses service', async () => {
@@ -190,29 +208,43 @@ describe('ExerciseLogResolvers', () => {
     test('createWorkoutSession unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Mutation.createWorkoutSession(null as any, { input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Mutation.createWorkoutSession(null as any, { input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('updateWorkoutSession uses service', async () => {
       const instance = { updateWorkoutSession: jest.fn() } as any;
       mockedService.mockImplementation(() => instance);
       const ctx = createContext();
-      await ExerciseLogResolvers.Mutation.updateWorkoutSession(null as any, { id: 1, input: {} }, ctx);
+      await ExerciseLogResolvers.Mutation.updateWorkoutSession(
+        null as any,
+        { id: 1, input: {} },
+        ctx,
+      );
       expect(instance.updateWorkoutSession).toHaveBeenCalled();
     });
 
     test('updateWorkoutSession unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseLogResolvers.Mutation.updateWorkoutSession(null as any, { id: 1, input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseLogResolvers.Mutation.updateWorkoutSession(null as any, { id: 1, input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('deleteWorkoutSession removes records via prisma', async () => {
       const ctx = createContext();
       ctx.prisma.exerciseLog.deleteMany.mockResolvedValue({});
       ctx.prisma.workoutSession.delete.mockResolvedValue({});
-      const res = await ExerciseLogResolvers.Mutation.deleteWorkoutSession(null as any, { id: 2 }, ctx);
-      expect(ctx.prisma.exerciseLog.deleteMany).toHaveBeenCalledWith({ where: { workoutSessionId: 2 } });
+      const res = await ExerciseLogResolvers.Mutation.deleteWorkoutSession(
+        null as any,
+        { id: 2 },
+        ctx,
+      );
+      expect(ctx.prisma.exerciseLog.deleteMany).toHaveBeenCalledWith({
+        where: { workoutSessionId: 2 },
+      });
       expect(ctx.prisma.workoutSession.delete).toHaveBeenCalledWith({ where: { id: 2 } });
       expect(res).toBe(true);
     });

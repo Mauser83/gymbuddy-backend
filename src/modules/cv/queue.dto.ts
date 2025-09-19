@@ -1,10 +1,10 @@
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from "class-validator";
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
 export enum ImageJobStatusDto {
-  pending = "pending",
-  running = "running",
-  failed = "failed",
-  done = "done",
+  pending = 'pending',
+  running = 'running',
+  failed = 'failed',
+  done = 'done',
 }
 
 export class EnqueueImageJobDto {

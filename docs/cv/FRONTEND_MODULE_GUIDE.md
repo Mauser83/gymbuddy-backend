@@ -24,16 +24,20 @@ Max size: \u2264 15 MB per image.
 ### Session-oriented batch capture
 
 **GraphQL schema**
+
 ```graphql
 input CreateUploadSessionInput {
   gymId: Int!
-  count: Int!                 # 1..10
-  contentTypes: [String!]!    # e.g. ["image/jpeg","image/heic",...], len == count
+  count: Int! # 1..10
+  contentTypes: [String!]! # e.g. ["image/jpeg","image/heic",...], len == count
   filenamePrefix: String
-  equipmentId: Int            # optional hint for finalize defaults
+  equipmentId: Int # optional hint for finalize defaults
 }
 
-type HttpHeader { name: String!, value: String! }
+type HttpHeader {
+  name: String!
+  value: String!
+}
 type PresignItem {
   url: String!
   storageKey: String!
@@ -44,7 +48,7 @@ type PresignItem {
 type CreateUploadSessionPayload {
   sessionId: ID!
   items: [PresignItem!]!
-  expiresAt: String!          # session TTL (e.g., 30–60 min)
+  expiresAt: String! # session TTL (e.g., 30–60 min)
 }
 
 extend type Mutation {
@@ -72,30 +76,45 @@ Optional: persist an UploadSession for audit; otherwise return ephemeral `sessio
 mutation CreateUploadSession($input: CreateUploadSessionInput!) {
   createUploadSession(input: $input) {
     sessionId
-    items { url storageKey expiresAt requiredHeaders { name value } }
+    items {
+      url
+      storageKey
+      expiresAt
+      requiredHeaders {
+        name
+        value
+      }
+    }
     expiresAt
   }
 }
 ```
+
 ```json
 {
   "input": {
     "gymId": 12,
     "count": 6,
-    "contentTypes": ["image/jpeg","image/jpeg","image/heic","image/jpeg","image/jpeg","image/jpeg"],
+    "contentTypes": [
+      "image/jpeg",
+      "image/jpeg",
+      "image/heic",
+      "image/jpeg",
+      "image/jpeg",
+      "image/jpeg"
+    ],
     "filenamePrefix": "legpress-session",
     "equipmentId": 101
   }
 }
 ```
+
 ```json
 {
   "data": {
     "createUploadSession": {
       "sessionId": "sess_abc123",
-      "items": [
-        { "url": "...", "storageKey": "private/uploads/12/2025/08/uuid1.jpg" }
-      ]
+      "items": [{ "url": "...", "storageKey": "private/uploads/12/2025/08/uuid1.jpg" }]
     }
   }
 }
@@ -104,7 +123,7 @@ mutation CreateUploadSession($input: CreateUploadSessionInput!) {
 ### Uploading to presigned URLs
 
 ```ts
-await fetch(url, { method: "PUT", headers, body: fileBlob });
+await fetch(url, { method: 'PUT', headers, body: fileBlob });
 ```
 
 ### Finalizing many images
@@ -133,7 +152,7 @@ input FinalizeGymImageItem {
 input FinalizeGymImagesInput {
   sessionId: ID
   defaults: GymImageDefaults!
-  items: [FinalizeGymImageItem!]!   # 1..10
+  items: [FinalizeGymImageItem!]! # 1..10
 }
 
 input FinalizeGymImagesAdminInput {
@@ -171,11 +190,17 @@ Idempotent by `storageKey` (and by `sha256` if you enforce uniqueness).
 ```graphql
 mutation FinalizeGymImages($input: FinalizeGymImagesInput!) {
   finalizeGymImages(input: $input) {
-    images { id gymId equipmentId status }
+    images {
+      id
+      gymId
+      equipmentId
+      status
+    }
     queuedJobs
   }
 }
 ```
+
 ```json
 {
   "input": {
@@ -188,6 +213,7 @@ mutation FinalizeGymImages($input: FinalizeGymImagesInput!) {
   }
 }
 ```
+
 ```json
 {
   "data": {
@@ -215,7 +241,9 @@ input ApplyTaxonomiesInput {
   splitId: Int
   sourceId: Int
 }
-type ApplyTaxonomiesPayload { updatedCount: Int! }
+type ApplyTaxonomiesPayload {
+  updatedCount: Int!
+}
 
 extend type Mutation {
   applyTaxonomiesToGymImages(input: ApplyTaxonomiesInput!): ApplyTaxonomiesPayload!
@@ -232,12 +260,16 @@ Applies non-null fields to all `imageIds`.
 
 ```graphql
 mutation ApplyTaxonomies($input: ApplyTaxonomiesInput!) {
-  applyTaxonomiesToGymImages(input: $input) { updatedCount }
+  applyTaxonomiesToGymImages(input: $input) {
+    updatedCount
+  }
 }
 ```
+
 ```json
-{ "input": { "imageIds": [1,2], "angleId": 3 } }
+{ "input": { "imageIds": [1, 2], "angleId": 3 } }
 ```
+
 ```json
 { "data": { "applyTaxonomiesToGymImages": { "updatedCount": 2 } } }
 ```
@@ -245,7 +277,11 @@ mutation ApplyTaxonomies($input: ApplyTaxonomiesInput!) {
 ### Batch presigned GET (fast grids)
 
 ```graphql
-type ImageUrlItem { storageKey: String!, url: String!, expiresAt: String! }
+type ImageUrlItem {
+  storageKey: String!
+  url: String!
+  expiresAt: String!
+}
 
 extend type Query {
   imageUrlMany(storageKeys: [String!]!, ttlSec: Int = 600): [ImageUrlItem!]!
@@ -260,12 +296,18 @@ Auth: same as single `imageUrl` (admin or gym-admin for the owning gym). Clients
 
 ```graphql
 query ImageUrlMany($keys: [String!]!, $ttlSec: Int) {
-  imageUrlMany(storageKeys: $keys, ttlSec: $ttlSec) { storageKey url expiresAt }
+  imageUrlMany(storageKeys: $keys, ttlSec: $ttlSec) {
+    storageKey
+    url
+    expiresAt
+  }
 }
 ```
+
 ```json
 { "keys": ["public/golden/123.jpg", "public/golden/124.jpg"], "ttlSec": 600 }
 ```
+
 ```json
 {
   "data": {
@@ -281,9 +323,13 @@ For a single image:
 
 ```graphql
 query ImageUrl($storageKey: String!, $ttlSec: Int = 600) {
-  imageUrl(storageKey: $storageKey, ttlSec: $ttlSec) { url expiresAt }
+  imageUrl(storageKey: $storageKey, ttlSec: $ttlSec) {
+    url
+    expiresAt
+  }
 }
 ```
+
 ```json
 { "storageKey": "private/uploads/12/2025/08/uuid1.jpg", "ttlSec": 900 }
 ```
@@ -295,17 +341,23 @@ Use the `getImageUploadUrl` mutation to obtain a pre-signed URL for direct uploa
 Auth: admin or gym-admin for `gymId`.
 
 **GraphQL**
+
 ```graphql
 mutation GetImageUploadUrl($input: GetImageUploadUrlInput!) {
   getImageUploadUrl(input: $input) {
     url
     storageKey
     expiresAt
-    requiredHeaders { name value }
+    requiredHeaders {
+      name
+      value
+    }
   }
 }
 ```
+
 **Variables**
+
 ```json
 {
   "input": {
@@ -315,6 +367,7 @@ mutation GetImageUploadUrl($input: GetImageUploadUrlInput!) {
   }
 }
 ```
+
 Send the file with an HTTP `PUT` to `url` and include the `requiredHeaders`. Store the returned `storageKey`; it is required in later steps.
 
 ## Images: Finalizing and Moderating Uploads
@@ -326,12 +379,19 @@ Auth: admin or gym-admin for the owning gym.
 ```graphql
 mutation FinalizeGymImage($input: FinalizeGymImageInput!) {
   finalizeGymImage(input: $input) {
-    image { id gymId equipmentId status }
+    image {
+      id
+      gymId
+      equipmentId
+      status
+    }
     queuedJobs
   }
 }
 ```
+
 **Variables**
+
 ```json
 {
   "input": {
@@ -344,6 +404,7 @@ mutation FinalizeGymImage($input: FinalizeGymImageInput!) {
   }
 }
 ```
+
 `GymEquipmentImage.status` values: `PENDING`, `APPROVED`, `REJECTED`.
 
 Moderation operations are also available:
@@ -352,8 +413,12 @@ Moderation operations are also available:
   ```graphql
   mutation Promote($input: PromoteGymImageInput!) {
     promoteGymImageToGlobal(input: $input) {
-      equipmentImage { id }
-      gymImage { id }
+      equipmentImage {
+        id
+      }
+      gymImage {
+        id
+      }
     }
   }
   ```
@@ -365,8 +430,12 @@ Moderation operations are also available:
   ```graphql
   mutation Approve($input: ApproveGymImageInput!) {
     approveGymImage(input: $input) {
-      equipmentImage { id }
-      gymImage { id }
+      equipmentImage {
+        id
+      }
+      gymImage {
+        id
+      }
     }
   }
   ```
@@ -378,7 +447,10 @@ Moderation operations are also available:
   ```graphql
   mutation Reject($input: RejectGymImageInput!) {
     rejectGymImage(input: $input) {
-      gymImage { id status }
+      gymImage {
+        id
+        status
+      }
     }
   }
   ```
@@ -389,16 +461,16 @@ Moderation operations are also available:
 - `candidateGlobalImages`
   ```graphql
   query Candidates($input: CandidateGlobalImagesInput!) {
-      candidateGlobalImages(input: $input) {
-        id
-        gymId
-        equipmentId
-        status
-        storageKey
-        sha256
-      }
+    candidateGlobalImages(input: $input) {
+      id
+      gymId
+      equipmentId
+      status
+      storageKey
+      sha256
     }
-    ```
+  }
+  ```
   **Variables**
   ```json
   { "input": { "equipmentId": 2, "limit": 50 } }
@@ -500,7 +572,9 @@ query Knn($input: KnnSearchInput!) {
   }
 }
 ```
+
 **Variables**
+
 ```json
 { "input": { "imageId": "<equipmentImageId>", "scope": "GLOBAL", "limit": 5 } }
 ```
@@ -508,10 +582,22 @@ query Knn($input: KnnSearchInput!) {
 ```graphql
 query {
   taxonomyTypes {
-    angles { id name }
-    heights { id name }
-    distances { id name }
-    lighting { id name }
+    angles {
+      id
+      name
+    }
+    heights {
+      id
+      name
+    }
+    distances {
+      id
+      name
+    }
+    lighting {
+      id
+      name
+    }
   }
 }
 ```
@@ -520,10 +606,18 @@ Admin CRUD for taxonomy tables:
 
 ```graphql
 mutation CreateAngle($name: String!) {
-  createAngle(name: $name) { id name active }
+  createAngle(name: $name) {
+    id
+    name
+    active
+  }
 }
 mutation UpdateAngle($id: Int!, $name: String!, $active: Boolean) {
-  updateAngle(id: $id, name: $name, active: $active) { id name active }
+  updateAngle(id: $id, name: $name, active: $active) {
+    id
+    name
+    active
+  }
 }
 ```
 
@@ -552,6 +646,7 @@ mutation RetryJobs($imageId: ID!) {
   retryImageJobs(imageId: $imageId)
 }
 ```
+
 `ImageQueue.status` values: `PENDING`, `RUNNING`, `DONE`, `FAILED`. Typical `jobType` values include `HASH`, `SAFETY`, `EMBED`.
 
 Admins and moderators can invoke `runImageWorkerOnce` to process pending image jobs. The optional `max` argument limits how many queued tasks the worker should handle in this run.
@@ -561,21 +656,23 @@ mutation RunImageWorkerOnce($max: Int) {
   runImageWorkerOnce(max: $max)
 }
 ```
+
 **Variables**
+
 ```json
 { "max": 50 }
 ```
 
 ## Error model & limits
 
-| Condition | Status |
-| --- | --- |
-| count > 10 | 400 |
-| contentTypes length mismatch | 400 |
-| Non `image/*` content type | 400 |
-| Finalize key outside caller’s gymId | 403 |
-| Missing uploaded object on finalize | 404 |
-| Batch size too large (server guard) | 413 |
+| Condition                           | Status |
+| ----------------------------------- | ------ |
+| count > 10                          | 400    |
+| contentTypes length mismatch        | 400    |
+| Non `image/*` content type          | 400    |
+| Finalize key outside caller’s gymId | 403    |
+| Missing uploaded object on finalize | 404    |
+| Batch size too large (server guard) | 413    |
 
 ## Testing checklist (backend)
 

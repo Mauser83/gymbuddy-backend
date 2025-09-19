@@ -1,5 +1,5 @@
-import { MediaResolvers } from '../../../src/modules/media/media.resolvers';
 import { AuthContext, GymRole, UserRole } from '../../../src/modules/auth/auth.types';
+import { MediaResolvers } from '../../../src/modules/media/media.resolvers';
 
 const baseCtx = {
   prisma: {} as any,

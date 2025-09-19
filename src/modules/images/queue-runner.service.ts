@@ -1,13 +1,13 @@
-import type { PrismaClient } from "../../lib/prisma";
-import { ImageJobStatus } from "../../generated/prisma";
-import type { ImageQueue } from "../../generated/prisma";
+import { ImageJobStatus } from '../../generated/prisma';
+import type { ImageQueue } from '../../generated/prisma';
+import type { PrismaClient } from '../../lib/prisma';
 
 export type QueueJob = Pick<
   ImageQueue,
-  "id" | "jobType" | "storageKey" | "imageId" | "attempts" | "priority"
+  'id' | 'jobType' | 'storageKey' | 'imageId' | 'attempts' | 'priority'
 >;
 
-const RUNNER_NAME = "image-runner";
+const RUNNER_NAME = 'image-runner';
 
 export class QueueRunnerService {
   constructor(private prisma: PrismaClient) {}
@@ -27,7 +27,7 @@ export class QueueRunnerService {
     `,
       RUNNER_NAME,
       owner,
-      String(ttlMs)
+      String(ttlMs),
     );
     return Array.isArray(rows) && rows.length > 0;
   }
@@ -42,7 +42,7 @@ export class QueueRunnerService {
     `,
       RUNNER_NAME,
       owner,
-      String(ttlMs)
+      String(ttlMs),
     );
     return updated > 0;
   }
@@ -51,7 +51,7 @@ export class QueueRunnerService {
     await this.prisma.$executeRawUnsafe(
       `DELETE FROM "WorkerLease" WHERE "name" = $1 AND "owner" = $2`,
       RUNNER_NAME,
-      owner
+      owner,
     );
   }
 
@@ -75,7 +75,7 @@ export class QueueRunnerService {
       WHERE q."id" = next."id"
       RETURNING q."id", q."jobType", q."storageKey", q."imageId", q."attempts", q."priority";
     `,
-      batchSize
+      batchSize,
     );
   }
 
@@ -92,9 +92,7 @@ export class QueueRunnerService {
 
   async markFailed(id: string, err: unknown, backoffSeconds = 60) {
     const msg =
-      err instanceof Error
-        ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
-        : String(err);
+      err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ''}` : String(err);
     const next = new Date(Date.now() + backoffSeconds * 1000);
     await this.prisma.imageQueue.update({
       where: { id },

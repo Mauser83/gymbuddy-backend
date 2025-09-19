@@ -1,9 +1,6 @@
-import { Prisma, PrismaClient, prisma } from "../../lib/prisma";
-import {
-  GetImageEmbeddingsByImageDto,
-  UpsertImageEmbeddingDto,
-} from "./embedding.dto";
-import { validateInput } from "../../middlewares/validation";
+import { GetImageEmbeddingsByImageDto, UpsertImageEmbeddingDto } from './embedding.dto';
+import { Prisma, PrismaClient, prisma } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
 
 export class EmbeddingService {
   private prisma: PrismaClient;
@@ -16,7 +13,7 @@ export class EmbeddingService {
     await validateInput({ imageId, scope }, GetImageEmbeddingsByImageDto);
     return this.prisma.imageEmbedding.findMany({
       where: { imageId, ...(scope ? { scope } : {}) },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -27,12 +24,9 @@ export class EmbeddingService {
   }
 
   async getLatestEmbeddedImage(gymId?: number) {
-    const whereGym =
-      gymId == null ? Prisma.sql`` : Prisma.sql`AND gi."gymId" = ${gymId}`;
+    const whereGym = gymId == null ? Prisma.sql`` : Prisma.sql`AND gi."gymId" = ${gymId}`;
 
-    const rows = await this.prisma.$queryRaw<
-      { imageId: string; createdAt: Date }[]
-    >(
+    const rows = await this.prisma.$queryRaw<{ imageId: string; createdAt: Date }[]>(
       Prisma.sql`
         SELECT gi.id AS "imageId", emb."createdAt"
         FROM "ImageEmbedding" emb
@@ -41,7 +35,7 @@ export class EmbeddingService {
         ${whereGym}
         ORDER BY emb."createdAt" DESC
         LIMIT 1;
-      `
+      `,
     );
     return rows[0] ?? null;
   }
@@ -98,8 +92,7 @@ export async function getLatestEmbeddedImageService(input: {
     throw new Error('gymId is required for this scope');
   }
 
-  const equipFilter =
-    equipmentId != null ? `AND "equipmentId" = ${Number(equipmentId)}` : '';
+  const equipFilter = equipmentId != null ? `AND "equipmentId" = ${Number(equipmentId)}` : '';
 
   if (scope === 'GLOBAL') {
     const rows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
@@ -110,12 +103,10 @@ export async function getLatestEmbeddedImageService(input: {
       ${equipFilter}
       ORDER BY "createdAt" DESC
       LIMIT 1
-      `
+      `,
     );
     const row = rows[0];
-    return row
-      ? { imageId: row.id, createdAt: row.createdAt, scope: 'GLOBAL' as const }
-      : null;
+    return row ? { imageId: row.id, createdAt: row.createdAt, scope: 'GLOBAL' as const } : null;
   }
 
   if (scope === 'GYM') {
@@ -129,12 +120,10 @@ export async function getLatestEmbeddedImageService(input: {
       ORDER BY "capturedAt" DESC
       LIMIT 1
       `,
-      gymId
+      gymId,
     );
     const row = rows[0];
-    return row
-      ? { imageId: row.id, createdAt: row.createdAt, scope: 'GYM' as const }
-      : null;
+    return row ? { imageId: row.id, createdAt: row.createdAt, scope: 'GYM' as const } : null;
   }
 
   const gymRows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
@@ -147,7 +136,7 @@ export async function getLatestEmbeddedImageService(input: {
     ORDER BY "capturedAt" DESC
     LIMIT 1
     `,
-    gymId
+    gymId,
   );
   if (gymRows[0]) {
     return {
@@ -157,9 +146,7 @@ export async function getLatestEmbeddedImageService(input: {
     };
   }
 
-  const globalRows = await prisma.$queryRawUnsafe<
-    Array<{ id: string; createdAt: Date }>
-  >(
+  const globalRows = await prisma.$queryRawUnsafe<Array<{ id: string; createdAt: Date }>>(
     `
     SELECT id, "createdAt"
     FROM "EquipmentImage"
@@ -167,10 +154,8 @@ export async function getLatestEmbeddedImageService(input: {
     ${equipFilter}
     ORDER BY "createdAt" DESC
     LIMIT 1
-    `
+    `,
   );
   const g = globalRows[0];
-  return g
-    ? { imageId: g.id, createdAt: g.createdAt, scope: 'GLOBAL' as const }
-    : null;
+  return g ? { imageId: g.id, createdAt: g.createdAt, scope: 'GLOBAL' as const } : null;
 }

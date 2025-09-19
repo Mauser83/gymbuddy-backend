@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+models/
+logs/
+src/generated/
+*.log

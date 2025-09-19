@@ -1,11 +1,4 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsInt,
-  Min,
-  IsUrl,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
 
 // --- Equipment DTOs ---
 
@@ -67,19 +60,19 @@ export class UpdateEquipmentDto {
 // --- Equipment Image DTO ---
 
 export class UploadEquipmentImageDto {
-  @IsInt({ message: "equipmentId must be an integer" })
+  @IsInt({ message: 'equipmentId must be an integer' })
   equipmentId!: number;
 
-  @IsString({ message: "storageKey must be a string" })
+  @IsString({ message: 'storageKey must be a string' })
   storageKey!: string;
 
   @IsOptional()
-  @IsString({ message: "sha256 must be a string" })
+  @IsString({ message: 'sha256 must be a string' })
   sha256?: string;
 }
 
 export class DeleteEquipmentImageDto {
-  @IsString({ message: "imageId must be a string cuid" })
+  @IsString({ message: 'imageId must be a string cuid' })
   imageId!: string;
 }
 

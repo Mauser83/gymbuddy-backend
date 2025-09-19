@@ -9,7 +9,7 @@ import {
   IsEnum,
   Min,
   MaxLength,
-} from "class-validator";
+} from 'class-validator';
 
 export class CreateGymDto {
   @IsString()
@@ -192,34 +192,34 @@ export class UpdateGymEquipmentDto {
 }
 
 export enum GymImageStatusDto {
-  PENDING = "PENDING",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-  QUARANTINED = "QUARANTINED",
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  QUARANTINED = 'QUARANTINED',
 }
 
 export class UploadGymImageDto {
-  @IsInt({ message: "gymId must be an integer" })
+  @IsInt({ message: 'gymId must be an integer' })
   gymId!: number;
 
-  @IsInt({ message: "equipmentId must be an integer" })
+  @IsInt({ message: 'equipmentId must be an integer' })
   equipmentId!: number;
 
-  @IsString({ message: "storageKey must be a string" })
+  @IsString({ message: 'storageKey must be a string' })
   storageKey!: string;
 
   @IsOptional()
-  @IsString({ message: "sha256 must be a string" })
+  @IsString({ message: 'sha256 must be a string' })
   sha256?: string;
 
   @IsOptional()
   @IsEnum(GymImageStatusDto, {
-    message: "status must be PENDING | APPROVED | REJECTED | QUARANTINED",
+    message: 'status must be PENDING | APPROVED | REJECTED | QUARANTINED',
   })
   status?: GymImageStatusDto;
 }
 
 export class DeleteGymImageDto {
-  @IsString({ message: "imageId must be a string cuid" })
+  @IsString({ message: 'imageId must be a string cuid' })
   imageId!: string;
 }

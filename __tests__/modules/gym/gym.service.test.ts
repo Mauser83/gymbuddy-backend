@@ -1,19 +1,19 @@
-import { GymService } from "../../../src/modules/gym/gym.service";
-import { mockDeep, DeepMockProxy } from "jest-mock-extended";
-import { PrismaClient } from "../../../src/lib/prisma";
-import { PermissionService } from "../../../src/modules/core/permission.service";
-import { validateInput } from "../../../src/middlewares/validation";
-import { pubsub } from "../../../src/graphql/rootResolvers";
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-jest.mock("../../../src/middlewares/validation");
-jest.mock("../../../src/graphql/rootResolvers", () => ({
+import { pubsub } from '../../../src/graphql/rootResolvers';
+import { PrismaClient } from '../../../src/lib/prisma';
+import { validateInput } from '../../../src/middlewares/validation';
+import { GymService } from '../../../src/modules/gym/gym.service';
+
+jest.mock('../../../src/middlewares/validation');
+jest.mock('../../../src/graphql/rootResolvers', () => ({
   pubsub: { publish: jest.fn() },
 }));
 
 const mockedValidate = jest.mocked(validateInput as any);
 const mockedPublish = jest.mocked(pubsub.publish);
 
-describe("GymService", () => {
+describe('GymService', () => {
   let prisma: DeepMockProxy<PrismaClient>;
   let permissionService: {
     getUserRoles: jest.Mock;
@@ -36,12 +36,12 @@ describe("GymService", () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  test("createGym creates gym and role when missing", async () => {
+  test('createGym creates gym and role when missing', async () => {
     prisma.gym.create.mockResolvedValue({ id: 1 } as any);
     prisma.gymManagementRole.findFirst.mockResolvedValue(null as any);
     prisma.gym.findUnique.mockResolvedValue({ id: 1 } as any);
 
-    const input: any = { name: "g1", country: "c", city: "ct", address: "a" };
+    const input: any = { name: 'g1', country: 'c', city: 'ct', address: 'a' };
     const res = await service.createGym(5, input);
 
     expect(mockedValidate).toHaveBeenCalledWith(input, expect.any(Function));
@@ -53,66 +53,64 @@ describe("GymService", () => {
       }),
     });
     expect(prisma.gymManagementRole.create).toHaveBeenCalledWith({
-      data: { gymId: 1, userId: 5, role: "GYM_ADMIN" },
+      data: { gymId: 1, userId: 5, role: 'GYM_ADMIN' },
     });
     expect(mockedPublish).toHaveBeenCalled();
     expect(res).toEqual({ id: 1 });
   });
 
-  test("createGym does not create role twice", async () => {
+  test('createGym does not create role twice', async () => {
     prisma.gym.create.mockResolvedValue({ id: 1 } as any);
     prisma.gymManagementRole.findFirst.mockResolvedValue({ id: 99 } as any);
     prisma.gym.findUnique.mockResolvedValue({ id: 1 } as any);
 
     await service.createGym(5, {
-      name: "g",
-      country: "c",
-      city: "ct",
-      address: "a",
+      name: 'g',
+      country: 'c',
+      city: 'ct',
+      address: 'a',
     } as any);
 
     expect(prisma.gymManagementRole.create).not.toHaveBeenCalled();
   });
 
-  test("getGyms requires auth", async () => {
-    await expect(service.getGyms(undefined as any)).rejects.toThrow(
-      "Unauthorized"
-    );
+  test('getGyms requires auth', async () => {
+    await expect(service.getGyms(undefined as any)).rejects.toThrow('Unauthorized');
   });
 
-  test("getGyms passes search filters", async () => {
+  test('getGyms passes search filters', async () => {
     prisma.gym.findMany.mockResolvedValue([] as any);
-    await service.getGyms(1, "abc");
+    await service.getGyms(1, 'abc');
     expect(prisma.gym.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ OR: expect.any(Array) }),
-      })
+      }),
     );
   });
 
-  test("getGymById throws when not found", async () => {
+  test('getGymById throws when not found', async () => {
     prisma.gym.findUnique.mockResolvedValue(null as any);
-    await expect(service.getGymById(1, 1)).rejects.toThrow("Gym not found");
+    await expect(service.getGymById(1, 1)).rejects.toThrow('Gym not found');
   });
 
-  test("getGymById checks approval and roles", async () => {
+  test('getGymById checks approval and roles', async () => {
     prisma.gym.findUnique.mockResolvedValue({
       id: 1,
       isApproved: false,
       gymRoles: [],
     } as any);
-    await expect(service.getGymById(1, 2)).rejects.toThrow("Unauthorized");
+    await expect(service.getGymById(1, 2)).rejects.toThrow('Unauthorized');
 
     prisma.gym.findUnique.mockResolvedValue({
       id: 1,
       isApproved: false,
-      gymRoles: [{ role: "GYM_ADMIN" }],
+      gymRoles: [{ role: 'GYM_ADMIN' }],
     } as any);
     const g = await service.getGymById(1, 2);
     expect(g).toEqual({
       id: 1,
       isApproved: false,
-      gymRoles: [{ role: "GYM_ADMIN" }],
+      gymRoles: [{ role: 'GYM_ADMIN' }],
     });
 
     prisma.gym.findUnique.mockResolvedValue({
@@ -120,30 +118,30 @@ describe("GymService", () => {
       isApproved: false,
       gymRoles: [],
     } as any);
-    const g2 = await service.getGymById(1, 2, "ADMIN");
+    const g2 = await service.getGymById(1, 2, 'ADMIN');
     expect(g2).toEqual({ id: 1, isApproved: false, gymRoles: [] });
   });
 
-  test("getPendingGyms checks roles", async () => {
-    permissionService.getUserRoles.mockResolvedValue({ appRoles: ["ADMIN"] });
+  test('getPendingGyms checks roles', async () => {
+    permissionService.getUserRoles.mockResolvedValue({ appRoles: ['ADMIN'] });
     permissionService.verifyAppRoles.mockReturnValue(true);
     prisma.gym.findMany.mockResolvedValue([] as any);
     await service.getPendingGyms(1);
     expect(prisma.gym.findMany).toHaveBeenCalledWith({
       where: { isApproved: false },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: { creator: true },
     });
   });
 
-  test("getPendingGyms forbidden when roles fail", async () => {
+  test('getPendingGyms forbidden when roles fail', async () => {
     permissionService.getUserRoles.mockResolvedValue({ appRoles: [] });
     permissionService.verifyAppRoles.mockReturnValue(false);
-    await expect(service.getPendingGyms(1)).rejects.toThrow("Forbidden");
+    await expect(service.getPendingGyms(1)).rejects.toThrow('Forbidden');
   });
 
-  test("approveGym updates and publishes", async () => {
-    permissionService.getUserRoles.mockResolvedValue({ appRoles: ["ADMIN"] });
+  test('approveGym updates and publishes', async () => {
+    permissionService.getUserRoles.mockResolvedValue({ appRoles: ['ADMIN'] });
     permissionService.verifyAppRoles.mockReturnValue(true);
     prisma.gym.update.mockResolvedValue({ id: 1 } as any);
     prisma.gym.findUnique.mockResolvedValue({ id: 1 } as any);
@@ -153,91 +151,83 @@ describe("GymService", () => {
       data: { isApproved: true },
     });
     expect(mockedPublish).toHaveBeenCalled();
-    expect(res).toBe("Gym approved successfully");
+    expect(res).toBe('Gym approved successfully');
   });
 
-  test("approveGym forbidden when roles fail", async () => {
+  test('approveGym forbidden when roles fail', async () => {
     permissionService.getUserRoles.mockResolvedValue({ appRoles: [] });
     permissionService.verifyAppRoles.mockReturnValue(false);
-    await expect(service.approveGym(1, 1)).rejects.toThrow("Forbidden");
+    await expect(service.approveGym(1, 1)).rejects.toThrow('Forbidden');
   });
 
-  test("updateGym requires permission when not admin", async () => {
-    const spy = jest
-      .spyOn(service as any, "checkGymPermission")
-      .mockResolvedValue(true);
+  test('updateGym requires permission when not admin', async () => {
+    const spy = jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
     prisma.gym.update.mockResolvedValue({ id: 1 } as any);
-    await service.updateGym(1, 2, { name: "n" } as any, "USER");
+    await service.updateGym(1, 2, { name: 'n' } as any, 'USER');
     expect(spy).toHaveBeenCalled();
     expect(prisma.gym.update).toHaveBeenCalledWith({
       where: { id: 2 },
-      data: { name: "n" },
+      data: { name: 'n' },
     });
   });
 
-  test("updateGym throws when permission denied", async () => {
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(false);
-    await expect(service.updateGym(1, 2, {} as any, "USER")).rejects.toThrow(
-      "Insufficient gym permissions"
+  test('updateGym throws when permission denied', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(false);
+    await expect(service.updateGym(1, 2, {} as any, 'USER')).rejects.toThrow(
+      'Insufficient gym permissions',
     );
   });
 
-  test("deleteGym requires permission when not admin", async () => {
-    const spy = jest
-      .spyOn(service as any, "checkGymPermission")
-      .mockResolvedValue(true);
+  test('deleteGym requires permission when not admin', async () => {
+    const spy = jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
     prisma.gym.delete.mockResolvedValue({} as any);
-    const res = await service.deleteGym(1, 2, "USER");
+    const res = await service.deleteGym(1, 2, 'USER');
     expect(spy).toHaveBeenCalled();
     expect(prisma.gym.delete).toHaveBeenCalledWith({ where: { id: 2 } });
-    expect(res).toBe("Gym deleted successfully");
+    expect(res).toBe('Gym deleted successfully');
   });
 
-  test("deleteGym throws when permission denied", async () => {
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(false);
-    await expect(service.deleteGym(1, 2, "USER")).rejects.toThrow(
-      "Unauthorized"
-    );
+  test('deleteGym throws when permission denied', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(false);
+    await expect(service.deleteGym(1, 2, 'USER')).rejects.toThrow('Unauthorized');
   });
 
-  test("addTrainer checks roles and user type", async () => {
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
+  test('addTrainer checks roles and user type', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
     prisma.user.findUnique.mockResolvedValue({
-      userRole: "PERSONAL_TRAINER",
+      userRole: 'PERSONAL_TRAINER',
     } as any);
     prisma.gymTrainer.create.mockResolvedValue({} as any);
     const res = await service.addTrainer(1, 2, 3);
     expect(prisma.gymTrainer.create).toHaveBeenCalledWith({
       data: { userId: 3, gymId: 2 },
     });
-    expect(res).toBe("Trainer added successfully");
+    expect(res).toBe('Trainer added successfully');
   });
 
-  test("addTrainer forbids when user not trainer", async () => {
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
-    prisma.user.findUnique.mockResolvedValue({ userRole: "USER" } as any);
+  test('addTrainer forbids when user not trainer', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ userRole: 'USER' } as any);
     await expect(service.addTrainer(1, 2, 3)).rejects.toThrow(
-      "Target user must be a personal trainer"
+      'Target user must be a personal trainer',
     );
   });
 
-  test("removeTrainer allows self removal", async () => {
+  test('removeTrainer allows self removal', async () => {
     prisma.gymTrainer.delete.mockResolvedValue({} as any);
     const res = await service.removeTrainer(3, 2, 3);
     expect(prisma.gymTrainer.delete).toHaveBeenCalled();
-    expect(res).toBe("Trainer removed successfully");
+    expect(res).toBe('Trainer removed successfully');
   });
 
-  test("removeTrainer requires permission for others", async () => {
-    const spy = jest
-      .spyOn(service as any, "checkGymPermission")
-      .mockResolvedValue(true);
+  test('removeTrainer requires permission for others', async () => {
+    const spy = jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
     prisma.gymTrainer.delete.mockResolvedValue({} as any);
     await service.removeTrainer(1, 2, 3);
     expect(spy).toHaveBeenCalled();
   });
 
-  test("assignEquipmentToGym creates when not existing", async () => {
+  test('assignEquipmentToGym creates when not existing', async () => {
     prisma.gymEquipment.findFirst.mockResolvedValue(null as any);
     prisma.gymEquipment.create.mockResolvedValue({ id: 1 } as any);
     const input: any = { gymId: 1, equipmentId: 2, quantity: 3 };
@@ -246,18 +236,18 @@ describe("GymService", () => {
     expect(prisma.gymEquipment.create).toHaveBeenCalled();
   });
 
-  test("assignEquipmentToGym throws when exists", async () => {
+  test('assignEquipmentToGym throws when exists', async () => {
     prisma.gymEquipment.findFirst.mockResolvedValue({ id: 1 } as any);
     await expect(
       service.assignEquipmentToGym({
         gymId: 1,
         equipmentId: 2,
         quantity: 1,
-      } as any)
-    ).rejects.toThrow("This equipment is already assigned to this gym");
+      } as any),
+    ).rejects.toThrow('This equipment is already assigned to this gym');
   });
 
-  test("updateGymEquipment updates record", async () => {
+  test('updateGymEquipment updates record', async () => {
     prisma.gymEquipment.update.mockResolvedValue({ id: 1 } as any);
     const input: any = { gymEquipmentId: 1, quantity: 2 };
     await service.updateGymEquipment(input);
@@ -269,7 +259,7 @@ describe("GymService", () => {
     });
   });
 
-  test("removeGymEquipment deletes equipment and images", async () => {
+  test('removeGymEquipment deletes equipment and images', async () => {
     prisma.gymEquipmentImage.deleteMany.mockResolvedValue({} as any);
     prisma.gymEquipment.delete.mockResolvedValue({} as any);
     const res = await service.removeGymEquipment(5);
@@ -282,15 +272,15 @@ describe("GymService", () => {
     expect(res).toBe(true);
   });
 
-    test("uploadGymImage creates image", async () => {
+  test('uploadGymImage creates image', async () => {
     prisma.gymEquipment.findFirst.mockResolvedValue({ id: 10 } as any);
-    prisma.equipmentImage.create.mockResolvedValue({ id: "img1" } as any);
-    prisma.gymEquipmentImage.create.mockResolvedValue({ id: "1" } as any);
+    prisma.equipmentImage.create.mockResolvedValue({ id: 'img1' } as any);
+    prisma.gymEquipmentImage.create.mockResolvedValue({ id: '1' } as any);
     const input: any = {
       gymId: 1,
       equipmentId: 5,
-      storageKey: "key.jpg",
-      sha256: "abc",
+      storageKey: 'key.jpg',
+      sha256: 'abc',
     };
     await service.uploadGymImage(input);
     expect(mockedValidate).toHaveBeenCalledWith(input, expect.any(Function));
@@ -299,20 +289,20 @@ describe("GymService", () => {
       select: { id: true },
     });
     expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
-      data: { equipmentId: 5, storageKey: "key.jpg", sha256: "abc" },
+      data: { equipmentId: 5, storageKey: 'key.jpg', sha256: 'abc' },
     });
     expect(prisma.gymEquipmentImage.create).toHaveBeenCalledWith({
       data: {
         gymEquipmentId: 10,
         gymId: 1,
         equipmentId: 5,
-        imageId: "img1",
+        imageId: 'img1',
         status: undefined,
       },
     });
   });
 
-  test("deleteGymImage deletes and promotes next when primary", async () => {
+  test('deleteGymImage deletes and promotes next when primary', async () => {
     prisma.gymEquipmentImage.findUnique.mockResolvedValue({
       gymId: 1,
       gymEquipmentId: 10,
@@ -321,22 +311,22 @@ describe("GymService", () => {
     const tx = {
       gymEquipmentImage: {
         delete: jest.fn().mockResolvedValue({ isPrimary: true, gymEquipmentId: 10 } as any),
-        findFirst: jest.fn().mockResolvedValue({ id: "next" } as any),
+        findFirst: jest.fn().mockResolvedValue({ id: 'next' } as any),
         update: jest.fn().mockResolvedValue({} as any),
       },
     } as any;
     prisma.$transaction.mockImplementation((fn: any) => fn(tx));
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
-    const res = await service.deleteGymImage(5, "3");
-    expect(tx.gymEquipmentImage.delete).toHaveBeenCalledWith({ where: { id: "3" } });
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+    const res = await service.deleteGymImage(5, '3');
+    expect(tx.gymEquipmentImage.delete).toHaveBeenCalledWith({ where: { id: '3' } });
     expect(tx.gymEquipmentImage.update).toHaveBeenCalledWith({
-      where: { id: "next" },
+      where: { id: 'next' },
       data: { isPrimary: true },
     });
     expect(res).toBe(true);
   });
 
-  test("setPrimaryGymEquipmentImage swaps primary", async () => {
+  test('setPrimaryGymEquipmentImage swaps primary', async () => {
     prisma.gymEquipmentImage.findUnique.mockResolvedValue({
       gymId: 1,
       gymEquipmentId: 10,
@@ -344,24 +334,24 @@ describe("GymService", () => {
     const tx = {
       gymEquipmentImage: {
         updateMany: jest.fn().mockResolvedValue({} as any),
-        update: jest.fn().mockResolvedValue({ id: "img2", isPrimary: true } as any),
+        update: jest.fn().mockResolvedValue({ id: 'img2', isPrimary: true } as any),
       },
     } as any;
     prisma.$transaction.mockImplementation((fn: any) => fn(tx));
-    jest.spyOn(service as any, "checkGymPermission").mockResolvedValue(true);
-    const res = await service.setPrimaryGymEquipmentImage(5, "img2");
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+    const res = await service.setPrimaryGymEquipmentImage(5, 'img2');
     expect(tx.gymEquipmentImage.updateMany).toHaveBeenCalledWith({
       where: { gymEquipmentId: 10, isPrimary: true },
       data: { isPrimary: false },
     });
     expect(tx.gymEquipmentImage.update).toHaveBeenCalledWith({
-      where: { id: "img2" },
+      where: { id: 'img2' },
       data: { isPrimary: true },
     });
-    expect(res).toEqual({ id: "img2", isPrimary: true });
+    expect(res).toEqual({ id: 'img2', isPrimary: true });
   });
 
-  test("getGymEquipmentDetail queries prisma", async () => {
+  test('getGymEquipmentDetail queries prisma', async () => {
     prisma.gymEquipment.findUnique.mockResolvedValue({ id: 1 } as any);
     const res = await service.getGymEquipmentDetail(1);
     expect(prisma.gymEquipment.findUnique).toHaveBeenCalledWith({

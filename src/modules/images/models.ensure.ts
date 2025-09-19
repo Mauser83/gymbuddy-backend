@@ -1,27 +1,32 @@
-import { promises as fs } from "fs";
-import { dirname } from "path";
-import { createHash } from "crypto";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createHash } from 'crypto';
+import { promises as fs } from 'fs';
+import { dirname } from 'path';
 
 // ---- Sources: R2 (preferred) or direct URL ----
-type Src = { kind: "r2"; bucket: string; key: string } | { kind: "url"; url: string };
+type Src = { kind: 'r2'; bucket: string; key: string } | { kind: 'url'; url: string };
 
 async function ensureDir(p: string) {
   await fs.mkdir(p, { recursive: true });
 }
 
 async function fileExists(p: string) {
-  try { await fs.stat(p); return true; } catch { return false; }
+  try {
+    await fs.stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function sha256File(p: string) {
   const buf = await fs.readFile(p);
-  return createHash("sha256").update(buf).digest("hex");
+  return createHash('sha256').update(buf).digest('hex');
 }
 
 async function downloadToFileFromR2(dstPath: string, bucket: string, key: string) {
   const s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -48,11 +53,7 @@ async function downloadToFileFromURL(dstPath: string, url: string) {
  * Ensure a model file exists at modelPath. If missing, download from src.
  * Optionally verify a sha256 (hex) if provided.
  */
-export async function ensureModelFile(
-  modelPath: string,
-  src: Src,
-  expectedSha256?: string
-) {
+export async function ensureModelFile(modelPath: string, src: Src, expectedSha256?: string) {
   if (await fileExists(modelPath)) {
     if (expectedSha256) {
       const got = await sha256File(modelPath);
@@ -67,7 +68,7 @@ export async function ensureModelFile(
     }
   }
   await ensureDir(dirname(modelPath));
-  if (src.kind === "r2") {
+  if (src.kind === 'r2') {
     await downloadToFileFromR2(modelPath, src.bucket, src.key);
   } else {
     await downloadToFileFromURL(modelPath, src.url);

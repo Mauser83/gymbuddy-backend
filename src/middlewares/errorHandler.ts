@@ -5,7 +5,7 @@ export function errorHandler(
   err: Error | GraphQLError,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   console.error(err.stack);
 
@@ -17,15 +17,17 @@ export function errorHandler(
   // For REST requests
   if (err instanceof GraphQLError) {
     return res.status(400).json({
-      errors: [{
-        message: err.message,
-        extensions: err.extensions
-      }]
+      errors: [
+        {
+          message: err.message,
+          extensions: err.extensions,
+        },
+      ],
     });
   }
 
   res.status(500).json({
     error: 'Internal Server Error',
-    message: err.message
+    message: err.message,
   });
 }

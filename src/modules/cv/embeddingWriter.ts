@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from '../../lib/prisma';
 
 /**
  * Persist an embedding into the correct table/row.
@@ -22,7 +22,11 @@ export async function writeImageEmbedding(params: {
     // ensure row exists, then update embedding
     await prisma.$executeRawUnsafe(
       `UPDATE "EquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5`,
-      vector, modelVendor, modelName, modelVersion, imageId
+      vector,
+      modelVendor,
+      modelName,
+      modelVersion,
+      imageId,
     );
     return;
   }
@@ -30,6 +34,11 @@ export async function writeImageEmbedding(params: {
   if (!gymId) throw new Error('gymId is required for GYM embedding write');
   await prisma.$executeRawUnsafe(
     `UPDATE "GymEquipmentImage" SET embedding = $1, "modelVendor" = $2, "modelName" = $3, "modelVersion" = $4 WHERE id = $5 AND "gymId" = $6`,
-    vector, modelVendor, modelName, modelVersion, imageId, gymId
+    vector,
+    modelVendor,
+    modelName,
+    modelVersion,
+    imageId,
+    gymId,
   );
 }

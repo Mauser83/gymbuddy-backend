@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -8,9 +9,8 @@ import {
   IsUrl,
   ValidateNested,
   IsBoolean,
-} from "class-validator";
-import { Type } from "class-transformer";
-import "reflect-metadata";
+} from 'class-validator';
+import 'reflect-metadata';
 
 export class CreateExerciseDto {
   @IsString()

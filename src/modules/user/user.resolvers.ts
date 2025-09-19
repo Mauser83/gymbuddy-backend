@@ -1,6 +1,6 @@
-import type { AuthContext } from "../auth/auth.types";
-import { pubsub } from "../../graphql/rootResolvers";
-import { UserService } from "./user.service";
+import { UserService } from './user.service';
+import { pubsub } from '../../graphql/rootResolvers';
+import type { AuthContext } from '../auth/auth.types';
 
 export const UserResolvers = {
   User: {
@@ -31,7 +31,7 @@ export const UserResolvers = {
     workoutSessions: (parent: any, _: any, context: AuthContext) => {
       return context.prisma.workoutSession.findMany({
         where: { userId: parent.id },
-        orderBy: { startedAt: "desc" },
+        orderBy: { startedAt: 'desc' },
       });
     },
 
@@ -44,40 +44,28 @@ export const UserResolvers = {
   },
 
   Query: {
-    users: async (
-      _: unknown,
-      args: { search?: string },
-      context: AuthContext
-    ) => {
+    users: async (_: unknown, args: { search?: string }, context: AuthContext) => {
       const userService = new UserService(context.prisma);
       return userService.searchUsers(context, args.search);
     },
 
-    userById: async (
-      _: unknown,
-      args: { id: number },
-      context: AuthContext
-    ) => {
+    userById: async (_: unknown, args: { id: number }, context: AuthContext) => {
       const userService = new UserService(context.prisma);
       return userService.getUserById(context, args.id);
     },
   },
 
   Mutation: {
-    deleteUser: async (
-      _: unknown,
-      args: { id: number },
-      context: AuthContext
-    ) => {
+    deleteUser: async (_: unknown, args: { id: number }, context: AuthContext) => {
       const userService = new UserService(context.prisma);
       await userService.deleteUser(context, args.id);
-      return "User deleted successfully";
+      return 'User deleted successfully';
     },
 
     updateUserRoles: async (
       _: unknown,
       args: { userId: number; input: { appRole?: string; userRole: string } },
-      context: AuthContext
+      context: AuthContext,
     ) => {
       const userService = new UserService(context.prisma);
 
@@ -86,10 +74,10 @@ export const UserResolvers = {
         ...args.input,
       });
 
-      await pubsub.publish("USER_ROLE_UPDATED", {
+      await pubsub.publish('USER_ROLE_UPDATED', {
         userRoleUpdated: updatedUser,
       });
-      await pubsub.publish("USER_UPDATED", { userUpdated: updatedUser });
+      await pubsub.publish('USER_UPDATED', { userUpdated: updatedUser });
 
       return updatedUser;
     },
@@ -97,20 +85,17 @@ export const UserResolvers = {
     updateUserTrainingPreferences: async (
       _: unknown,
       args: { input: { trainingGoalId?: number; experienceLevelId?: number } },
-      context: AuthContext
+      context: AuthContext,
     ) => {
-      if (!context.userId) throw new Error("Unauthorized");
+      if (!context.userId) throw new Error('Unauthorized');
 
       const userService = new UserService(context.prisma);
-      const updatedUser = await userService.updateTrainingPreferences(
-        context.userId,
-        {
-          trainingGoalId: args.input.trainingGoalId,
-          experienceLevelId: args.input.experienceLevelId,
-        }
-      );
+      const updatedUser = await userService.updateTrainingPreferences(context.userId, {
+        trainingGoalId: args.input.trainingGoalId,
+        experienceLevelId: args.input.experienceLevelId,
+      });
 
-      await pubsub.publish("USER_UPDATED", { userUpdated: updatedUser });
+      await pubsub.publish('USER_UPDATED', { userUpdated: updatedUser });
 
       return updatedUser;
     },

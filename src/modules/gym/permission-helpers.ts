@@ -1,5 +1,5 @@
-import { prisma, PrismaClient } from "../../lib/prisma";
-import { AppRole, GymRole } from "../../generated/prisma";
+import { AppRole, GymRole } from '../../generated/prisma';
+import { prisma, PrismaClient } from '../../lib/prisma';
 
 /**
  * Determine if a user is trusted for a given gym.
@@ -8,7 +8,7 @@ import { AppRole, GymRole } from "../../generated/prisma";
 export async function userIsTrustedForGym(
   userId: number,
   gymId: number,
-  client: PrismaClient = prisma
+  client: PrismaClient = prisma,
 ): Promise<boolean> {
   const user = await client.user.findUnique({
     where: { id: userId },
@@ -22,6 +22,6 @@ export async function userIsTrustedForGym(
     return true;
   }
   return user.gymManagementRoles.some((r) =>
-    [GymRole.GYM_ADMIN, GymRole.GYM_MODERATOR].includes(r.role)
+    [GymRole.GYM_ADMIN, GymRole.GYM_MODERATOR].includes(r.role),
   );
 }

@@ -1,7 +1,9 @@
 # Test Standardization Plan
 
 ## Objective
+
 Standardize all backend tests to use a consistent ApolloServer-based approach with:
+
 - Single global server instance
 - Database cleanup between tests
 - Reusable test utilities
@@ -27,23 +29,25 @@ graph TD
    - `backend/__tests__/testUtils.ts` - Reusable utilities
 
 2. Update Jest config (`backend/jest.config.js`) to:
+
    ```javascript
    module.exports = {
      globalSetup: './__tests__/globalSetup.ts',
      globalTeardown: './__tests__/globalTeardown.ts',
-     setupFilesAfterEnv: ['./__tests__/testUtils.ts']
-   }
+     setupFilesAfterEnv: ['./__tests__/testUtils.ts'],
+   };
    ```
 
 3. Standard test template:
+
    ```typescript
    import { testServer, cleanDB } from './testUtils';
-   
+
    describe('Feature Tests', () => {
      beforeEach(async () => {
        await cleanDB(); // Clear all test data
      });
-     
+
      it('should test feature', async () => {
        const res = await testServer.executeOperation({
          query: `...`,

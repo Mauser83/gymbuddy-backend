@@ -1,14 +1,17 @@
 # Gym API Documentation
 
 ## Authentication
+
 All endpoints require authentication.
 
 ## Endpoints
 
 ### List Gyms
+
 `GET /gyms`
 
 **Response:**
+
 ```json
 [
   {
@@ -23,9 +26,11 @@ All endpoints require authentication.
 ---
 
 ### Create Gym (Admin only)
+
 `POST /gyms`
 
 **Request:**
+
 ```json
 {
   "name": "New Gym",
@@ -37,9 +42,11 @@ All endpoints require authentication.
 ---
 
 ### Get Gym Details
+
 `GET /gyms/:id`
 
 **Response:**
+
 ```json
 {
   "id": "gym_123",
@@ -56,15 +63,18 @@ All endpoints require authentication.
 ```
 
 **Permissions:**
+
 - Gym members
 - Admin
 
 ---
 
 ### Add Gym Member
+
 `POST /gyms/:id/members`
 
 **Request:**
+
 ```json
 {
   "userId": "user_456"
@@ -72,15 +82,18 @@ All endpoints require authentication.
 ```
 
 **Permissions:**
+
 - Gym admin
 - System admin
 
 ---
 
 ### Update Member Role
+
 `PUT /gyms/:id/members/:userId`
 
 **Request:**
+
 ```json
 {
   "role": "GYM_ADMIN"
@@ -88,14 +101,17 @@ All endpoints require authentication.
 ```
 
 **Permissions:**
+
 - Gym admin
 - System admin
 
 ---
 
 ### Remove Member
+
 `DELETE /gyms/:id/members/:userId`
 
 **Permissions:**
+
 - Gym admin
 - System admin

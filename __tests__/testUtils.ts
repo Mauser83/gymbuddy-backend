@@ -1,14 +1,14 @@
-jest.mock("@aws-sdk/s3-request-presigner", () => ({
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: jest.fn(),
 }));
 
-import { PermissionService } from "../src/modules/core/permission.service";
-import { UserRole } from "../src/modules/auth/auth.types";
-import { MediaService } from "../src/modules/media/media.service";
-import { ImageIntakeService } from "../src/modules/images/image-intake.service";
-import { ImagePromotionService } from "../src/modules/images/image-promotion.service";
-import { ImageModerationService } from "../src/modules/images/image-moderation.service";
-import { RecognitionService } from "../src/modules/recognition/recognition.service";
+import { UserRole } from '../src/modules/auth/auth.types';
+import { PermissionService } from '../src/modules/core/permission.service';
+import { ImageIntakeService } from '../src/modules/images/image-intake.service';
+import { ImageModerationService } from '../src/modules/images/image-moderation.service';
+import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
+import { MediaService } from '../src/modules/media/media.service';
+import { RecognitionService } from '../src/modules/recognition/recognition.service';
 
 async function getUtils() {
   const utils = (global as any).__TEST_UTILS__;
@@ -20,24 +20,24 @@ async function getUtils() {
 
 export const cleanDB = async () => {
   const { prisma } = await getUtils();
-  
+
   // Delete in proper order to respect foreign key constraints
   await prisma.$transaction([
     prisma.gymChatMember.deleteMany(),
     prisma.gymTrainer.deleteMany(),
     prisma.gymManagementRole.deleteMany(),
     prisma.exerciseLog.deleteMany(), // references: Exercise, User, WorkoutPlan, Gym
-    prisma.exercise.deleteMany(),    // references: User, Equipment
+    prisma.exercise.deleteMany(), // references: User, Equipment
     prisma.workoutPlan.deleteMany(), // references: User
     prisma.equipmentImage.deleteMany(),
     prisma.gymEquipmentImage.deleteMany(),
     prisma.gymEquipment.deleteMany(),
-    prisma.equipment.deleteMany(),   // references: Gym
+    prisma.equipment.deleteMany(), // references: Gym
     prisma.equipmentSubcategory.deleteMany(),
     prisma.equipmentCategory.deleteMany(),
-    prisma.gym.deleteMany(),         // parent of gym-related models
-    prisma.user.deleteMany(),        // parent of many models (Exercise, WorkoutPlan, etc.)
-    prisma.auditLog.deleteMany(),    // not related directly by FK, but may reference users/entities
+    prisma.gym.deleteMany(), // parent of gym-related models
+    prisma.user.deleteMany(), // parent of many models (Exercise, WorkoutPlan, etc.)
+    prisma.auditLog.deleteMany(), // not related directly by FK, but may reference users/entities
   ]);
 };
 
@@ -63,8 +63,4 @@ export const executeOperation = async (operation: {
   return await testServer.executeOperation(operation, { contextValue });
 };
 
-export const { 
-  testServer, 
-  testUrl, 
-  prisma 
-} = (global as any).__TEST_UTILS__ || {};
+export const { testServer, testUrl, prisma } = (global as any).__TEST_UTILS__ || {};

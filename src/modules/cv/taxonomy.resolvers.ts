@@ -1,15 +1,16 @@
-import type { AuthContext } from "../auth/auth.types";
-import { TaxonomyService } from "./taxonomy.service";
-import { GraphQLError } from "graphql";
+import { GraphQLError } from 'graphql';
+
 import {
   CreateTaxonomyInputDto,
   CreateTaxonomyDto,
   UpdateTaxonomyInputDto,
   UpdateTaxonomyDto,
   ReorderTaxonomyDto,
-} from "./taxonomy.dto";
-import { validateInput } from "../../middlewares/validation";
-import { TaxonomyKind } from "./taxonomy.types";
+} from './taxonomy.dto';
+import { TaxonomyService } from './taxonomy.service';
+import { TaxonomyKind } from './taxonomy.types';
+import { validateInput } from '../../middlewares/validation';
+import type { AuthContext } from '../auth/auth.types';
 
 export const TaxonomyResolvers = {
   Query: {
@@ -52,14 +53,14 @@ export const TaxonomyResolvers = {
           row.displayOrder == null ||
           row.kind == null
         ) {
-          throw new Error("Service returned incomplete taxonomy row");
+          throw new Error('Service returned incomplete taxonomy row');
         }
         return row;
       } catch (e: any) {
         console.error(e);
-        if (e.code === "P2002" || /unique/i.test(e.message)) {
-          throw new GraphQLError("Key already exists for this taxonomy kind", {
-            extensions: { code: "BAD_USER_INPUT" },
+        if (e.code === 'P2002' || /unique/i.test(e.message)) {
+          throw new GraphQLError('Key already exists for this taxonomy kind', {
+            extensions: { code: 'BAD_USER_INPUT' },
           });
         }
         throw e;
@@ -96,7 +97,7 @@ export const TaxonomyResolvers = {
     },
     reorderTaxonomyTypes: async (
       _: unknown,
-      args: { kind: TaxonomyKind; items: ReorderTaxonomyDto["items"] },
+      args: { kind: TaxonomyKind; items: ReorderTaxonomyDto['items'] },
       context: AuthContext,
     ) => {
       const dto = Object.assign(new ReorderTaxonomyDto(), {

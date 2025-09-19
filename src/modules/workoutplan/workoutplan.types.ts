@@ -1,5 +1,4 @@
-import { BodyPart } from "../exercise/exercise.types";
-import { MetricTarget } from "../exercise/exercise.types";
+import { BodyPart, MetricTarget } from '../exercise/exercise.types';
 
 export interface WorkoutPlan {
   id: number;
@@ -241,7 +240,7 @@ export interface UserWorkoutPreferences {
 }
 
 // Enums
-export type AssignmentStatus = "PENDING" | "COMPLETED" | "MISSED";
+export type AssignmentStatus = 'PENDING' | 'COMPLETED' | 'MISSED';
 
 // Inputs
 

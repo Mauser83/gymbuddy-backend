@@ -1,8 +1,9 @@
-import { UserService } from '../../../src/modules/user/user.service';
-import { PrismaClient, AppRole, UserRole } from '../../../src/lib/prisma';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
+import { PrismaClient, AppRole, UserRole } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
 import { verifyRoles } from '../../../src/modules/auth/auth.roles';
+import { UserService } from '../../../src/modules/user/user.service';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/modules/auth/auth.roles');
@@ -72,7 +73,11 @@ describe('UserService', () => {
   test('updateUserRoles updates roles for admin', async () => {
     prisma.user.update.mockResolvedValue({ id: 1 } as any);
     const ctx = createContext('ADMIN');
-    await service.updateUserRoles(ctx, { userId: 1, appRole: 'MODERATOR', userRole: 'PREMIUM_USER' });
+    await service.updateUserRoles(ctx, {
+      userId: 1,
+      appRole: 'MODERATOR',
+      userRole: 'PREMIUM_USER',
+    });
     expect(mockedValidate).toHaveBeenCalled();
     expect(mockedVerify).toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -115,7 +120,7 @@ describe('UserService', () => {
     });
   });
 
-    test('updateTrainingPreferences updates provided fields', async () => {
+  test('updateTrainingPreferences updates provided fields', async () => {
     prisma.user.update.mockResolvedValue({ id: 1 } as any);
     await service.updateTrainingPreferences(1, { trainingGoalId: 3, experienceLevelId: 2 } as any);
     expect(mockedValidate).toHaveBeenCalled();

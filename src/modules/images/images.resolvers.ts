@@ -1,4 +1,5 @@
-import { validateOrReject } from "class-validator";
+import { validateOrReject } from 'class-validator';
+
 import {
   FinalizeGymImageDto,
   FinalizeGymImagesDto,
@@ -13,29 +14,23 @@ import {
   ListGlobalSuggestionsDto,
   ApproveGlobalSuggestionDto,
   RejectGlobalSuggestionDto,
-} from "./images.dto";
-import { AuthContext } from "../auth/auth.types";
+} from './images.dto';
+import { AuthContext } from '../auth/auth.types';
 
 export const ImagesResolvers = {
-    TrainingCandidateRow: {
-    url: (
-      src: { storageKey: string },
-      _args: unknown,
-      ctx: AuthContext
-    ) => ctx.mediaService.presignGetForKey(src.storageKey, 300),
+  TrainingCandidateRow: {
+    url: (src: { storageKey: string }, _args: unknown, ctx: AuthContext) =>
+      ctx.mediaService.presignGetForKey(src.storageKey, 300),
   },
   GlobalSuggestionRow: {
-    url: (
-      src: { storageKey: string },
-      _args: unknown,
-      ctx: AuthContext
-    ) => ctx.mediaService.presignGetForKey(src.storageKey, 300),
+    url: (src: { storageKey: string }, _args: unknown, ctx: AuthContext) =>
+      ctx.mediaService.presignGetForKey(src.storageKey, 300),
   },
   CandidateGymImage: {
     approvedBy: (
       src: { approvedByUserId?: number; approvedByUser?: any },
       _args: unknown,
-      context: AuthContext
+      context: AuthContext,
     ) => {
       if (src.approvedByUser) return src.approvedByUser;
       if (src.approvedByUserId)
@@ -49,7 +44,7 @@ export const ImagesResolvers = {
     finalizeGymImage: async (
       _parent: unknown,
       { input }: { input: FinalizeGymImageDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new FinalizeGymImageDto(), input);
       await validateOrReject(dto);
@@ -59,7 +54,7 @@ export const ImagesResolvers = {
     finalizeGymImages: async (
       _parent: unknown,
       { input }: { input: FinalizeGymImagesDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new FinalizeGymImagesDto(), input);
       await validateOrReject(dto);
@@ -69,7 +64,7 @@ export const ImagesResolvers = {
     applyTaxonomiesToGymImages: async (
       _parent: unknown,
       { input }: { input: ApplyTaxonomiesDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ApplyTaxonomiesDto(), input);
       await validateOrReject(dto);
@@ -79,7 +74,7 @@ export const ImagesResolvers = {
     promoteGymImageToGlobal: async (
       _parent: unknown,
       { input }: { input: PromoteGymImageDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new PromoteGymImageDto(), input);
       await validateOrReject(dto);
@@ -89,7 +84,7 @@ export const ImagesResolvers = {
     approveGymImage: async (
       _parent: unknown,
       { input }: { input: ApproveGymImageDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ApproveGymImageDto(), input);
       await validateOrReject(dto);
@@ -99,7 +94,7 @@ export const ImagesResolvers = {
     rejectGymImage: async (
       _parent: unknown,
       { input }: { input: RejectGymImageDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new RejectGymImageDto(), input);
       await validateOrReject(dto);
@@ -109,7 +104,7 @@ export const ImagesResolvers = {
     approveTrainingCandidate: async (
       _parent: unknown,
       { input }: { input: ApproveTrainingCandidateDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ApproveTrainingCandidateDto(), input);
       await validateOrReject(dto);
@@ -119,7 +114,7 @@ export const ImagesResolvers = {
     rejectTrainingCandidate: async (
       _parent: unknown,
       { input }: { input: RejectTrainingCandidateDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new RejectTrainingCandidateDto(), input);
       await validateOrReject(dto);
@@ -128,7 +123,7 @@ export const ImagesResolvers = {
     approveGlobalSuggestion: async (
       _parent: unknown,
       { input }: { input: ApproveGlobalSuggestionDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ApproveGlobalSuggestionDto(), input);
       await validateOrReject(dto);
@@ -137,7 +132,7 @@ export const ImagesResolvers = {
     rejectGlobalSuggestion: async (
       _parent: unknown,
       { input }: { input: RejectGlobalSuggestionDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new RejectGlobalSuggestionDto(), input);
       await validateOrReject(dto);
@@ -149,7 +144,7 @@ export const ImagesResolvers = {
     candidateGlobalImages: async (
       _parent: unknown,
       { input }: { input: CandidateGlobalImagesDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new CandidateGlobalImagesDto(), input);
       await validateOrReject(dto);
@@ -158,7 +153,7 @@ export const ImagesResolvers = {
     listTrainingCandidates: async (
       _parent: unknown,
       { input }: { input: ListTrainingCandidatesDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ListTrainingCandidatesDto(), input);
       await validateOrReject(dto);
@@ -167,7 +162,7 @@ export const ImagesResolvers = {
     listGlobalSuggestions: async (
       _parent: unknown,
       { input }: { input: ListGlobalSuggestionsDto },
-      ctx: AuthContext
+      ctx: AuthContext,
     ) => {
       const dto = Object.assign(new ListGlobalSuggestionsDto(), input);
       await validateOrReject(dto);

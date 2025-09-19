@@ -1,29 +1,26 @@
-import { PrismaClient } from "../../lib/prisma";
-import { PermissionService } from "../core/permission.service";
-import { CreateGymInput, UpdateGymInput } from "./gym.types";
-import { PermissionType } from "../auth/auth.types";
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID } from 'crypto';
+
 import {
   CreateGymDto,
   AssignEquipmentToGymDto,
-  UpdateGymDto,
   UploadGymImageDto,
   UpdateGymEquipmentDto,
-} from "./gym.dto";
-import { validateInput } from "../../middlewares/validation";
-import { pubsub } from "../../graphql/rootResolvers";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { randomUUID } from "crypto";
-import { ImageJobStatus } from "../../generated/prisma";
-import {
-  copyObjectIfMissing,
-  deleteObjectIgnoreMissing,
-} from "../media/media.service";
-import { assertSizeWithinLimit } from "../media/media.utils";
-import type { UploadTicketInput } from "../media/media.types";
-import { kickBurstRunner } from "../images/image-worker";
-import { priorityFromSource } from "../images/queue.service";
-import { makeKey } from "../../utils/makeKey";
+} from './gym.dto';
+import { CreateGymInput, UpdateGymInput } from './gym.types';
+import { ImageJobStatus } from '../../generated/prisma';
+import { pubsub } from '../../graphql/rootResolvers';
+import { PrismaClient } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
+import { makeKey } from '../../utils/makeKey';
+import { PermissionType } from '../auth/auth.types';
+import { PermissionService } from '../core/permission.service';
+import { kickBurstRunner } from '../images/image-worker';
+import { priorityFromSource } from '../images/queue.service';
+import { copyObjectIfMissing, deleteObjectIgnoreMissing } from '../media/media.service';
+import type { UploadTicketInput } from '../media/media.types';
+import { assertSizeWithinLimit } from '../media/media.utils';
 
 const fullGymInclude = {
   creator: true,
@@ -35,21 +32,21 @@ const fullGymInclude = {
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 
-const EXT_WHITELIST = new Set(["jpg", "jpeg", "png", "webp", "heic"]);
+const EXT_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic']);
 
 function inferContentType(ext: string) {
   switch (ext) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
-    case "heic":
-      return "image/heic";
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'heic':
+      return 'image/heic';
     default:
-      return "application/octet-stream";
+      return 'application/octet-stream';
   }
 }
 
@@ -57,7 +54,7 @@ export class GymService {
   private prisma: PrismaClient;
   private permissionService: PermissionService;
   private s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -74,7 +71,7 @@ export class GymService {
   private async checkGymPermission(
     userId: number,
     gymId: number,
-    requiredRoles?: ("GYM_ADMIN" | "GYM_MODERATOR")[]
+    requiredRoles?: ('GYM_ADMIN' | 'GYM_MODERATOR')[],
   ) {
     const userRoles = await this.permissionService.getUserRoles(userId);
     return this.permissionService.checkPermission({
@@ -83,7 +80,7 @@ export class GymService {
       userRoles,
       resource: { gymId: gymId },
       requiredRoles: {
-        gymRoles: requiredRoles || ["GYM_ADMIN", "GYM_MODERATOR"],
+        gymRoles: requiredRoles || ['GYM_ADMIN', 'GYM_MODERATOR'],
       },
     });
   }
@@ -104,7 +101,7 @@ export class GymService {
         where: {
           gymId: newGym.id,
           userId,
-          role: "GYM_ADMIN",
+          role: 'GYM_ADMIN',
         },
       });
 
@@ -113,7 +110,7 @@ export class GymService {
           data: {
             gymId: newGym.id,
             userId,
-            role: "GYM_ADMIN",
+            role: 'GYM_ADMIN',
           },
         });
       }
@@ -123,26 +120,26 @@ export class GymService {
         include: fullGymInclude,
       });
 
-      pubsub.publish("GYM_CREATED", { gymCreated: gymWithRelations });
+      pubsub.publish('GYM_CREATED', { gymCreated: gymWithRelations });
 
       return gymWithRelations;
     } catch (err) {
-      console.error("❌ createGym crashed", err);
+      console.error('❌ createGym crashed', err);
       throw err;
     }
   }
 
   async getGyms(userId?: number, search?: string) {
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error('Unauthorized');
     }
     const whereClause: any = { isApproved: true };
 
     if (search) {
       whereClause.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { city: { contains: search, mode: "insensitive" } },
-        { country: { contains: search, mode: "insensitive" } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+        { country: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -159,14 +156,14 @@ export class GymService {
       },
     });
 
-    if (!gym) throw new Error("Gym not found");
+    if (!gym) throw new Error('Gym not found');
 
-    const isAppAdmin = appRole === "ADMIN" || appRole === "MODERATOR";
+    const isAppAdmin = appRole === 'ADMIN' || appRole === 'MODERATOR';
 
     if (!gym.isApproved && !isAppAdmin) {
-      const isGymAdmin = gym.gymRoles.some((r) => r.role === "GYM_ADMIN");
+      const isGymAdmin = gym.gymRoles.some((r) => r.role === 'GYM_ADMIN');
       if (!isGymAdmin) {
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
       }
     }
 
@@ -175,26 +172,20 @@ export class GymService {
 
   async getPendingGyms(userId: number) {
     const roles = await this.permissionService.getUserRoles(userId);
-    const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, [
-      "ADMIN",
-      "MODERATOR",
-    ]);
-    if (!isAllowed) throw new Error("Forbidden");
+    const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, ['ADMIN', 'MODERATOR']);
+    if (!isAllowed) throw new Error('Forbidden');
 
     return this.prisma.gym.findMany({
       where: { isApproved: false },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: { creator: true },
     });
   }
 
   async approveGym(userId: number, gymId: number) {
     const roles = await this.permissionService.getUserRoles(userId);
-    const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, [
-      "ADMIN",
-      "MODERATOR",
-    ]);
-    if (!isAllowed) throw new Error("Forbidden");
+    const isAllowed = this.permissionService.verifyAppRoles(roles.appRoles, ['ADMIN', 'MODERATOR']);
+    if (!isAllowed) throw new Error('Forbidden');
 
     const gym = await this.prisma.gym.update({
       where: { id: gymId },
@@ -206,21 +197,14 @@ export class GymService {
       include: fullGymInclude,
     });
 
-    pubsub.publish("GYM_APPROVED", { gymApproved: updated });
-    return "Gym approved successfully";
+    pubsub.publish('GYM_APPROVED', { gymApproved: updated });
+    return 'Gym approved successfully';
   }
 
-  async updateGym(
-    userId: number,
-    gymId: number,
-    data: UpdateGymInput,
-    appRole?: string
-  ) {
-    if (appRole !== "ADMIN") {
-      const hasAccess = await this.checkGymPermission(userId, gymId, [
-        "GYM_ADMIN",
-      ]);
-      if (!hasAccess) throw new Error("Insufficient gym permissions");
+  async updateGym(userId: number, gymId: number, data: UpdateGymInput, appRole?: string) {
+    if (appRole !== 'ADMIN') {
+      const hasAccess = await this.checkGymPermission(userId, gymId, ['GYM_ADMIN']);
+      if (!hasAccess) throw new Error('Insufficient gym permissions');
     }
 
     return this.prisma.gym.update({
@@ -230,49 +214,39 @@ export class GymService {
   }
 
   async deleteGym(userId: number, gymId: number, appRole?: string) {
-    if (appRole !== "ADMIN") {
-      const hasAccess = await this.checkGymPermission(userId, gymId, [
-        "GYM_ADMIN",
-      ]);
-      if (!hasAccess) throw new Error("Unauthorized");
+    if (appRole !== 'ADMIN') {
+      const hasAccess = await this.checkGymPermission(userId, gymId, ['GYM_ADMIN']);
+      if (!hasAccess) throw new Error('Unauthorized');
     }
 
     await this.prisma.gym.delete({ where: { id: gymId } });
-    return "Gym deleted successfully";
+    return 'Gym deleted successfully';
   }
 
   async addTrainer(requesterId: number, gymId: number, targetUserId: number) {
-    const hasAccess = await this.checkGymPermission(requesterId, gymId, [
-      "GYM_ADMIN",
-    ]);
-    if (!hasAccess) throw new Error("Unauthorized");
+    const hasAccess = await this.checkGymPermission(requesterId, gymId, ['GYM_ADMIN']);
+    if (!hasAccess) throw new Error('Unauthorized');
 
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
       select: { userRole: true },
     });
 
-    if (user?.userRole !== "PERSONAL_TRAINER") {
-      throw new Error("Target user must be a personal trainer");
+    if (user?.userRole !== 'PERSONAL_TRAINER') {
+      throw new Error('Target user must be a personal trainer');
     }
 
     await this.prisma.gymTrainer.create({
       data: { userId: targetUserId, gymId },
     });
 
-    return "Trainer added successfully";
+    return 'Trainer added successfully';
   }
 
-  async removeTrainer(
-    requesterId: number,
-    gymId: number,
-    targetUserId: number
-  ) {
+  async removeTrainer(requesterId: number, gymId: number, targetUserId: number) {
     if (requesterId !== targetUserId) {
-      const hasAccess = await this.checkGymPermission(requesterId, gymId, [
-        "GYM_ADMIN",
-      ]);
-      if (!hasAccess) throw new Error("Unauthorized");
+      const hasAccess = await this.checkGymPermission(requesterId, gymId, ['GYM_ADMIN']);
+      if (!hasAccess) throw new Error('Unauthorized');
     }
 
     await this.prisma.gymTrainer.delete({
@@ -284,7 +258,7 @@ export class GymService {
       },
     });
 
-    return "Trainer removed successfully";
+    return 'Trainer removed successfully';
   }
 
   async assignEquipmentToGym(input: AssignEquipmentToGymDto) {
@@ -298,7 +272,7 @@ export class GymService {
     });
 
     if (exists) {
-      throw new Error("This equipment is already assigned to this gym");
+      throw new Error('This equipment is already assigned to this gym');
     }
 
     return this.prisma.gymEquipment.create({
@@ -344,7 +318,7 @@ export class GymService {
       where: { gymId: input.gymId, equipmentId: input.equipmentId },
       select: { id: true },
     });
-    if (!gymEquipment) throw new Error("Equipment not assigned to this gym");
+    if (!gymEquipment) throw new Error('Equipment not assigned to this gym');
 
     const equipmentImage = await this.prisma.equipmentImage.create({
       data: {
@@ -370,10 +344,10 @@ export class GymService {
       where: { id: imageId },
       select: { gymId: true, gymEquipmentId: true, isPrimary: true },
     });
-    if (!img) throw new Error("Image not found");
+    if (!img) throw new Error('Image not found');
 
     const hasAccess = await this.checkGymPermission(userId, img.gymId);
-    if (!hasAccess) throw new Error("Unauthorized");
+    if (!hasAccess) throw new Error('Unauthorized');
 
     await this.prisma.$transaction(async (tx) => {
       const deleted = await tx.gymEquipmentImage.delete({
@@ -382,7 +356,7 @@ export class GymService {
       if (deleted.isPrimary && deleted.gymEquipmentId) {
         const next = await tx.gymEquipmentImage.findFirst({
           where: { gymEquipmentId: deleted.gymEquipmentId },
-          orderBy: { capturedAt: "desc" },
+          orderBy: { capturedAt: 'desc' },
         });
         if (next) {
           await tx.gymEquipmentImage.update({
@@ -401,10 +375,10 @@ export class GymService {
       where: { id: imageId },
       select: { gymId: true, gymEquipmentId: true },
     });
-    if (!img || !img.gymEquipmentId) throw new Error("Image not found");
+    if (!img || !img.gymEquipmentId) throw new Error('Image not found');
 
     const hasAccess = await this.checkGymPermission(userId, img.gymId);
-    if (!hasAccess) throw new Error("Unauthorized");
+    if (!hasAccess) throw new Error('Unauthorized');
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.gymEquipmentImage.updateMany({
@@ -423,7 +397,7 @@ export class GymService {
   async getGymImagesByGymId(gymId: number) {
     return this.prisma.gymEquipmentImage.findMany({
       where: { gymId },
-      orderBy: { capturedAt: "desc" },
+      orderBy: { capturedAt: 'desc' },
       include: { image: true },
     });
   }
@@ -463,21 +437,21 @@ export class GymService {
     userId: number,
     gymEquipmentId: number,
     limit = 24,
-    cursor?: string
+    cursor?: string,
   ) {
     const join = await this.prisma.gymEquipment.findUnique({
       where: { id: gymEquipmentId },
       select: { gymId: true },
     });
-    if (!join) throw new Error("Gym equipment not found");
+    if (!join) throw new Error('Gym equipment not found');
 
     const hasAccess = await this.checkGymPermission(userId, join.gymId);
-    if (!hasAccess) throw new Error("Unauthorized");
+    if (!hasAccess) throw new Error('Unauthorized');
 
     const rows = await this.prisma.gymEquipmentImage.findMany({
       where: { gymEquipmentId },
       take: limit + 1,
-      orderBy: [{ capturedAt: "desc" }, { id: "desc" }],
+      orderBy: [{ capturedAt: 'desc' }, { id: 'desc' }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
@@ -494,9 +468,13 @@ export class GymService {
   }) {
     assertSizeWithinLimit(params.upload.contentLength);
     const ext = params.upload.ext.trim().toLowerCase();
-    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+    if (!EXT_WHITELIST.has(ext)) throw new Error('Unsupported image extension');
 
-    const storageKey = makeKey('upload', { gymId: params.gymId }, { ext: ext as 'jpg' | 'png' | 'webp' });
+    const storageKey = makeKey(
+      'upload',
+      { gymId: params.gymId },
+      { ext: ext as 'jpg' | 'png' | 'webp' },
+    );
     const contentType = params.upload.contentType || inferContentType(ext);
     const cmd = new PutObjectCommand({
       Bucket: BUCKET,
@@ -509,7 +487,7 @@ export class GymService {
       url,
       storageKey,
       expiresAt,
-      requiredHeaders: [{ name: "Content-Type", value: contentType }],
+      requiredHeaders: [{ name: 'Content-Type', value: contentType }],
     };
   }
 
@@ -517,14 +495,14 @@ export class GymService {
     userId: number,
     gymId: number,
     equipmentId: number,
-    upload: UploadTicketInput
+    upload: UploadTicketInput,
   ) {
     const hasAccess = await this.checkGymPermission(userId, gymId);
-    if (!hasAccess) throw new Error("Unauthorized");
+    if (!hasAccess) throw new Error('Unauthorized');
 
     assertSizeWithinLimit(upload.contentLength);
     const ext = upload.ext.trim().toLowerCase();
-    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+    if (!EXT_WHITELIST.has(ext)) throw new Error('Unsupported image extension');
 
     const storageKey = `private/uploads/gym/${equipmentId}/${randomUUID()}.${ext}`;
     const contentType = upload.contentType || inferContentType(ext);
@@ -537,24 +515,20 @@ export class GymService {
     return { putUrl, storageKey };
   }
 
-  async finalizeEquipmentTrainingImage(
-    userId: number,
-    gymEquipmentId: number,
-    storageKey: string
-  ) {
+  async finalizeEquipmentTrainingImage(userId: number, gymEquipmentId: number, storageKey: string) {
     const join = await this.prisma.gymEquipment.findUnique({
       where: { id: gymEquipmentId },
       select: { gymId: true, equipmentId: true },
     });
-    if (!join) throw new Error("Gym equipment not found");
+    if (!join) throw new Error('Gym equipment not found');
 
     const hasAccess = await this.checkGymPermission(userId, join.gymId);
-    if (!hasAccess) throw new Error("Unauthorized");
+    if (!hasAccess) throw new Error('Unauthorized');
 
-    const parts = storageKey.split("/");
-    const filename = parts[parts.length - 1] || "";
-    const [uuidPart, extRaw] = filename.split(".");
-    const ext = (extRaw || "jpg").toLowerCase();
+    const parts = storageKey.split('/');
+    const filename = parts[parts.length - 1] || '';
+    const [uuidPart, extRaw] = filename.split('.');
+    const ext = (extRaw || 'jpg').toLowerCase();
     const objectUuid = uuidPart;
 
     const approvedKey = `private/gym/${gymEquipmentId}/approved/${randomUUID()}.${ext}`;
@@ -568,7 +542,7 @@ export class GymService {
         gymId: join.gymId,
         equipmentId: join.equipmentId,
         storageKey: approvedKey,
-        status: "PENDING",
+        status: 'PENDING',
         capturedAt: new Date(),
         objectUuid,
         capturedByUserId: userId,
@@ -582,17 +556,17 @@ export class GymService {
         gymEquipmentId,
         gymId: join.gymId,
         uploaderUserId: userId,
-        source: "gym_equipment",
-        status: "pending",
+        source: 'gym_equipment',
+        status: 'pending',
       },
     });
 
-    const source: "gym_equipment" = "gym_equipment";
+    const source = 'gym_equipment' as const;
     const priority = priorityFromSource(source);
 
     await this.prisma.imageQueue.create({
       data: {
-        jobType: "HASH",
+        jobType: 'HASH',
         status: ImageJobStatus.pending,
         priority,
         storageKey: approvedKey,
@@ -600,9 +574,7 @@ export class GymService {
     });
 
     setImmediate(() => {
-      kickBurstRunner().catch((e) =>
-        console.error("burst runner error", e)
-      );
+      kickBurstRunner().catch((e) => console.error('burst runner error', e));
     });
 
     return image;
@@ -613,10 +585,10 @@ export class GymService {
       where: { id: imageId },
       select: { status: true, storageKey: true },
     });
-    if (!img) throw new Error("Image not found");
+    if (!img) throw new Error('Image not found');
     const job = await this.prisma.imageQueue.findFirst({
       where: { storageKey: img.storageKey, status: ImageJobStatus.pending },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
     if (!job) {
       return {

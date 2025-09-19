@@ -1,15 +1,12 @@
 import {
-  IsNumber,
   IsNotEmpty,
-  Min,
-  Max,
   IsOptional,
   IsString,
   MaxLength,
   IsInt,
   IsDateString,
   IsBoolean,
-} from "class-validator";
+} from 'class-validator';
 
 export class CreateExerciseLogDto {
   @IsInt()

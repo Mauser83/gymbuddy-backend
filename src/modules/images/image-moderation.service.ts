@@ -1,24 +1,23 @@
-import { PrismaClient } from "../../lib/prisma";
-import type { Prisma } from "../../generated/prisma";
-import { S3Client, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
-import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from "./images.dto";
-import { AuthContext } from "../auth/auth.types";
-import { verifyGymScope } from "../auth/auth.roles";
-import { makeGymApprovedKey, fileExtFrom } from "../../utils/makeKey";
-import { ImageJobStatus } from "../../generated/prisma";
-import { kickBurstRunner } from "./image-worker";
+import { S3Client, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
+
+import { kickBurstRunner } from './image-worker';
+import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from './images.dto';
+import type { Prisma } from '../../generated/prisma';
+import { ImageJobStatus } from '../../generated/prisma';
+import { PrismaClient } from '../../lib/prisma';
+import { makeGymApprovedKey, fileExtFrom } from '../../utils/makeKey';
+import { verifyGymScope } from '../auth/auth.roles';
+import { AuthContext } from '../auth/auth.types';
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
-if (!BUCKET || !ACCOUNT_ID) throw new Error("R2_BUCKET/R2_ACCOUNT_ID must be set");
+if (!BUCKET || !ACCOUNT_ID) throw new Error('R2_BUCKET/R2_ACCOUNT_ID must be set');
 
 export class ImageModerationService {
-  constructor(
-    private readonly prisma: PrismaClient,
-  ) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   private s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -28,14 +27,14 @@ export class ImageModerationService {
   });
 
   private assertModerationPermission(ctx: AuthContext, gymId: number) {
-    if (ctx.appRole !== "ADMIN") {
+    if (ctx.appRole !== 'ADMIN') {
       verifyGymScope(ctx, ctx.permissionService, gymId);
     }
   }
 
   private guardSafetyUnlessForce(img: { isSafe: boolean | null | undefined }, force?: boolean) {
     if (!force && img.isSafe !== true) {
-      throw new Error("Image failed safety checks");
+      throw new Error('Image failed safety checks');
     }
   }
 
@@ -57,7 +56,7 @@ export class ImageModerationService {
       SELECT embedding IS NOT NULL AS has FROM "GymEquipmentImage" WHERE id = ${input.id}`;
     const hasEmbedding = embedRows?.[0]?.has ?? false;
 
-    if (!gymImg.storageKey) throw new Error("Gym image missing storageKey");
+    if (!gymImg.storageKey) throw new Error('Gym image missing storageKey');
     const ext = fileExtFrom(gymImg.storageKey);
     const dstKey = makeGymApprovedKey(gymImg.gymId, ext);
 
@@ -66,15 +65,15 @@ export class ImageModerationService {
         Bucket: BUCKET,
         CopySource: `${BUCKET}/${gymImg.storageKey}`,
         Key: dstKey,
-        MetadataDirective: "COPY",
-        ACL: "private",
-      })
+        MetadataDirective: 'COPY',
+        ACL: 'private',
+      }),
     );
 
     const updated = await this.prisma.gymEquipmentImage.update({
       where: { id: gymImg.id },
       data: {
-        status: "APPROVED",
+        status: 'APPROVED',
         approvedAt: new Date(),
         approvedByUserId: ctx.userId ?? null,
         storageKey: dstKey,
@@ -85,16 +84,14 @@ export class ImageModerationService {
     if (!hasEmbedding) {
       await this.prisma.imageQueue.create({
         data: {
-          jobType: "EMBED",
+          jobType: 'EMBED',
           status: ImageJobStatus.pending,
           priority: 0,
           storageKey: dstKey,
         },
       });
       setImmediate(() => {
-        kickBurstRunner().catch((e) =>
-          console.error("burst runner error", e)
-        );
+        kickBurstRunner().catch((e) => console.error('burst runner error', e));
       });
     }
 
@@ -108,7 +105,7 @@ export class ImageModerationService {
     this.assertModerationPermission(ctx, gymImg.gymId);
     const updated = await this.prisma.gymEquipmentImage.update({
       where: { id: input.id },
-      data: { status: "REJECTED" },
+      data: { status: 'REJECTED' },
     });
     if (input.deleteObject && updated.storageKey) {
       await this.s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: updated.storageKey }));
@@ -116,7 +113,7 @@ export class ImageModerationService {
     return { gymImage: updated };
   }
 
-async candidateGlobalImages(input: CandidateGlobalImagesDto) {
+  async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
     const offset = Math.max(input.offset ?? 0, 0);
 
@@ -126,8 +123,8 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
     if (input.gymId != null) baseWhere.gymId = input.gymId;
 
     if (input.safety?.state) {
-      if (input.safety.state === "COMPLETE") baseWhere.isSafe = true;
-      else if (input.safety.state === "FAILED") baseWhere.isSafe = false;
+      if (input.safety.state === 'COMPLETE') baseWhere.isSafe = true;
+      else if (input.safety.state === 'FAILED') baseWhere.isSafe = false;
       else baseWhere.isSafe = null;
     }
 
@@ -167,27 +164,23 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
 
     const status = input.status;
     let candidates: any[] = [];
-    if (status === "CANDIDATE" || status == null) {
+    if (status === 'CANDIDATE' || status == null) {
       const pendingWhere: Prisma.GymEquipmentImageWhereInput = {
         ...baseWhere,
-        status: "PENDING",
+        status: 'PENDING',
       };
 
       const jobs = await this.prisma.imageQueue.findMany({
-        where: { status: { in: ["pending", "processing"] } },
+        where: { status: { in: ['pending', 'processing'] } },
         select: { storageKey: true },
       });
       const activeKeys = Array.from(
-        new Set(
-          jobs
-            .map((j) => j.storageKey)
-            .filter((key): key is string => Boolean(key))
-        )
+        new Set(jobs.map((j) => j.storageKey).filter((key): key is string => Boolean(key))),
       );
 
       candidates = await this.prisma.gymEquipmentImage.findMany({
         where: pendingWhere,
-        orderBy: { capturedAt: "desc" },
+        orderBy: { capturedAt: 'desc' },
         skip: offset,
         take: limit * 2,
         select,
@@ -196,7 +189,7 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
       if (activeKeys.length) {
         const activeRows = await this.prisma.gymEquipmentImage.findMany({
           where: { ...baseWhere, storageKey: { in: activeKeys } },
-          orderBy: { capturedAt: "desc" },
+          orderBy: { capturedAt: 'desc' },
           skip: offset,
           take: limit * 2,
           select,
@@ -205,14 +198,10 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
         for (const r of activeRows) map.set(r.id, r);
         candidates = Array.from(map.values());
       }
-    } else if (
-      status === "APPROVED" ||
-      status === "REJECTED" ||
-      status === "QUARANTINED"
-    ) {
+    } else if (status === 'APPROVED' || status === 'REJECTED' || status === 'QUARANTINED') {
       candidates = await this.prisma.gymEquipmentImage.findMany({
         where: { ...baseWhere, status },
-        orderBy: { capturedAt: "desc" },
+        orderBy: { capturedAt: 'desc' },
         skip: offset,
         take: limit * 2,
         select,
@@ -258,11 +247,11 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
         sourceId: r.sourceId,
       },
       safety: {
-        state: r.isSafe === true ? "COMPLETE" : r.isSafe === false ? "FAILED" : "PENDING",
+        state: r.isSafe === true ? 'COMPLETE' : r.isSafe === false ? 'FAILED' : 'PENDING',
         score: r.nsfwScore ?? null,
         reasons: r.safetyReasons ?? [],
       },
-      dupCount: Math.max((dupTotals.get(r.sha256 ?? "") ?? 1) - 1, 0),
+      dupCount: Math.max((dupTotals.get(r.sha256 ?? '') ?? 1) - 1, 0),
     }));
   }
 
@@ -271,12 +260,12 @@ async candidateGlobalImages(input: CandidateGlobalImagesDto) {
 
     const [gym, equip] = await Promise.all([
       this.prisma.gymEquipmentImage.groupBy({
-        by: ["sha256"],
+        by: ['sha256'],
         where: { sha256: { in: sha256s } },
         _count: { sha256: true },
       }),
       this.prisma.equipmentImage.groupBy({
-        by: ["sha256"],
+        by: ['sha256'],
         where: { sha256: { in: sha256s } },
         _count: { sha256: true },
       }),

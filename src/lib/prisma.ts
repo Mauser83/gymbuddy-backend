@@ -15,7 +15,7 @@ const isTest = process.env.NODE_ENV === 'test';
 let testPrisma: any | undefined;
 if (isTest) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
     testPrisma = require('../generated/test-prisma');
   } catch {
     testPrisma = undefined;
@@ -43,4 +43,10 @@ const AppRoleEnum = isTest && testPrisma ? testPrisma.AppRole : ProdAppRole;
 const GymRoleEnum = isTest && testPrisma ? testPrisma.GymRole : ProdGymRole;
 const PrismaNamespace = isTest && testPrisma ? testPrisma.Prisma : ProdPrisma;
 
-export { prisma, UserRoleEnum as UserRole, AppRoleEnum as AppRole, GymRoleEnum as GymRole, PrismaNamespace as Prisma };
+export {
+  prisma,
+  UserRoleEnum as UserRole,
+  AppRoleEnum as AppRole,
+  GymRoleEnum as GymRole,
+  PrismaNamespace as Prisma,
+};

@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsNotEmpty,
@@ -11,9 +12,8 @@ import {
   IsNumber,
   ArrayMaxSize,
   IsArray,
-} from "class-validator";
-import { Type } from "class-transformer";
-import "reflect-metadata";
+} from 'class-validator';
+import 'reflect-metadata';
 
 // ➕ Extended input class for structured plan exercise data
 export class WorkoutPlanExerciseInputDto {
@@ -75,31 +75,31 @@ export class TargetMetricInputDto {
 }
 
 export class CreateWorkoutPlanDto {
-  @IsString({ message: "Name must be a string" })
-  @IsNotEmpty({ message: "Name is required" })
-  @Length(3, 100, { message: "Name must be between 3-100 characters" })
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  @Length(3, 100, { message: 'Name must be between 3-100 characters' })
   name!: string;
 
   @IsOptional()
-  @IsString({ message: "Description must be a string" })
-  @Length(0, 500, { message: "Description cannot exceed 500 characters" })
+  @IsString({ message: 'Description must be a string' })
+  @Length(0, 500, { message: 'Description cannot exceed 500 characters' })
   description?: string;
 
   @IsOptional()
-  @IsBoolean({ message: "isPublic must be a boolean" })
+  @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
 
   @IsOptional()
-  @IsInt({ message: "trainingGoalId must be an integer" })
+  @IsInt({ message: 'trainingGoalId must be an integer' })
   trainingGoalId?: number;
 
   @IsOptional()
-  @IsInt({ message: "intensityPresetId must be an integer" })
+  @IsInt({ message: 'intensityPresetId must be an integer' })
   intensityPresetId?: number;
 
   @IsOptional()
   @IsArray()
-  @IsInt({ each: true, message: "Each muscleGroupId must be an integer" })
+  @IsInt({ each: true, message: 'Each muscleGroupId must be an integer' })
   muscleGroupIds?: number[];
 
   @IsOptional()
@@ -116,29 +116,29 @@ export class CreateWorkoutPlanDto {
 }
 
 export class UpdateWorkoutPlanDto {
-  @IsString({ message: "Name must be a string" })
-  @IsNotEmpty({ message: "Name is required" })
-  @Length(3, 100, { message: "Name must be between 3-100 characters" })
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  @Length(3, 100, { message: 'Name must be between 3-100 characters' })
   name!: string;
 
   @IsOptional()
-  @IsString({ message: "Description must be a string" })
-  @Length(0, 500, { message: "Description cannot exceed 500 characters" })
+  @IsString({ message: 'Description must be a string' })
+  @Length(0, 500, { message: 'Description cannot exceed 500 characters' })
   description?: string;
 
   @IsOptional()
-  @IsBoolean({ message: "isPublic must be a boolean" })
+  @IsBoolean({ message: 'isPublic must be a boolean' })
   isPublic?: boolean;
 
-  @IsInt({ message: "trainingGoalId must be an integer" })
+  @IsInt({ message: 'trainingGoalId must be an integer' })
   trainingGoalId!: number;
 
   @IsOptional()
-  @IsInt({ message: "intensityPresetId must be an integer" })
+  @IsInt({ message: 'intensityPresetId must be an integer' })
   intensityPresetId?: number;
 
   @IsArray()
-  @IsInt({ each: true, message: "Each muscleGroupId must be an integer" })
+  @IsInt({ each: true, message: 'Each muscleGroupId must be an integer' })
   muscleGroupIds!: number[];
 
   @ValidateNested({ each: true })

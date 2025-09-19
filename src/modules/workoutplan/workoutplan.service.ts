@@ -1,11 +1,3 @@
-import { PrismaClient } from "../../lib/prisma";
-import {
-  CreateWorkoutPlanInput,
-  UpdateWorkoutPlanInput,
-} from "./workoutplan.types";
-import { PermissionService } from "../core/permission.service";
-import { SharingService } from "./workoutplanSharing.service";
-import { validateInput } from "../../middlewares/validation";
 import {
   CreateWorkoutPlanDto,
   UpdateWorkoutPlanDto,
@@ -23,8 +15,13 @@ import {
   UpdateTrainingMethodDto,
   CreateExperienceLevelDto,
   UpdateExperienceLevelDto,
-} from "./workoutplan.dto";
-import { verifyRoles } from "../auth/auth.roles";
+} from './workoutplan.dto';
+import { CreateWorkoutPlanInput, UpdateWorkoutPlanInput } from './workoutplan.types';
+import { SharingService } from './workoutplanSharing.service';
+import { PrismaClient } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
+import { verifyRoles } from '../auth/auth.roles';
+import { PermissionService } from '../core/permission.service';
 
 export class WorkoutPlanService {
   private prisma: PrismaClient;
@@ -34,7 +31,7 @@ export class WorkoutPlanService {
   constructor(
     prisma: PrismaClient,
     permissionService: PermissionService,
-    sharingService: SharingService
+    sharingService: SharingService,
   ) {
     this.prisma = prisma;
     this.permissionService = permissionService;
@@ -49,11 +46,9 @@ export class WorkoutPlanService {
       include: { sharedWith: true },
     });
 
-    if (!workoutPlan) throw new Error("Workout not found");
+    if (!workoutPlan) throw new Error('Workout not found');
 
-    const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, [
-      "ADMIN",
-    ]);
+    const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, ['ADMIN']);
     const isOwner = workoutPlan.userId === userId;
     const isShared = workoutPlan.sharedWith.some((user) => user.id === userId);
 
@@ -67,14 +62,14 @@ export class WorkoutPlanService {
     });
 
     if (!isAdmin && !isOwner && !isShared) {
-      throw new Error("Unauthorized workout access");
+      throw new Error('Unauthorized workout access');
     }
   }
 
   private async createPlanExercises(
     workoutPlanId: number,
     exercises: any[],
-    groupMap: Record<number, number> = {}
+    groupMap: Record<number, number> = {},
   ) {
     if (!exercises?.length) return;
 
@@ -87,9 +82,7 @@ export class WorkoutPlanService {
         targetMetrics: ex.targetMetrics ?? [],
         trainingMethodId: ex.trainingMethodId ?? null,
         groupId:
-          ex.groupId !== undefined && ex.groupId !== null
-            ? groupMap[ex.groupId] ?? null
-            : null,
+          ex.groupId !== undefined && ex.groupId !== null ? (groupMap[ex.groupId] ?? null) : null,
         isWarmup: ex.isWarmup ?? false,
       })),
     });
@@ -97,7 +90,7 @@ export class WorkoutPlanService {
 
   private async createPlanGroups(
     workoutPlanId: number,
-    groups: any[]
+    groups: any[],
   ): Promise<Record<number, number>> {
     if (!groups?.length) return {};
 
@@ -118,15 +111,11 @@ export class WorkoutPlanService {
   }
 
   async createWorkoutPlan(userId: number, data: CreateWorkoutPlanInput) {
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new Error('Unauthorized');
 
     const userRoles = await this.permissionService.getUserRoles(userId);
-    const hasPremium = this.permissionService.verifyPremiumAccess(
-      userRoles.userRoles,
-      true
-    );
-    if (!hasPremium)
-      throw new Error("Premium subscription required to create workouts");
+    const hasPremium = this.permissionService.verifyPremiumAccess(userRoles.userRoles, true);
+    if (!hasPremium) throw new Error('Premium subscription required to create workouts');
 
     await validateInput(data, CreateWorkoutPlanDto);
 
@@ -162,24 +151,17 @@ export class WorkoutPlanService {
       },
     });
 
-    console.log("createWorkoutPlan → userId:", userId);
+    console.log('createWorkoutPlan → userId:', userId);
 
-    const groupMap = await this.createPlanGroups(
-      workoutPlan.id,
-      data.groups || []
-    );
-    await this.createPlanExercises(
-      workoutPlan.id,
-      data.exercises || [],
-      groupMap
-    );
+    const groupMap = await this.createPlanGroups(workoutPlan.id, data.groups || []);
+    await this.createPlanExercises(workoutPlan.id, data.exercises || [], groupMap);
     return workoutPlan;
   }
 
   async createWorkoutPlanVersion(
     userId: number,
     parentPlanId: number,
-    data: CreateWorkoutPlanInput
+    data: CreateWorkoutPlanInput,
   ) {
     await this.verifyWorkoutPlanAccess(userId, parentPlanId);
     await validateInput(data, CreateWorkoutPlanDto);
@@ -190,7 +172,7 @@ export class WorkoutPlanService {
     });
 
     if (!parent || parent.userId !== userId) {
-      throw new Error("Only the original creator can version this workout");
+      throw new Error('Only the original creator can version this workout');
     }
 
     const versionCount = await this.prisma.workoutPlan.count({
@@ -231,20 +213,13 @@ export class WorkoutPlanService {
       },
     });
 
-    const groupMap = await this.createPlanGroups(
-      newVersion.id,
-      data.groups || []
-    );
-    await this.createPlanExercises(
-      newVersion.id,
-      data.exercises || [],
-      groupMap
-    );
+    const groupMap = await this.createPlanGroups(newVersion.id, data.groups || []);
+    await this.createPlanExercises(newVersion.id, data.exercises || [], groupMap);
     return newVersion;
   }
 
   async getWorkoutPlans(userId: number) {
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new Error('Unauthorized');
 
     return this.prisma.workoutPlan.findMany({
       where: {
@@ -270,21 +245,17 @@ export class WorkoutPlanService {
         updatedAt: true,
       },
     });
-    if (!plan) throw new Error("Plan not found");
+    if (!plan) throw new Error('Plan not found');
     return plan;
   }
 
-  async updateWorkoutPlan(
-    userId: number,
-    workoutPlanId: number,
-    data: UpdateWorkoutPlanInput
-  ) {
-    if (!userId) throw new Error("Unauthorized");
+  async updateWorkoutPlan(userId: number, workoutPlanId: number, data: UpdateWorkoutPlanInput) {
+    if (!userId) throw new Error('Unauthorized');
 
     await this.verifyWorkoutPlanAccess(userId, workoutPlanId);
     await validateInput(data, UpdateWorkoutPlanDto);
 
-    const updated = await this.prisma.workoutPlan.update({
+    await this.prisma.workoutPlan.update({
       where: { id: workoutPlanId },
       data: {
         name: data.name,
@@ -293,12 +264,12 @@ export class WorkoutPlanService {
         trainingGoalId: data.trainingGoalId ?? undefined,
         intensityPresetId: data.intensityPresetId ?? undefined,
         experienceLevelId: data.intensityPresetId
-          ? (
+          ? ((
               await this.prisma.intensityPreset.findUnique({
                 where: { id: data.intensityPresetId },
                 select: { experienceLevelId: true },
               })
-            )?.experienceLevelId ?? undefined
+            )?.experienceLevelId ?? undefined)
           : undefined,
         muscleGroups: data.muscleGroupIds
           ? {
@@ -329,7 +300,7 @@ export class WorkoutPlanService {
   }
 
   async deleteWorkoutPlan(userId: number, workoutPlanId: number) {
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new Error('Unauthorized');
 
     await this.verifyWorkoutPlanAccess(userId, workoutPlanId);
 
@@ -338,25 +309,16 @@ export class WorkoutPlanService {
       data: { deletedAt: new Date() },
     });
 
-    return "Workout plan marked as deleted";
+    return 'Workout plan marked as deleted';
   }
 
-  async shareWorkoutPlan(
-    ownerId: number,
-    workoutPlanId: number,
-    shareWithUserId: number | null
-  ) {
-    if (!ownerId) throw new Error("Unauthorized");
+  async shareWorkoutPlan(ownerId: number, workoutPlanId: number, shareWithUserId: number | null) {
+    if (!ownerId) throw new Error('Unauthorized');
 
     await this.verifyWorkoutPlanAccess(ownerId, workoutPlanId);
 
     if (shareWithUserId) {
-      return this.sharingService.shareWorkoutPlan(
-        ownerId,
-        workoutPlanId,
-        shareWithUserId,
-        "VIEW"
-      );
+      return this.sharingService.shareWorkoutPlan(ownerId, workoutPlanId, shareWithUserId, 'VIEW');
     }
 
     return this.prisma.workoutPlan.update({
@@ -366,7 +328,7 @@ export class WorkoutPlanService {
   }
 
   async getSharedWorkoutPlans(userId: number) {
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new Error('Unauthorized');
 
     return this.prisma.workoutPlan.findMany({
       where: {
@@ -385,14 +347,14 @@ export class WorkoutPlanService {
 
   async createTrainingGoal(context: any, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     return this.prisma.trainingGoal.create({ data: input });
   }
 
   async updateTrainingGoal(context: any, id: number, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     return this.prisma.trainingGoal.update({
       where: { id },
@@ -401,14 +363,14 @@ export class WorkoutPlanService {
   }
 
   async deleteTrainingGoal(context: any, id: number) {
-    verifyRoles(context, { requireAppRole: "ADMIN" });
+    verifyRoles(context, { requireAppRole: 'ADMIN' });
     await this.prisma.trainingGoal.delete({ where: { id } });
     return true;
   }
 
   async createIntensityPreset(context: any, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     const { metricDefaults, ...presetData } = input;
     return this.prisma.intensityPreset.create({
@@ -428,7 +390,7 @@ export class WorkoutPlanService {
 
   async updateIntensityPreset(context: any, id: number, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     const { metricDefaults, ...data } = input;
     return this.prisma.$transaction(async (tx) => {
@@ -452,35 +414,31 @@ export class WorkoutPlanService {
   }
 
   async deleteIntensityPreset(context: any, id: number) {
-    verifyRoles(context, { requireAppRole: "ADMIN" });
+    verifyRoles(context, { requireAppRole: 'ADMIN' });
     await this.prisma.intensityPreset.delete({ where: { id } });
     return true;
   }
 
   async getExperienceLevels() {
     return this.prisma.experienceLevel.findMany({
-      orderBy: { id: "asc" },
+      orderBy: { id: 'asc' },
     });
   }
 
   async createExperienceLevel(context: any, input: CreateExperienceLevelDto) {
-    verifyRoles(context, { requireAppRole: "ADMIN" });
+    verifyRoles(context, { requireAppRole: 'ADMIN' });
     await validateInput(input, CreateExperienceLevelDto);
     return this.prisma.experienceLevel.create({ data: input });
   }
 
-  async updateExperienceLevel(
-    context: any,
-    id: number,
-    input: UpdateExperienceLevelDto
-  ) {
-    verifyRoles(context, { requireAppRole: "ADMIN" });
+  async updateExperienceLevel(context: any, id: number, input: UpdateExperienceLevelDto) {
+    verifyRoles(context, { requireAppRole: 'ADMIN' });
     await validateInput(input, UpdateExperienceLevelDto);
     return this.prisma.experienceLevel.update({ where: { id }, data: input });
   }
 
   async deleteExperienceLevel(context: any, id: number) {
-    verifyRoles(context, { requireAppRole: "ADMIN" });
+    verifyRoles(context, { requireAppRole: 'ADMIN' });
     await this.prisma.experienceLevel.delete({ where: { id } });
     return true;
   }
@@ -488,7 +446,7 @@ export class WorkoutPlanService {
   // 🔒 MuscleGroup
   async createMuscleGroup(context: any, input: CreateMuscleGroupDto) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     return this.prisma.muscleGroup.create({
       data: {
@@ -506,13 +464,9 @@ export class WorkoutPlanService {
     });
   }
 
-  async updateMuscleGroup(
-    context: any,
-    id: number,
-    input: UpdateMuscleGroupDto
-  ) {
+  async updateMuscleGroup(context: any, id: number, input: UpdateMuscleGroupDto) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
     return this.prisma.muscleGroup.update({
       where: { id },
@@ -533,7 +487,7 @@ export class WorkoutPlanService {
 
   async deleteMuscleGroup(context: any, id: number) {
     verifyRoles(context, {
-      requireAppRole: "ADMIN",
+      requireAppRole: 'ADMIN',
     });
     await this.prisma.muscleGroup.delete({ where: { id } });
     return true;
@@ -542,7 +496,7 @@ export class WorkoutPlanService {
   // 🔒 TrainingMethod
   async createTrainingMethod(context: any, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
 
     await validateInput(input, CreateTrainingMethodDto);
@@ -561,7 +515,7 @@ export class WorkoutPlanService {
 
   async updateTrainingMethod(context: any, id: number, input: any) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
 
     await validateInput(input, UpdateTrainingMethodDto);
@@ -581,7 +535,7 @@ export class WorkoutPlanService {
 
   async deleteTrainingMethod(context: any, id: number) {
     verifyRoles(context, {
-      requireAppRole: "ADMIN",
+      requireAppRole: 'ADMIN',
     });
     await this.prisma.trainingMethod.delete({ where: { id } });
     return true;
@@ -601,7 +555,7 @@ export class WorkoutPlanService {
       where: { id },
       include: { days: true, cooldowns: true, assignments: true },
     });
-    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    if (!program || program.userId !== userId) throw new Error('Unauthorized');
     return program;
   }
 
@@ -617,7 +571,7 @@ export class WorkoutPlanService {
     const program = await this.prisma.workoutProgram.findUnique({
       where: { id },
     });
-    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    if (!program || program.userId !== userId) throw new Error('Unauthorized');
     return this.prisma.workoutProgram.update({
       where: { id },
       data: input,
@@ -628,7 +582,7 @@ export class WorkoutPlanService {
     const program = await this.prisma.workoutProgram.findUnique({
       where: { id },
     });
-    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    if (!program || program.userId !== userId) throw new Error('Unauthorized');
     await this.prisma.workoutProgram.delete({ where: { id } });
     return true;
   }
@@ -640,7 +594,7 @@ export class WorkoutPlanService {
     const program = await this.prisma.workoutProgram.findUnique({
       where: { id: input.programId },
     });
-    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    if (!program || program.userId !== userId) throw new Error('Unauthorized');
     return this.prisma.workoutProgramDay.create({ data: input });
   }
 
@@ -650,7 +604,7 @@ export class WorkoutPlanService {
       where: { id },
       include: { program: true },
     });
-    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    if (!day || day.program.userId !== userId) throw new Error('Unauthorized');
     return this.prisma.workoutProgramDay.update({ where: { id }, data: input });
   }
 
@@ -659,7 +613,7 @@ export class WorkoutPlanService {
       where: { id },
       include: { program: true },
     });
-    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    if (!day || day.program.userId !== userId) throw new Error('Unauthorized');
     await this.prisma.workoutProgramDay.delete({ where: { id } });
     return true;
   }
@@ -671,7 +625,7 @@ export class WorkoutPlanService {
     const program = await this.prisma.workoutProgram.findUnique({
       where: { id: input.programId },
     });
-    if (!program || program.userId !== userId) throw new Error("Unauthorized");
+    if (!program || program.userId !== userId) throw new Error('Unauthorized');
     return this.prisma.workoutProgramMuscleCooldown.create({ data: input });
   }
 
@@ -680,8 +634,7 @@ export class WorkoutPlanService {
       where: { id },
       include: { program: true },
     });
-    if (!cooldown || cooldown.program.userId !== userId)
-      throw new Error("Unauthorized");
+    if (!cooldown || cooldown.program.userId !== userId) throw new Error('Unauthorized');
     await this.prisma.workoutProgramMuscleCooldown.delete({ where: { id } });
     return true;
   }
@@ -694,7 +647,7 @@ export class WorkoutPlanService {
       where: { id: input.programDayId },
       include: { program: true },
     });
-    if (!day || day.program.userId !== userId) throw new Error("Unauthorized");
+    if (!day || day.program.userId !== userId) throw new Error('Unauthorized');
     return this.prisma.workoutProgramAssignment.create({ data: input });
   }
 
@@ -704,7 +657,7 @@ export class WorkoutPlanService {
       include: { programDay: { include: { program: true } } },
     });
     if (!assignment || assignment.programDay.program.userId !== userId)
-      throw new Error("Unauthorized");
+      throw new Error('Unauthorized');
     await this.prisma.workoutProgramAssignment.delete({ where: { id } });
     return true;
   }
@@ -726,26 +679,16 @@ export class WorkoutPlanService {
     });
   }
 
-  async shareWorkoutProgram(
-    ownerId: number,
-    programId: number,
-    shareWithUserId: number | null
-  ) {
-    if (!ownerId) throw new Error("Unauthorized");
+  async shareWorkoutProgram(ownerId: number, programId: number, shareWithUserId: number | null) {
+    if (!ownerId) throw new Error('Unauthorized');
 
     const program = await this.prisma.workoutProgram.findUnique({
       where: { id: programId },
     });
-    if (!program || program.userId !== ownerId)
-      throw new Error("Unauthorized program access");
+    if (!program || program.userId !== ownerId) throw new Error('Unauthorized program access');
 
     if (shareWithUserId) {
-      return this.sharingService.shareWorkoutProgram(
-        ownerId,
-        programId,
-        shareWithUserId,
-        "VIEW"
-      );
+      return this.sharingService.shareWorkoutProgram(ownerId, programId, shareWithUserId, 'VIEW');
     }
 
     return this.prisma.workoutProgram.update({
@@ -756,12 +699,9 @@ export class WorkoutPlanService {
     });
   }
 
-  async updateTrainingMethodGoals(
-    context: any,
-    input: UpdateTrainingMethodGoalsDto
-  ) {
+  async updateTrainingMethodGoals(context: any, input: UpdateTrainingMethodGoalsDto) {
     verifyRoles(context, {
-      or: [{ requireAppRole: "ADMIN" }, { requireAppRole: "MODERATOR" }],
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
     });
 
     await validateInput(input, UpdateTrainingMethodGoalsDto);

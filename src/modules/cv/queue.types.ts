@@ -1,4 +1,4 @@
-export type ImageJobStatus = "pending" | "running" | "failed" | "done";
+export type ImageJobStatus = 'pending' | 'running' | 'failed' | 'done';
 
 export interface ImageQueue {
   id: string;
