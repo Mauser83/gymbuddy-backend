@@ -1,12 +1,12 @@
 import * as ort from 'onnxruntime-node';
 import { join, resolve } from 'path';
-import sharp from 'sharp';
+import sharp, { cache, concurrency } from 'sharp';
 
 import { ensureModelFile } from '../models.ensure';
 
 // Safer sharp defaults
-sharp.concurrency(1);
-sharp.cache(false);
+concurrency(1);
+cache(false);
 (sharp as any).limitInputPixels?.(2048 * 2048); // plenty; we downscale after
 
 // --- Runtime & memory knobs (MUST set env threads=1 too) ---

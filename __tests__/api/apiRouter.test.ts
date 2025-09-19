@@ -1,11 +1,11 @@
-import express from 'express';
+import express, { json } from 'express';
 import request from 'supertest';
 
 import apiRouter from '../../src/api/apiRouter';
 
 describe('apiRouter', () => {
   const app = express();
-  app.use(express.json());
+  app.use(json());
   app.use('/api', apiRouter);
 
   beforeEach(() => {

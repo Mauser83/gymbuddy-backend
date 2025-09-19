@@ -1,7 +1,5 @@
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import { WorkoutPlanResolvers } from '../../../src/modules/workoutplan/workoutplan.resolvers';
 import { WorkoutPlanService } from '../../../src/modules/workoutplan/workoutplan.service';
-import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 
 jest.mock('../../../src/modules/workoutplan/workoutplan.service');
 
@@ -19,7 +17,11 @@ function createContext() {
       trainingMethod: { findUnique: jest.fn(), findMany: jest.fn() },
     } as any,
     userId: 1,
-    permissionService: new PermissionService({} as any),
+    permissionService: {
+      checkPermission: jest.fn(),
+      getUserRoles: jest.fn(),
+      verifyAppRoles: jest.fn(),
+    } as any,
   } as any;
 }
 

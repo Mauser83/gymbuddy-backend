@@ -1,7 +1,7 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { config as loadEnv } from 'dotenv';
-import express from 'express';
+import express, { json } from 'express';
 import http from 'http';
 import { register as promRegister } from 'prom-client';
 
@@ -61,7 +61,7 @@ app.use('/api', apiRouter);
 // === Security + Middlewares ===
 app.use(cookieParser(JWT_SECRET));
 app.use(sanitizeInput);
-app.use(express.json());
+app.use(json());
 app.use(metricsMiddleware);
 app.use(requestLogger);
 

@@ -1,8 +1,5 @@
 import {
-  IsNumber,
   IsNotEmpty,
-  Min,
-  Max,
   IsOptional,
   IsString,
   MaxLength,

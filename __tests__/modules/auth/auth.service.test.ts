@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { sign } from 'jsonwebtoken';
 
 process.env.JWT_SECRET = 'testsecret';
 
@@ -106,7 +106,7 @@ describe('AuthService', () => {
   });
 
   test('refreshToken validates token and token version', async () => {
-    const refresh = jwt.sign({ sub: '1', tokenVersion: 1 }, 'testsecret');
+    const refresh = sign({ sub: '1', tokenVersion: 1 }, 'testsecret');
     prisma.user.findUnique.mockResolvedValue({
       id: 1,
       username: 'u',
@@ -127,7 +127,7 @@ describe('AuthService', () => {
   });
 
   test('refreshToken fails for mismatched token version', async () => {
-    const refresh = jwt.sign({ sub: '1', tokenVersion: 2 }, 'testsecret');
+    const refresh = sign({ sub: '1', tokenVersion: 2 }, 'testsecret');
     prisma.user.findUnique.mockResolvedValue({
       id: 1,
       username: 'u',

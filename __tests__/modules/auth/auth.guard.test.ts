@@ -1,7 +1,6 @@
-import jwt from 'jsonwebtoken';
-
-import { DIContainer } from '../../../src/modules/core/di.container';
+import { sign } from 'jsonwebtoken';
 import { prisma } from '../../../src/lib/prisma';
+import { DIContainer } from '../../../src/modules/core/di.container';
 
 jest.mock('../../../src/server', () => ({ JWT_SECRET: 'testsecret' }));
 
@@ -46,10 +45,7 @@ describe('graphqlAuth', () => {
   });
 
   test('returns context for valid token', async () => {
-    const token = jwt.sign(
-      { sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 },
-      'testsecret',
-    );
+    const token = sign({ sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 }, 'testsecret');
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     const ctx = await graphqlAuth({ req });
     expect(ctx.userId).toBe(1);
@@ -63,10 +59,7 @@ describe('graphqlAuth', () => {
 
   test('throws when token version mismatch', async () => {
     jest.mocked(prisma.user.findUnique).mockResolvedValue({ tokenVersion: 2 } as any);
-    const token = jwt.sign(
-      { sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 },
-      'testsecret',
-    );
+    const token = sign({ sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 }, 'testsecret');
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     await expect(graphqlAuth({ req })).rejects.toThrow();
   });

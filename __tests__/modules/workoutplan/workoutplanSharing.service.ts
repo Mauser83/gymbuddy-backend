@@ -2,7 +2,6 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { PrismaClient } from '../../../src/lib/prisma';
 import { PermissionType } from '../../../src/modules/auth/auth.types';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 
 describe('SharingService', () => {

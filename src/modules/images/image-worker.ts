@@ -1,7 +1,7 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { createHash } from 'crypto';
 
-import { initLocalOpenCLIP, embedImage, EMBEDDING_DIM } from './embedding/local-openclip-light';
+import { initLocalOpenCLIP, embedImage } from './embedding/local-openclip-light';
 import { QueueRunnerService, type QueueJob } from './queue-runner.service';
 import { createSafetyProvider } from './safety';
 import { hasPerson } from './safety/local-person';

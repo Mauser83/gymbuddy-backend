@@ -1,5 +1,5 @@
 import { PrismaClient } from '../../lib/prisma';
-import type { AuditLog, JsonObject } from '../../lib/prisma';
+import type { JsonObject } from '../../lib/prisma';
 
 // Toggle to enable/disable audit logging
 const AUDIT_LOGGING_ENABLED = false;

@@ -5,7 +5,6 @@ import { randomUUID } from 'crypto';
 import {
   CreateGymDto,
   AssignEquipmentToGymDto,
-  UpdateGymDto,
   UploadGymImageDto,
   UpdateGymEquipmentDto,
 } from './gym.dto';

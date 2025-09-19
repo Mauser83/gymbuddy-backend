@@ -2,7 +2,6 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { PrismaClient } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import {
   CreateExerciseLogDto,
   UpdateExerciseLogDto,

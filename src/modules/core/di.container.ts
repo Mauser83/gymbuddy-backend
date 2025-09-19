@@ -5,8 +5,6 @@ import { PermissionService } from '../core/permission.service';
 import { MediaService } from '../media/media.service';
 import { SharingService } from '../workoutplan/workoutplanSharing.service';
 
-type ServiceConstructor<T> = new (...args: any[]) => T;
-
 interface ServiceRegistration {
   factory: (...args: any[]) => any;
   isSingleton: boolean;

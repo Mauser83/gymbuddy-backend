@@ -11,7 +11,7 @@ import { ImageModerationService } from '../../../src/modules/images/image-modera
 import { AdminImageListStatusDto } from '../../../src/modules/images/images.dto';
 import { cleanDB, prisma } from '../../testUtils';
 
-jest.spyOn(S3Client.prototype, 'send').mockImplementation((cmd: any) => {
+jest.spyOn(S3Client.prototype, 'send').mockImplementation((_cmd: any) => {
   return Promise.resolve({} as any);
 });
 

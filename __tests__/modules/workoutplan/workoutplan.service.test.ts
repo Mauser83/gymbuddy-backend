@@ -2,15 +2,12 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { PrismaClient } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import {
   CreateWorkoutPlanDto,
-  UpdateWorkoutPlanDto,
   CreateTrainingMethodDto,
   UpdateTrainingMethodDto,
 } from '../../../src/modules/workoutplan/workoutplan.dto';
 import { WorkoutPlanService } from '../../../src/modules/workoutplan/workoutplan.service';
-import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 
 jest.mock('../../../src/middlewares/validation');
 

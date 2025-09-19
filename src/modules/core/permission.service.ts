@@ -22,8 +22,6 @@ export class PermissionService {
       include: { gymManagementRoles: true },
     });
 
-    const users = await this.prisma.user.findMany();
-
     if (!user) {
       throw new Error('User not found');
     }

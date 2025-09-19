@@ -105,8 +105,6 @@ export async function hasPerson(bytes: Buffer): Promise<boolean> {
     // Case A: rows of 85 (cx,cy,w,h,obj,80 classes)
     if (last === 85 || (arr.length % 85 === 0 && last != 6 && last != 7)) {
       for (let i = 0; i + 84 < arr.length; i += 85) {
-        const cx = arr[i + 0],
-          cy = arr[i + 1];
         const w = arr[i + 2],
           h = arr[i + 3];
         const obj = maybeSigmoid(arr[i + 4]);

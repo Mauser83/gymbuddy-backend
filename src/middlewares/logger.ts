@@ -1,16 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import winston from 'winston';
-
+import { createLogger, format, transports } from 'winston';
+import { verify } from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 
-const logger = winston.createLogger({
+const logger = createLogger({
   level: 'info',
-  format: winston.format.json(),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  format: format.json(),
+  transports: [new transports.Console(), new transports.File({ filename: 'logs/combined.log' })],
 });
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
@@ -30,7 +26,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
       if (authHeader && process.env.JWT_SECRET) {
         try {
           const token = authHeader.split(' ')[1];
-          const decoded = jwt.verify(token, process.env.JWT_SECRET) as {
+          const decoded = verify(token, process.env.JWT_SECRET) as {
             sub: string;
           };
           const userId = parseInt(decoded.sub, 10);

@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { GraphQLError } from 'graphql';
-import jwt from 'jsonwebtoken';
+import { verify } from 'jsonwebtoken';
 
 import { AppRole, UserRole, GymRole, AuthContext } from './auth.types';
 import { prisma } from '../../lib/prisma';
@@ -37,7 +37,7 @@ export const graphqlAuth = async ({ req }: { req: Request }): Promise<Partial<Au
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!) as {
+    const decoded = verify(token, JWT_SECRET!) as {
       sub: string;
       appRole?: AppRole;
       userRole: UserRole;

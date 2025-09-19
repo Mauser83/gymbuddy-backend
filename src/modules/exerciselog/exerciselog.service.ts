@@ -9,7 +9,6 @@ import {
   UpdateExerciseLogInput,
   CreateWorkoutSessionInput,
   UpdateWorkoutSessionInput,
-  WorkoutSession,
 } from './exerciselog.types';
 import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
@@ -44,7 +43,7 @@ export class ExerciseLogService {
     });
   }
 
-  async createExerciseLog(data: CreateExerciseLogInput, userId: number) {
+  async createExerciseLog(data: CreateExerciseLogInput, _userId: number) {
     await validateInput(data, CreateExerciseLogDto);
 
     const { equipmentIds, metrics, completedAt, ...logData } = data;
@@ -99,7 +98,7 @@ export class ExerciseLogService {
     return updatedLog;
   }
 
-  async deleteExerciseLog(id: number, userId: number) {
+  async deleteExerciseLog(id: number, _userId: number) {
     // Optional: Add ownership validation if necessary
     await this.prisma.exerciseLog.delete({
       where: { id },

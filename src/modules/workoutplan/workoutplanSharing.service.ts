@@ -16,7 +16,7 @@ export class SharingService {
     ownerId: number,
     workoutPlanId: number,
     userId: number,
-    accessLevel: 'VIEW' | 'EDIT',
+    _accessLevel: 'VIEW' | 'EDIT',
   ) {
     // Verify owner has permission to share
     const canShare = await this.verifySharingPermission(ownerId, workoutPlanId);
@@ -63,7 +63,7 @@ export class SharingService {
     ownerId: number,
     programId: number,
     userId: number,
-    accessLevel: 'VIEW' | 'EDIT',
+    _accessLevel: 'VIEW' | 'EDIT',
   ) {
     const canShare = await this.verifyProgramSharingPermission(ownerId, programId);
     if (!canShare) {

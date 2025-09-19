@@ -2,14 +2,6 @@
 import { PrismaClient } from '../../src/generated/prisma';
 const prisma = new PrismaClient();
 
-type Row = {
-  key: string;
-  label: string;
-  description?: string;
-  displayOrder?: number;
-  active?: boolean;
-};
-
 async function upsertAll<T extends { key: string }>(model: any, rows: T[]) {
   for (const [i, r] of rows.entries()) {
     await model.upsert({

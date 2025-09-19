@@ -255,7 +255,7 @@ export class WorkoutPlanService {
     await this.verifyWorkoutPlanAccess(userId, workoutPlanId);
     await validateInput(data, UpdateWorkoutPlanDto);
 
-    const updated = await this.prisma.workoutPlan.update({
+    await this.prisma.workoutPlan.update({
       where: { id: workoutPlanId },
       data: {
         name: data.name,

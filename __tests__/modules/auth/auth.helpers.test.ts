@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { sign } from 'jsonwebtoken';
 
 import { comparePassword, hashPassword, verifyToken } from '../../../src/modules/auth/auth.helpers';
 
@@ -18,7 +18,7 @@ describe('auth.helpers', () => {
   });
 
   test('verifyToken returns payload for valid token', () => {
-    const token = jwt.sign(
+    const token = sign(
       { userId: 1, email: 'a@example.com', role: 'USER' },
       process.env.JWT_SECRET!,
     );

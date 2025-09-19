@@ -37,7 +37,6 @@ export class UserService {
   async updateUser(requesterId: number, userId: number, data: any) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
     const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, ['ADMIN']);
-    const isSelf = requesterId === userId;
 
     if (!isAdmin && requesterId !== userId) {
       throw new Error('Insufficient permissions');

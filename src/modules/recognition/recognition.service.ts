@@ -26,7 +26,6 @@ const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const TICKET_SECRET = process.env.TICKET_SECRET!;
 const T_HIGH = 0.85;
-const T_LOW = 0.55;
 
 const EXT_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic']);
 
@@ -49,7 +48,6 @@ function inferContentType(ext: string) {
 const PER_EQUIPMENT_IMAGES = 3;
 const OVERSAMPLE_FACTOR = 10;
 const SEARCH_TOPK_MAX = 200;
-const MIN_ALT_SCORE = Number(process.env.RECOG_MIN_ALT_SCORE ?? 0.0); // not used for filtering anymore
 type Img = {
   equipmentId: number;
   gymId?: number | null;

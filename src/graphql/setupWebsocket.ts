@@ -1,7 +1,7 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { GraphQLError } from 'graphql';
 import { useServer } from 'graphql-ws/use/ws';
-import jwt from 'jsonwebtoken';
+import { verify } from 'jsonwebtoken';
 import { WebSocketServer } from 'ws';
 
 import resolvers from './rootResolvers';
@@ -91,7 +91,7 @@ export function setupWebSocket(
         }
 
         if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = verify(token, JWT_SECRET) as any;
         const userId = parseInt(decoded.sub, 10);
 
         if (isNaN(userId)) {

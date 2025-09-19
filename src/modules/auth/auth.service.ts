@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
+import { sign, verify } from 'jsonwebtoken';
 
 import {
   RegisterDto,
@@ -57,7 +57,7 @@ export class AuthService {
   private generateAccessToken(user: AccessTokenPayload) {
     if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
 
-    return jwt.sign(
+    return sign(
       {
         sub: user.userId.toString(),
         username: user.username,
@@ -74,7 +74,7 @@ export class AuthService {
   private generateRefreshToken(userId: number, tokenVersion: number) {
     if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
 
-    return jwt.sign({ sub: userId, tokenVersion }, JWT_SECRET, {
+    return sign({ sub: userId, tokenVersion }, JWT_SECRET, {
       expiresIn: REFRESH_TOKEN_EXPIRATION,
     });
   }
@@ -250,7 +250,7 @@ export class AuthService {
     try {
       if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
 
-      const payload = jwt.verify(input.refreshToken, JWT_SECRET) as unknown as {
+      const payload = verify(input.refreshToken, JWT_SECRET) as unknown as {
         sub: string;
         tokenVersion: number;
       };

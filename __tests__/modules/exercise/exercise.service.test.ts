@@ -6,7 +6,6 @@ import { verifyRoles } from '../../../src/modules/auth/auth.roles';
 import { PermissionService } from '../../../src/modules/core/permission.service';
 import {
   CreateExerciseDto,
-  UpdateExerciseDto,
   CreateExerciseTypeDto,
   UpdateExerciseTypeDto,
   CreateExerciseDifficultyDto,
