@@ -1,5 +1,5 @@
-import { ExerciseService } from '../../../src/modules/exercise/exercise.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
 import { PrismaClient } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
 import { verifyRoles } from '../../../src/modules/auth/auth.roles';
@@ -18,6 +18,7 @@ import {
   CreateMetricDto,
   UpdateMetricDto,
 } from '../../../src/modules/exercise/exercise.dto';
+import { ExerciseService } from '../../../src/modules/exercise/exercise.service';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/modules/auth/auth.roles');

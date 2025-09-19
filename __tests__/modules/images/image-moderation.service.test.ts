@@ -3,12 +3,13 @@ jest.mock('../../../src/modules/images/image-worker', () => ({
   kickBurstRunner: jest.fn(() => Promise.resolve()),
 }));
 
-import { ImageModerationService } from '../../../src/modules/images/image-moderation.service';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+
 import { PrismaClient } from '../../../src/lib/prisma';
 import { AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
-import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { cleanDB, prisma } from '../../testUtils';
+import { ImageModerationService } from '../../../src/modules/images/image-moderation.service';
 import { AdminImageListStatusDto } from '../../../src/modules/images/images.dto';
+import { cleanDB, prisma } from '../../testUtils';
 
 jest.spyOn(S3Client.prototype, 'send').mockImplementation((cmd: any) => {
   return Promise.resolve({} as any);

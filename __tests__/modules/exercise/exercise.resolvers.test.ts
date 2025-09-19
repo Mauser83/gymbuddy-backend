@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { ExerciseResolvers } from '../../../src/modules/exercise/exercise.resolvers';
 import { ExerciseService } from '../../../src/modules/exercise/exercise.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/exercise/exercise.service');
 

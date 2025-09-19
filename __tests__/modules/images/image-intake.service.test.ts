@@ -7,9 +7,10 @@ jest.mock('../../../src/generated/prisma', () => ({
   ImageJobStatus: { pending: 'PENDING' },
 }));
 
-import { ImageIntakeService } from '../../../src/modules/images/image-intake.service';
-import type { PrismaClient } from '../../../src/lib/prisma';
 import { S3Client } from '@aws-sdk/client-s3';
+
+import type { PrismaClient } from '../../../src/lib/prisma';
+import { ImageIntakeService } from '../../../src/modules/images/image-intake.service';
 
 // Mock the S3 client's send method so no real network calls are made during tests
 jest

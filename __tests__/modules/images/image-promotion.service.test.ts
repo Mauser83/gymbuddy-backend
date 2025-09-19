@@ -3,15 +3,16 @@ jest.mock('../../../src/modules/images/image-worker', () => ({
   kickBurstRunner: jest.fn(() => Promise.resolve()),
 }));
 
-import { ImagePromotionService } from '../../../src/modules/images/image-promotion.service';
-import { PrismaClient } from '../../../src/lib/prisma';
 import {
   S3Client,
   HeadObjectCommand,
   CopyObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
+
+import { PrismaClient } from '../../../src/lib/prisma';
 import { AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
+import { ImagePromotionService } from '../../../src/modules/images/image-promotion.service';
 
 process.env.EMBED_VENDOR = 'local';
 process.env.EMBED_MODEL = 'openclip-vit-b32';

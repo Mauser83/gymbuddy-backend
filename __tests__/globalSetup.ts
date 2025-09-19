@@ -8,17 +8,18 @@ process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'account';
 process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || 'id';
 process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || 'secret';
 process.env.TICKET_SECRET = process.env.TICKET_SECRET || 'ticketsecret';
-import { prisma } from '../src/lib/prisma';
+import { getPort } from 'get-port-please';
+
 import resolvers from '../src/graphql/rootResolvers';
 import typeDefs from '../src/graphql/rootSchema';
-import { PermissionService } from '../src/modules/core/permission.service';
+import { prisma } from '../src/lib/prisma';
 import { AuthContext, UserRole } from '../src/modules/auth/auth.types';
-import { MediaService } from '../src/modules/media/media.service';
+import { PermissionService } from '../src/modules/core/permission.service';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
-import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { ImageModerationService } from '../src/modules/images/image-moderation.service';
+import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
+import { MediaService } from '../src/modules/media/media.service';
 import { RecognitionService } from '../src/modules/recognition/recognition.service';
-import { getPort } from 'get-port-please';
 
 async function cleanDatabase() {
   // Delete in proper order to respect foreign key constraints

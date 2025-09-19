@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { EquipmentResolvers } from '../../../src/modules/equipment/equipment.resolvers';
 import { EquipmentService } from '../../../src/modules/equipment/equipment.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/equipment/equipment.service');
 

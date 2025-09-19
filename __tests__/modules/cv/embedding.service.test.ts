@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
-import { cleanDB, prisma } from '../../testUtils';
+
 import { getLatestEmbeddedImageService } from '../../../src/modules/cv/embedding.service';
+import { cleanDB, prisma } from '../../testUtils';
 
 const DIM = 512;
 function padVec(seed: number[]) {

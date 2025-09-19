@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-
 import request from 'supertest';
 
 describe('server initialization', () => {

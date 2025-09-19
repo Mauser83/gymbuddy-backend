@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { GymResolvers } from '../../../src/modules/gym/gym.resolvers';
 import { GymService } from '../../../src/modules/gym/gym.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 
 jest.mock('../../../src/modules/gym/gym.service');
 

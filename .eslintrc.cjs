@@ -3,7 +3,12 @@ module.exports = {
   root: true,
   env: { es2021: true, node: true, jest: true },
   parser: '@typescript-eslint/parser',
-  parserOptions: { ecmaVersion: 'latest', sourceType: 'module', project: './tsconfig.json' },
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    tsconfigRootDir: __dirname,
+    project: ['./tsconfig.eslint.json'],
+  },
   settings: { 'import/resolver': { typescript: { project: '.' } } },
   plugins: ['@typescript-eslint', 'import', 'prettier'],
   extends: [

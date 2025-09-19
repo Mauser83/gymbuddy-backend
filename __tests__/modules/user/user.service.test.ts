@@ -1,8 +1,9 @@
-import { UserService } from '../../../src/modules/user/user.service';
-import { PrismaClient, AppRole, UserRole } from '../../../src/lib/prisma';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
+import { PrismaClient, AppRole, UserRole } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
 import { verifyRoles } from '../../../src/modules/auth/auth.roles';
+import { UserService } from '../../../src/modules/user/user.service';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/modules/auth/auth.roles');

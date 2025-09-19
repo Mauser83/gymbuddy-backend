@@ -2,12 +2,12 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: jest.fn(),
 }));
 
-import { PermissionService } from '../src/modules/core/permission.service';
 import { UserRole } from '../src/modules/auth/auth.types';
-import { MediaService } from '../src/modules/media/media.service';
+import { PermissionService } from '../src/modules/core/permission.service';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
-import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { ImageModerationService } from '../src/modules/images/image-moderation.service';
+import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
+import { MediaService } from '../src/modules/media/media.service';
 import { RecognitionService } from '../src/modules/recognition/recognition.service';
 
 async function getUtils() {

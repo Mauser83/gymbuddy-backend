@@ -1,14 +1,15 @@
-import { ExerciseLogService } from '../../../src/modules/exerciselog/exerciselog.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
 import { PrismaClient } from '../../../src/lib/prisma';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import { validateInput } from '../../../src/middlewares/validation';
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import {
   CreateExerciseLogDto,
   UpdateExerciseLogDto,
   CreateWorkoutSessionDto,
   UpdateWorkoutSessionDto,
 } from '../../../src/modules/exerciselog/exerciselog.dto';
+import { ExerciseLogService } from '../../../src/modules/exerciselog/exerciselog.service';
 
 jest.mock('../../../src/middlewares/validation');
 

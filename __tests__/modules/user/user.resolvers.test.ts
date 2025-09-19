@@ -1,7 +1,7 @@
-import { UserResolvers } from '../../../src/modules/user/user.resolvers';
-import { UserService } from '../../../src/modules/user/user.service';
 import { pubsub } from '../../../src/graphql/rootResolvers';
 import { PermissionService } from '../../../src/modules/core/permission.service';
+import { UserResolvers } from '../../../src/modules/user/user.resolvers';
+import { UserService } from '../../../src/modules/user/user.service';
 
 jest.mock('../../../src/modules/user/user.service');
 jest.mock('../../../src/graphql/rootResolvers', () => ({ pubsub: { publish: jest.fn() } }));

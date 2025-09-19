@@ -1,6 +1,7 @@
-import { TaxonomyService } from '../../../src/modules/cv/taxonomy.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+
 import { PrismaClient } from '../../../src/lib/prisma';
+import { TaxonomyService } from '../../../src/modules/cv/taxonomy.service';
 
 describe('TaxonomyService', () => {
   let prisma: DeepMockProxy<PrismaClient>;

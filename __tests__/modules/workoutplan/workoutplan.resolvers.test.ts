@@ -1,6 +1,6 @@
+import { PermissionService } from '../../../src/modules/core/permission.service';
 import { WorkoutPlanResolvers } from '../../../src/modules/workoutplan/workoutplan.resolvers';
 import { WorkoutPlanService } from '../../../src/modules/workoutplan/workoutplan.service';
-import { PermissionService } from '../../../src/modules/core/permission.service';
 import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
 
 jest.mock('../../../src/modules/workoutplan/workoutplan.service');
