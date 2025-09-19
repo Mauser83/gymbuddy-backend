@@ -433,7 +433,11 @@ export class RecognitionService {
     });
     try {
       await this.s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: attempt.storageKey }));
-    } catch {}
+    } catch (err) {
+      if ((err as any)?.$metadata?.httpStatusCode !== 404) {
+        console.warn('Failed to delete recognition attempt object', err);
+      }
+    }
     return true;
   }
 }

@@ -190,7 +190,7 @@ export class ImageIntakeService {
     });
 
     // 6) Enqueue HASH for gym upload (by approvedKey)
-    const source: 'recognition_user' = 'recognition_user';
+    const source = 'recognition_user' as const;
     const priority = priorityFromSource(source);
     const jobs: Prisma.ImageQueueCreateManyInput[] = input.sha256
       ? []

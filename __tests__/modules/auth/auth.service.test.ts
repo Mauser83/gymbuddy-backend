@@ -5,9 +5,8 @@ process.env.JWT_SECRET = 'testsecret';
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/modules/auth/auth.helpers');
 import { validateInput } from '../../../src/middlewares/validation';
-
-const { hashPassword, comparePassword } = require('../../../src/modules/auth/auth.helpers');
-const { AuthService } = require('../../../src/modules/auth/auth.service');
+import { comparePassword, hashPassword } from '../../../src/modules/auth/auth.helpers';
+import { AuthService } from '../../../src/modules/auth/auth.service';
 
 const mockedValidate = jest.mocked(validateInput as any);
 const mockedHash = jest.mocked(hashPassword);

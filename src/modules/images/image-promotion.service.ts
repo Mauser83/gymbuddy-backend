@@ -202,7 +202,11 @@ export class ImagePromotionService {
     try {
       const head = await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
       hiRes = (head.ContentLength ?? 0) >= 300 * 1024;
-    } catch {}
+    } catch (err) {
+      if ((err as any)?.$metadata?.httpStatusCode !== 404) {
+        console.warn('Failed to determine image resolution from storage key', err);
+      }
+    }
 
     const { score, reasons } = scoreGlobalCandidate({
       globalCount,
@@ -456,25 +460,33 @@ export class ImagePromotionService {
 
     let nextCursor: string | null = null;
     if (rows.length > limit) {
-      const last = rows.pop()!;
-      nextCursor = Buffer.from(`${last.id}|${last.createdAt.toISOString()}`).toString('base64');
+      const last = rows.pop();
+      if (last) {
+        nextCursor = Buffer.from(`${last.id}|${last.createdAt.toISOString()}`).toString('base64');
+      }
     }
 
     return {
-      items: rows.map((r) => ({
-        id: r.id,
-        gymId: r.gymId!,
-        gymEquipmentId: r.gymEquipmentId!,
-        equipmentId: r.gymEquipment?.equipmentId!,
-        equipmentName: r.gymEquipment?.equipment?.name ?? null,
-        storageKey: r.storageKey,
-        status: r.status.toUpperCase(),
-        safetyReasons: r.safetyReasons,
-        capturedAt: r.capturedAt?.toISOString() ?? null,
-        uploader: r.uploader,
-        hash: r.hash,
-        processedAt: r.processedAt?.toISOString() ?? null,
-      })),
+      items: rows.map((r) => {
+        if (r.gymId == null || r.gymEquipmentId == null || r.gymEquipment?.equipmentId == null) {
+          throw new Error('Training candidate missing required associations');
+        }
+
+        return {
+          id: r.id,
+          gymId: r.gymId,
+          gymEquipmentId: r.gymEquipmentId,
+          equipmentId: r.gymEquipment.equipmentId,
+          equipmentName: r.gymEquipment?.equipment?.name ?? null,
+          storageKey: r.storageKey,
+          status: r.status.toUpperCase(),
+          safetyReasons: r.safetyReasons,
+          capturedAt: r.capturedAt?.toISOString() ?? null,
+          uploader: r.uploader,
+          hash: r.hash,
+          processedAt: r.processedAt?.toISOString() ?? null,
+        };
+      }),
       nextCursor,
     };
   }

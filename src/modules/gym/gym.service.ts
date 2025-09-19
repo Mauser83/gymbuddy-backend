@@ -562,7 +562,7 @@ export class GymService {
       },
     });
 
-    const source: 'gym_equipment' = 'gym_equipment';
+    const source = 'gym_equipment' as const;
     const priority = priorityFromSource(source);
 
     await this.prisma.imageQueue.create({

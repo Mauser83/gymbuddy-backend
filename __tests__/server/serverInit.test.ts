@@ -27,7 +27,7 @@ describe('server initialization', () => {
 
   test('health endpoint works', async () => {
     process.env.JWT_SECRET = 'testsecret';
-    const { app } = require('../../src/server');
+    const { app } = await import('../../src/server.js');
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('healthy');
@@ -35,7 +35,7 @@ describe('server initialization', () => {
 
   test('metrics endpoint responds', async () => {
     process.env.JWT_SECRET = 'testsecret';
-    const { app } = require('../../src/server');
+    const { app } = await import('../../src/server.js');
     const res = await request(app).get('/metrics');
     expect(res.status).toBe(200);
   });

@@ -1,12 +1,8 @@
 import jwt from 'jsonwebtoken';
 
-process.env.JWT_SECRET = 'testsecret';
+import { comparePassword, hashPassword, verifyToken } from '../../../src/modules/auth/auth.helpers';
 
-const {
-  hashPassword,
-  comparePassword,
-  verifyToken,
-} = require('../../../src/modules/auth/auth.helpers');
+process.env.JWT_SECRET = 'testsecret';
 
 describe('auth.helpers', () => {
   beforeAll(() => {

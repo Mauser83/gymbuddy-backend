@@ -1,5 +1,7 @@
 /* eslint-disable no-useless-escape */
 
+import { randomUUID as nodeRandomUUID } from 'crypto';
+
 export type KeyKind =
   | 'golden'
   | 'training'
@@ -54,8 +56,10 @@ function getUUID(override?: string) {
   }
   // Node 18+ global, fallback for older runtimes
   const g: any = globalThis as any;
-  const rand = g?.crypto?.randomUUID ?? require('crypto').randomUUID;
-  return rand.call(g?.crypto ?? null);
+  if (typeof g?.crypto?.randomUUID === 'function') {
+    return g.crypto.randomUUID();
+  }
+  return nodeRandomUUID();
 }
 
 export const KEY_REGEX = {

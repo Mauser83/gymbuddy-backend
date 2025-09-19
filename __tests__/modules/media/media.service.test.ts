@@ -7,7 +7,7 @@ process.env.R2_SECRET_ACCESS_KEY = 'secret';
 
 jest.spyOn(presigner, 'getSignedUrl').mockResolvedValue('https://signed-url.example');
 
-const { MediaService } = require('../../../src/modules/media/media.service');
+import { MediaService } from '../../../src/modules/media/media.service';
 
 const UUID = '123e4567-e89b-42d3-a456-426614174000';
 

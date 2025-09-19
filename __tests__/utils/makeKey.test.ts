@@ -23,9 +23,9 @@ describe('makeKey', () => {
   });
 
   it('rejects missing or invalid IDs', () => {
-    // @ts-expect-error
+    // @ts-expect-error - gymId is required for upload keys
     expect(() => makeKey('upload', { equipmentId: 1 }, { now: FIXED })).toThrow(/gymId/);
-    // @ts-expect-error
+    // @ts-expect-error - equipmentId is required for global uploads
     expect(() => makeKey('upload_global', { gymId: 1 }, { now: FIXED })).toThrow(/equipmentId/);
     // negative / non-integer
     expect(() => makeKey('upload_global', { equipmentId: 0 }, { now: FIXED })).toThrow(
@@ -35,7 +35,7 @@ describe('makeKey', () => {
   });
 
   it('rejects invalid ext and uuid', () => {
-    // @ts-expect-error
+    // @ts-expect-error - invalid extension must throw
     expect(() => makeKey('upload', { gymId: 1 }, { now: FIXED, ext: 'gif' })).toThrow(
       /jpg, png, webp/,
     );

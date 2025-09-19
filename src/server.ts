@@ -1,10 +1,11 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
-import express from 'express';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import { config as loadEnv } from 'dotenv';
+import express from 'express';
 import http from 'http';
+import { register as promRegister } from 'prom-client';
+
+loadEnv();
 
 import apiRouter from './api/apiRouter';
 import { setupApollo } from './graphql/setupApollo';
@@ -86,7 +87,7 @@ app.get('/health', (_req, res) => {
 app.get('/metrics', async (_req, res) => {
   try {
     res.set('Content-Type', 'text/plain');
-    res.end(await require('prom-client').register.metrics());
+    res.end(await promRegister.metrics());
   } catch {
     res.status(500).end('Error collecting metrics');
   }
