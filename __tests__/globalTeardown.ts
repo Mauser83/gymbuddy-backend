@@ -2,7 +2,8 @@ import net from 'net';
 
 async function killPortProcess(port: number) {
   return new Promise<void>((resolve) => {
-    const tester = net.createServer()
+    const tester = net
+      .createServer()
       .once('error', () => {
         console.log(`Port ${port} is already free`);
         resolve();
@@ -27,7 +28,7 @@ export default async function () {
     }
 
     // Ensure test port is free
-    await killPortProcess(5000); 
+    await killPortProcess(5000);
 
     // Ensure production port is free
     await killPortProcess(4001);

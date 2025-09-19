@@ -35,8 +35,8 @@ export class AuditService {
         entity: params.entity,
         entityId: params.entityId,
         userId: params.userId,
-        metadata: params.metadata ? toJsonObject(params.metadata) : undefined
-      }
+        metadata: params.metadata ? toJsonObject(params.metadata) : undefined,
+      },
     });
   }
 
@@ -47,7 +47,7 @@ export class AuditService {
       entity: 'User',
       entityId: userId,
       userId,
-      metadata: { ipAddress }
+      metadata: { ipAddress },
     });
   }
 
@@ -62,20 +62,16 @@ export class AuditService {
       entity: params.entity,
       entityId: params.entityId,
       userId: params.userId,
-      metadata: { changes: toJsonObject(params.changes) }
+      metadata: { changes: toJsonObject(params.changes) },
     });
   }
 
-  async logDataDeletion(params: {
-    userId: number;
-    entity: string;
-    entityId: number;
-  }) {
+  async logDataDeletion(params: { userId: number; entity: string; entityId: number }) {
     return this.logEvent({
       action: 'DATA_DELETION',
       entity: params.entity,
       entityId: params.entityId,
-      userId: params.userId
+      userId: params.userId,
     });
   }
 
@@ -89,7 +85,7 @@ export class AuditService {
       entity: 'User',
       entityId: params.targetUserId,
       userId: params.userId,
-      metadata: { changes: toJsonObject(params.changes) }
+      metadata: { changes: toJsonObject(params.changes) },
     });
   }
 }

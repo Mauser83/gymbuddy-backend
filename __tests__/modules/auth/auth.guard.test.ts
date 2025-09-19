@@ -20,7 +20,7 @@ jest.mock('../../../src/lib/prisma', () => ({
 const mockAudit = { logUserLogin: jest.fn(), logEvent: jest.fn() } as unknown as AuditService;
 
 const containerInstance = {
-  resolve: jest.fn().mockReturnValue(mockAudit)
+  resolve: jest.fn().mockReturnValue(mockAudit),
 };
 (jest.mocked(DIContainer.getInstance as any) as any).mockReturnValue(containerInstance);
 
@@ -28,12 +28,9 @@ const containerInstance = {
 import { graphqlAuth } from '../../../src/modules/auth/auth.guard';
 
 describe('graphqlAuth', () => {
-
   beforeEach(() => {
     containerInstance.resolve.mockReturnValue(mockAudit);
-    jest
-      .mocked(prisma.user.findUnique)
-      .mockResolvedValue({ tokenVersion: 1 } as any);
+    jest.mocked(prisma.user.findUnique).mockResolvedValue({ tokenVersion: 1 } as any);
   });
 
   test('allows login and register operations without auth', async () => {
@@ -42,11 +39,16 @@ describe('graphqlAuth', () => {
   });
 
   test('throws when auth header missing', async () => {
-    await expect(graphqlAuth({ req: { body: {}, headers: {} } as any })).rejects.toThrow('Authorization header missing');
+    await expect(graphqlAuth({ req: { body: {}, headers: {} } as any })).rejects.toThrow(
+      'Authorization header missing',
+    );
   });
 
   test('returns context for valid token', async () => {
-    const token = jwt.sign({ sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 }, 'testsecret');
+    const token = jwt.sign(
+      { sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 },
+      'testsecret',
+    );
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     const ctx = await graphqlAuth({ req });
     expect(ctx.userId).toBe(1);
@@ -59,10 +61,11 @@ describe('graphqlAuth', () => {
   });
 
   test('throws when token version mismatch', async () => {
-    jest
-      .mocked(prisma.user.findUnique)
-      .mockResolvedValue({ tokenVersion: 2 } as any);
-    const token = jwt.sign({ sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 }, 'testsecret');
+    jest.mocked(prisma.user.findUnique).mockResolvedValue({ tokenVersion: 2 } as any);
+    const token = jwt.sign(
+      { sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 },
+      'testsecret',
+    );
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     await expect(graphqlAuth({ req })).rejects.toThrow();
   });

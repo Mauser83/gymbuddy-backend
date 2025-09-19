@@ -43,4 +43,10 @@ const AppRoleEnum = isTest && testPrisma ? testPrisma.AppRole : ProdAppRole;
 const GymRoleEnum = isTest && testPrisma ? testPrisma.GymRole : ProdGymRole;
 const PrismaNamespace = isTest && testPrisma ? testPrisma.Prisma : ProdPrisma;
 
-export { prisma, UserRoleEnum as UserRole, AppRoleEnum as AppRole, GymRoleEnum as GymRole, PrismaNamespace as Prisma };
+export {
+  prisma,
+  UserRoleEnum as UserRole,
+  AppRoleEnum as AppRole,
+  GymRoleEnum as GymRole,
+  PrismaNamespace as Prisma,
+};

@@ -1,14 +1,17 @@
 # User API Documentation
 
 ## Authentication
+
 All endpoints require authentication unless noted otherwise.
 
 ## Endpoints
 
 ### Register User
+
 `POST /auth/register`
 
 **Request:**
+
 ```json
 {
   "email": "user@example.com",
@@ -18,6 +21,7 @@ All endpoints require authentication unless noted otherwise.
 ```
 
 **Response (Success):**
+
 ```json
 {
   "id": "user_123",
@@ -28,15 +32,18 @@ All endpoints require authentication unless noted otherwise.
 ```
 
 **Error Responses:**
+
 - 400: Invalid input
 - 409: Email already exists
 
 ---
 
-### Login User  
+### Login User
+
 `POST /auth/login`
 
 **Request:**
+
 ```json
 {
   "email": "user@example.com",
@@ -45,11 +52,12 @@ All endpoints require authentication unless noted otherwise.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "user_123",
   "email": "user@example.com",
-  "username": "newuser", 
+  "username": "newuser",
   "token": "jwt.token.here"
 }
 ```
@@ -57,14 +65,17 @@ All endpoints require authentication unless noted otherwise.
 ---
 
 ### Get User Profile
+
 `GET /users/:id`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "id": "user_123",
@@ -76,15 +87,18 @@ Authorization: Bearer <token>
 ```
 
 **Permissions:**
+
 - User can view own profile
 - Admin can view any profile
 
 ---
 
 ### Update User
+
 `PUT /users/:id`
 
 **Request:**
+
 ```json
 {
   "username": "updatedUsername",
@@ -93,13 +107,16 @@ Authorization: Bearer <token>
 ```
 
 **Permissions:**
+
 - User can update own profile
 - Admin can update any profile
 
 ---
 
 ### Delete User
+
 `DELETE /users/:id`
 
 **Permissions:**
+
 - Admin only

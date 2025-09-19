@@ -1,13 +1,13 @@
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export enum TaxonomyKindDto {
-  ANGLE = "ANGLE",
-  HEIGHT = "HEIGHT",
-  LIGHTING = "LIGHTING",
-  MIRROR = "MIRROR",
-  DISTANCE = "DISTANCE",
-  SOURCE = "SOURCE",
-  SPLIT = "SPLIT",
+  ANGLE = 'ANGLE',
+  HEIGHT = 'HEIGHT',
+  LIGHTING = 'LIGHTING',
+  MIRROR = 'MIRROR',
+  DISTANCE = 'DISTANCE',
+  SOURCE = 'SOURCE',
+  SPLIT = 'SPLIT',
 }
 
 export class KindParamDto {

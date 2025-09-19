@@ -1,18 +1,19 @@
-import { useServer } from "graphql-ws/use/ws";
-import jwt from "jsonwebtoken";
-import { WebSocketServer } from "ws";
-import { GraphQLError } from "graphql";
-import { makeExecutableSchema } from "@graphql-tools/schema";
-import typeDefs from "./rootSchema";
-import resolvers from "./rootResolvers";
-import { PrismaClient } from "../lib/prisma";
-import { PermissionService } from "../modules/core/permission.service";
-import { MediaService } from "../modules/media/media.service";
-import { ImageIntakeService } from "../modules/images/image-intake.service";
-import { ImagePromotionService } from "../modules/images/image-promotion.service";
-import { ImageModerationService } from "../modules/images/image-moderation.service";
-import { RecognitionService } from "../modules/recognition/recognition.service";
-import { JWT_SECRET } from "../server";
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { GraphQLError } from 'graphql';
+import { useServer } from 'graphql-ws/use/ws';
+import jwt from 'jsonwebtoken';
+import { WebSocketServer } from 'ws';
+
+import resolvers from './rootResolvers';
+import typeDefs from './rootSchema';
+import { PrismaClient } from '../lib/prisma';
+import { PermissionService } from '../modules/core/permission.service';
+import { ImageIntakeService } from '../modules/images/image-intake.service';
+import { ImageModerationService } from '../modules/images/image-moderation.service';
+import { ImagePromotionService } from '../modules/images/image-promotion.service';
+import { MediaService } from '../modules/media/media.service';
+import { RecognitionService } from '../modules/recognition/recognition.service';
+import { JWT_SECRET } from '../server';
 
 export function setupWebSocket(
   server: any,
@@ -22,11 +23,11 @@ export function setupWebSocket(
   imageIntakeService: ImageIntakeService,
   imagePromotionService: ImagePromotionService,
   imageModerationService: ImageModerationService,
-  recognitionService: RecognitionService
+  recognitionService: RecognitionService,
 ) {
   const wsServer = new WebSocketServer({
     server,
-    path: "/graphql",
+    path: '/graphql',
     verifyClient: (info, done) => {
       // console.log(`[WebSocket] Verification attempt from origin: ${info.origin}`);
 
@@ -38,32 +39,30 @@ export function setupWebSocket(
 
       // ✅ **THE FIX:** Add your Render URL to this list.
       const allowedOrigins = [
-        "https://gymbuddy-backend-i9je.onrender.com",
+        'https://gymbuddy-backend-i9je.onrender.com',
         // You might also want your frontend's URL here for web clients
         // 'https://your-frontend-app.onrender.com'
       ];
 
       if (
         allowedOrigins.includes(origin) ||
-        origin.includes("localhost") ||
-        origin.includes("192.168.")
+        origin.includes('localhost') ||
+        origin.includes('192.168.')
       ) {
         return done(true);
       }
 
-      console.warn(
-        `[WebSocket] Connection rejected for invalid origin: ${origin}`
-      );
-      return done(false, 401, "Unauthorized origin");
+      console.warn(`[WebSocket] Connection rejected for invalid origin: ${origin}`);
+      return done(false, 401, 'Unauthorized origin');
     },
   });
 
-  wsServer.on("connection", () => {
+  wsServer.on('connection', () => {
     // console.log("WebSocket connection opened!");
   });
 
-  wsServer.on("error", (err) => {
-    console.error("WebSocket server error:", err);
+  wsServer.on('error', (err) => {
+    console.error('WebSocket server error:', err);
   });
 
   const schema = makeExecutableSchema({ typeDefs, resolvers });
@@ -74,15 +73,12 @@ export function setupWebSocket(
       context: async (ctx) => {
         // console.log("WS connectionParams:", ctx.connectionParams);
 
-        const token = (ctx.connectionParams?.authorization as string)?.replace(
-          "Bearer ",
-          ""
-        );
+        const token = (ctx.connectionParams?.authorization as string)?.replace('Bearer ', '');
         if (!token) {
           return {
             userId: null,
             appRole: undefined,
-            userRole: "USER",
+            userRole: 'USER',
             gymRoles: [],
             isPremium: false,
             prisma,
@@ -94,12 +90,12 @@ export function setupWebSocket(
           };
         }
 
-        if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined");
+        if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         const userId = parseInt(decoded.sub, 10);
 
         if (isNaN(userId)) {
-          throw new Error("Invalid user ID from token.");
+          throw new Error('Invalid user ID from token.');
         }
 
         const user = await prisma.user.findUnique({
@@ -108,8 +104,8 @@ export function setupWebSocket(
         });
 
         if (!user || user.tokenVersion !== decoded.tokenVersion) {
-          throw new GraphQLError("Invalid or expired token", {
-            extensions: { code: "UNAUTHENTICATED" },
+          throw new GraphQLError('Invalid or expired token', {
+            extensions: { code: 'UNAUTHENTICATED' },
           });
         }
 
@@ -129,6 +125,6 @@ export function setupWebSocket(
         };
       },
     },
-    wsServer
+    wsServer,
   );
 }

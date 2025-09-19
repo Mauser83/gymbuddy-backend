@@ -9,7 +9,7 @@ import {
   IsInt,
   IsDateString,
   IsBoolean,
-} from "class-validator";
+} from 'class-validator';
 
 export class CreateExerciseLogDto {
   @IsInt()

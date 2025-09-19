@@ -6,7 +6,14 @@ jest.mock('../../../src/modules/auth/auth.service');
 const mockedAuthService = jest.mocked(AuthService);
 
 function createContext() {
-  return { prisma: {}, permissionService: {}, userId: 1, userRole: 'USER', gymRoles: [], isPremium: false } as any;
+  return {
+    prisma: {},
+    permissionService: {},
+    userId: 1,
+    userRole: 'USER',
+    gymRoles: [],
+    isPremium: false,
+  } as any;
 }
 
 describe('AuthResolvers', () => {
@@ -18,7 +25,11 @@ describe('AuthResolvers', () => {
     const serviceInstance = { register: jest.fn() } as any;
     mockedAuthService.mockImplementation(() => serviceInstance);
     const context = createContext();
-    await AuthResolvers.Mutation.register(null as any, { input: { username: 'u', email: 'a', password: 'p' } }, context);
+    await AuthResolvers.Mutation.register(
+      null as any,
+      { input: { username: 'u', email: 'a', password: 'p' } },
+      context,
+    );
     expect(serviceInstance.register).toHaveBeenCalled();
   });
 
@@ -26,7 +37,11 @@ describe('AuthResolvers', () => {
     const serviceInstance = { login: jest.fn() } as any;
     mockedAuthService.mockImplementation(() => serviceInstance);
     const context = createContext();
-    await AuthResolvers.Mutation.login(null as any, { input: { email: 'a', password: 'p' } }, context);
+    await AuthResolvers.Mutation.login(
+      null as any,
+      { input: { email: 'a', password: 'p' } },
+      context,
+    );
     expect(serviceInstance.login).toHaveBeenCalled();
   });
 
@@ -34,7 +49,11 @@ describe('AuthResolvers', () => {
     const serviceInstance = { refreshToken: jest.fn() } as any;
     mockedAuthService.mockImplementation(() => serviceInstance);
     const context = createContext();
-    await AuthResolvers.Mutation.refreshToken(null as any, { input: { refreshToken: 'r' } }, context);
+    await AuthResolvers.Mutation.refreshToken(
+      null as any,
+      { input: { refreshToken: 'r' } },
+      context,
+    );
     expect(serviceInstance.refreshToken).toHaveBeenCalled();
   });
 
@@ -42,7 +61,11 @@ describe('AuthResolvers', () => {
     const serviceInstance = { requestPasswordReset: jest.fn() } as any;
     mockedAuthService.mockImplementation(() => serviceInstance);
     const context = createContext();
-    await AuthResolvers.Mutation.requestPasswordReset(null as any, { input: { email: 'a' } }, context);
+    await AuthResolvers.Mutation.requestPasswordReset(
+      null as any,
+      { input: { email: 'a' } },
+      context,
+    );
     expect(serviceInstance.requestPasswordReset).toHaveBeenCalled();
   });
 
@@ -50,7 +73,11 @@ describe('AuthResolvers', () => {
     const serviceInstance = { resetPassword: jest.fn() } as any;
     mockedAuthService.mockImplementation(() => serviceInstance);
     const context = createContext();
-    await AuthResolvers.Mutation.resetPassword(null as any, { input: { token: 't', password: 'p' } }, context);
+    await AuthResolvers.Mutation.resetPassword(
+      null as any,
+      { input: { token: 't', password: 'p' } },
+      context,
+    );
     expect(serviceInstance.resetPassword).toHaveBeenCalled();
   });
 });

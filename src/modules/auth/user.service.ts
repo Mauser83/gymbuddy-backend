@@ -1,6 +1,6 @@
 import { PrismaClient } from '../../lib/prisma';
-import { PermissionService } from '../core/permission.service';
 import { AuditService } from '../core/audit.service';
+import { PermissionService } from '../core/permission.service';
 
 export class UserService {
   private prisma: PrismaClient;
@@ -10,7 +10,7 @@ export class UserService {
   constructor(
     prisma: PrismaClient,
     permissionService: PermissionService,
-    auditService: AuditService
+    auditService: AuditService,
   ) {
     this.prisma = prisma;
     this.permissionService = permissionService;
@@ -19,27 +19,24 @@ export class UserService {
 
   async getUsers(requesterId: number) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
-    const canViewAll = this.permissionService.verifyAppRoles(
-      userRoles.appRoles,
-      ['ADMIN', 'MODERATOR']
-    );
+    const canViewAll = this.permissionService.verifyAppRoles(userRoles.appRoles, [
+      'ADMIN',
+      'MODERATOR',
+    ]);
 
     return this.prisma.user.findMany({
       where: canViewAll ? {} : { id: requesterId },
       select: {
         id: true,
         email: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
   }
 
   async updateUser(requesterId: number, userId: number, data: any) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
-    const isAdmin = this.permissionService.verifyAppRoles(
-      userRoles.appRoles, 
-      ['ADMIN']
-    );
+    const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, ['ADMIN']);
     const isSelf = requesterId === userId;
 
     if (!isAdmin && requesterId !== userId) {
@@ -52,15 +49,15 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     await this.auditService.logDataUpdate({
       userId: requesterId,
       entity: 'User',
       entityId: updatedUser.id,
-      changes: data
+      changes: data,
     });
 
     return updatedUser;
@@ -68,10 +65,7 @@ export class UserService {
 
   async deleteUser(requesterId: number, userId: number) {
     const userRoles = await this.permissionService.getUserRoles(requesterId);
-    const isAdmin = this.permissionService.verifyAppRoles(
-      userRoles.appRoles,
-      ['ADMIN']
-    );
+    const isAdmin = this.permissionService.verifyAppRoles(userRoles.appRoles, ['ADMIN']);
 
     if (!isAdmin) {
       throw new Error('Only admins can delete users');
@@ -79,13 +73,13 @@ export class UserService {
 
     const result = await this.prisma.user.update({
       where: { id: userId },
-      data: { deletedAt: new Date() }
+      data: { deletedAt: new Date() },
     });
 
     await this.auditService.logDataDeletion({
       userId: requesterId,
       entity: 'User',
-      entityId: result.id
+      entityId: result.id,
     });
 
     return result;

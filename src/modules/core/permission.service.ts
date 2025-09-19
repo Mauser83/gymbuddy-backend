@@ -1,5 +1,5 @@
-import { PrismaClient, AppRole, GymRole, UserRole } from "../../lib/prisma";
-import { PermissionType } from "../auth/auth.types";
+import { PrismaClient, AppRole, GymRole, UserRole } from '../../lib/prisma';
+import { PermissionType } from '../auth/auth.types';
 
 interface UserRoles {
   appRoles: AppRole[];
@@ -13,11 +13,10 @@ export class PermissionService {
 
   constructor(prisma: PrismaClient, prismaInstanceId?: string) {
     this.prisma = prisma;
-    this.prismaInstanceId = prismaInstanceId || "default";
+    this.prismaInstanceId = prismaInstanceId || 'default';
   }
 
   async getUserRoles(userId: number): Promise<UserRoles> {
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { gymManagementRoles: true },
@@ -26,7 +25,7 @@ export class PermissionService {
     const users = await this.prisma.user.findMany();
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     const gymRoles = new Map<number, GymRole[]>();
@@ -70,7 +69,7 @@ export class PermissionService {
   verifyGymRoles(
     userGymRoles: Map<number, GymRole[]>,
     gymId: number,
-    requiredRoles: GymRole[]
+    requiredRoles: GymRole[],
   ): boolean {
     const roles = userGymRoles.get(gymId) || [];
     return requiredRoles.some((role) => roles.includes(role));
@@ -90,10 +89,7 @@ export class PermissionService {
    * @param userRoles User's roles
    * @param isPremiumActive Whether user's premium subscription is active
    */
-  verifyPremiumAccess(
-    userRoles: UserRole[],
-    isPremiumActive: boolean
-  ): boolean {
+  verifyPremiumAccess(userRoles: UserRole[], isPremiumActive: boolean): boolean {
     return isPremiumActive || userRoles.includes(UserRole.PREMIUM_USER);
   }
 
@@ -126,27 +122,20 @@ export class PermissionService {
         return this.verifyOwnership(options.resource.ownerId, options.userId);
 
       case PermissionType.GYM_SCOPE:
-        if (!options.resource?.gymId || !options.requiredRoles?.gymRoles)
-          return false;
+        if (!options.resource?.gymId || !options.requiredRoles?.gymRoles) return false;
         return this.verifyGymRoles(
           options.userRoles.gymRoles,
           options.resource.gymId,
-          options.requiredRoles.gymRoles
+          options.requiredRoles.gymRoles,
         );
 
       case PermissionType.APP_SCOPE:
         if (!options.requiredRoles?.appRoles) return false;
-        return this.verifyAppRoles(
-          options.userRoles.appRoles,
-          options.requiredRoles.appRoles
-        );
+        return this.verifyAppRoles(options.userRoles.appRoles, options.requiredRoles.appRoles);
 
       case PermissionType.PREMIUM_FEATURE:
         if (options.isPremiumActive === undefined) return false;
-        return this.verifyPremiumAccess(
-          options.userRoles.userRoles,
-          options.isPremiumActive
-        );
+        return this.verifyPremiumAccess(options.userRoles.userRoles, options.isPremiumActive);
 
       default:
         return false;

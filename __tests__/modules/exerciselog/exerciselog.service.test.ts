@@ -107,7 +107,9 @@ describe('ExerciseLogService', () => {
         metrics: { 2: 20 },
       },
     });
-    expect(prisma.exerciseLogEquipment.deleteMany).toHaveBeenCalledWith({ where: { exerciseLogId: 1 } });
+    expect(prisma.exerciseLogEquipment.deleteMany).toHaveBeenCalledWith({
+      where: { exerciseLogId: 1 },
+    });
     expect(prisma.exerciseLogEquipment.createMany).toHaveBeenCalledWith({
       data: [{ exerciseLogId: 1, gymEquipmentId: 5 }],
     });
@@ -155,14 +157,14 @@ describe('ExerciseLogService', () => {
 
   test('createWorkoutSession throws for mismatched user', async () => {
     await expect(
-      service.createWorkoutSession({ userId: 2, gymId: 1, startedAt: '2020' } as any, 1)
+      service.createWorkoutSession({ userId: 2, gymId: 1, startedAt: '2020' } as any, 1),
     ).rejects.toThrow('You are not authorized');
   });
 
   test('createWorkoutSession throws when active session exists', async () => {
     prisma.workoutSession.findFirst.mockResolvedValue({ id: 1 } as any);
     await expect(
-      service.createWorkoutSession({ userId: 1, gymId: 1, startedAt: '2020' } as any, 1)
+      service.createWorkoutSession({ userId: 1, gymId: 1, startedAt: '2020' } as any, 1),
     ).rejects.toThrow('You already have an active workout session.');
   });
 
@@ -182,7 +184,9 @@ describe('ExerciseLogService', () => {
 
   test('updateWorkoutSession throws when not found', async () => {
     prisma.workoutSession.findUnique.mockResolvedValue(null as any);
-    await expect(service.updateWorkoutSession(1, {}, 1)).rejects.toThrow('WorkoutSession not found');
+    await expect(service.updateWorkoutSession(1, {}, 1)).rejects.toThrow(
+      'WorkoutSession not found',
+    );
   });
 
   test('updateWorkoutSession throws when unauthorized', async () => {

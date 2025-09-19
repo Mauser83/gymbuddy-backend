@@ -1,8 +1,8 @@
-import { TaxonomyService } from "../../../src/modules/cv/taxonomy.service";
-import { mockDeep, DeepMockProxy } from "jest-mock-extended";
-import { PrismaClient } from "../../../src/lib/prisma";
+import { TaxonomyService } from '../../../src/modules/cv/taxonomy.service';
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import { PrismaClient } from '../../../src/lib/prisma';
 
-describe("TaxonomyService", () => {
+describe('TaxonomyService', () => {
   let prisma: DeepMockProxy<PrismaClient>;
   let service: TaxonomyService;
 
@@ -13,26 +13,26 @@ describe("TaxonomyService", () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  test("create uses provided displayOrder and trims label", async () => {
+  test('create uses provided displayOrder and trims label', async () => {
     prisma.angleType.create.mockResolvedValue({
       id: 1,
-      key: "k",
-      label: "lbl",
+      key: 'k',
+      label: 'lbl',
       active: false,
       displayOrder: 7,
     } as any);
 
-    const res = await service.create("ANGLE", {
-      key: "k",
-      label: " lbl ",
+    const res = await service.create('ANGLE', {
+      key: 'k',
+      label: ' lbl ',
       active: false,
       displayOrder: 7,
     });
 
     expect(prisma.angleType.create).toHaveBeenCalledWith({
       data: {
-        key: "k",
-        label: "lbl",
+        key: 'k',
+        label: 'lbl',
         description: undefined,
         active: false,
         displayOrder: 7,
@@ -40,34 +40,34 @@ describe("TaxonomyService", () => {
     });
     expect(res).toEqual({
       id: 1,
-      key: "k",
-      label: "lbl",
+      key: 'k',
+      label: 'lbl',
       active: false,
       displayOrder: 7,
-      kind: "ANGLE",
+      kind: 'ANGLE',
     });
   });
 
-  test("create computes next display order when missing", async () => {
+  test('create computes next display order when missing', async () => {
     prisma.angleType.findFirst.mockResolvedValue({ displayOrder: 3 } as any);
     prisma.angleType.create.mockResolvedValue({
       id: 2,
-      key: "k2",
-      label: "lbl2",
+      key: 'k2',
+      label: 'lbl2',
       active: true,
       displayOrder: 4,
     } as any);
 
-    const res = await service.create("ANGLE", { key: "k2", label: "lbl2" });
+    const res = await service.create('ANGLE', { key: 'k2', label: 'lbl2' });
 
     expect(prisma.angleType.findFirst).toHaveBeenCalledWith({
       select: { displayOrder: true },
-      orderBy: { displayOrder: "desc" },
+      orderBy: { displayOrder: 'desc' },
     });
     expect(prisma.angleType.create).toHaveBeenCalledWith({
       data: {
-        key: "k2",
-        label: "lbl2",
+        key: 'k2',
+        label: 'lbl2',
         description: undefined,
         active: true,
         displayOrder: 4,
@@ -75,11 +75,11 @@ describe("TaxonomyService", () => {
     });
     expect(res).toEqual({
       id: 2,
-      key: "k2",
-      label: "lbl2",
+      key: 'k2',
+      label: 'lbl2',
       active: true,
       displayOrder: 4,
-      kind: "ANGLE",
+      kind: 'ANGLE',
     });
   });
 });

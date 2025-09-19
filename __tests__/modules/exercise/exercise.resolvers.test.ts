@@ -14,10 +14,21 @@ function createContext() {
       exercise: { findUnique: jest.fn() },
       exerciseTypeMetric: { findMany: jest.fn() },
       exerciseType: { findMany: jest.fn(), delete: jest.fn() },
-      exerciseDifficulty: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+      exerciseDifficulty: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
       bodyPart: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
       muscle: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-      metric: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+      metric: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
     } as any,
     userId: 1,
     permissionService: new PermissionService({} as any),
@@ -45,7 +56,9 @@ describe('ExerciseResolvers', () => {
       const ctx = createContext();
       ctx.prisma.workoutPlanExercise.findMany.mockResolvedValue([]);
       await ExerciseResolvers.Exercise.workoutPlanEntries({ id: 2 }, {}, ctx);
-      expect(ctx.prisma.workoutPlanExercise.findMany).toHaveBeenCalledWith({ where: { exerciseId: 2 } });
+      expect(ctx.prisma.workoutPlanExercise.findMany).toHaveBeenCalledWith({
+        where: { exerciseId: 2 },
+      });
     });
 
     test('Exercise.difficulty', async () => {
@@ -132,14 +145,19 @@ describe('ExerciseResolvers', () => {
       const ctx = createContext();
       ctx.prisma.bodyPart.findMany.mockResolvedValue([]);
       await ExerciseResolvers.Query.allBodyParts(null as any, {}, ctx);
-      expect(ctx.prisma.bodyPart.findMany).toHaveBeenCalledWith({ include: { muscles: { include: { bodyPart: true } } } });
+      expect(ctx.prisma.bodyPart.findMany).toHaveBeenCalledWith({
+        include: { muscles: { include: { bodyPart: true } } },
+      });
     });
 
     test('musclesByBodyPart queries prisma', async () => {
       const ctx = createContext();
       ctx.prisma.muscle.findMany.mockResolvedValue([]);
       await ExerciseResolvers.Query.musclesByBodyPart(null as any, { bodyPartId: 2 }, ctx);
-      expect(ctx.prisma.muscle.findMany).toHaveBeenCalledWith({ where: { bodyPartId: 2 }, include: { bodyPart: true } });
+      expect(ctx.prisma.muscle.findMany).toHaveBeenCalledWith({
+        where: { bodyPartId: 2 },
+        include: { bodyPart: true },
+      });
     });
 
     test('exercisesAvailableAtGym uses service', async () => {
@@ -177,7 +195,9 @@ describe('ExerciseResolvers', () => {
     test('createExercise throws when unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseResolvers.Mutation.createExercise(null as any, { input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseResolvers.Mutation.createExercise(null as any, { input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('updateExercise uses service', async () => {
@@ -191,7 +211,9 @@ describe('ExerciseResolvers', () => {
     test('updateExercise unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseResolvers.Mutation.updateExercise(null as any, { id: 1, input: {} }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseResolvers.Mutation.updateExercise(null as any, { id: 1, input: {} }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('deleteExercise uses service', async () => {
@@ -205,18 +227,16 @@ describe('ExerciseResolvers', () => {
     test('deleteExercise unauthorized', async () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
-      await expect(ExerciseResolvers.Mutation.deleteExercise(null as any, { id: 1 }, ctx)).rejects.toThrow('Unauthorized');
+      await expect(
+        ExerciseResolvers.Mutation.deleteExercise(null as any, { id: 1 }, ctx),
+      ).rejects.toThrow('Unauthorized');
     });
 
     test('createExerciseType uses service', async () => {
       const instance = { createExerciseType: jest.fn() } as any;
       mockedService.mockImplementation(() => instance);
       const ctx = createContext();
-      await ExerciseResolvers.Mutation.createExerciseType(
-        null as any,
-        { input: {} as any },
-        ctx
-      );
+      await ExerciseResolvers.Mutation.createExerciseType(null as any, { input: {} as any }, ctx);
       expect(instance.createExerciseType).toHaveBeenCalled();
     });
 
@@ -227,7 +247,7 @@ describe('ExerciseResolvers', () => {
       await ExerciseResolvers.Mutation.updateExerciseType(
         null as any,
         { id: 1, input: {} as any },
-        ctx
+        ctx,
       );
       expect(instance.updateExerciseType).toHaveBeenCalled();
     });
@@ -250,14 +270,22 @@ describe('ExerciseResolvers', () => {
     test('updateExerciseDifficulty uses prisma', async () => {
       const ctx = createContext();
       ctx.prisma.exerciseDifficulty.update.mockResolvedValue({});
-      await ExerciseResolvers.Mutation.updateExerciseDifficulty(null as any, { id: 1, input: {} }, ctx);
+      await ExerciseResolvers.Mutation.updateExerciseDifficulty(
+        null as any,
+        { id: 1, input: {} },
+        ctx,
+      );
       expect(ctx.prisma.exerciseDifficulty.update).toHaveBeenCalled();
     });
 
     test('deleteExerciseDifficulty uses prisma', async () => {
       const ctx = createContext();
       ctx.prisma.exerciseDifficulty.delete.mockResolvedValue({});
-      const res = await ExerciseResolvers.Mutation.deleteExerciseDifficulty(null as any, { id: 1 }, ctx);
+      const res = await ExerciseResolvers.Mutation.deleteExerciseDifficulty(
+        null as any,
+        { id: 1 },
+        ctx,
+      );
       expect(ctx.prisma.exerciseDifficulty.delete).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(res).toBe(true);
     });

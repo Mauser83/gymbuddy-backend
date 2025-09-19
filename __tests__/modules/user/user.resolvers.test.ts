@@ -121,9 +121,13 @@ describe('UserResolvers', () => {
       const res = await UserResolvers.Mutation.updateUserRoles(
         null as any,
         { userId: 1, input: { appRole: 'ADMIN', userRole: 'USER' } },
-        ctx
+        ctx,
       );
-      expect(instance.updateUserRoles).toHaveBeenCalledWith(ctx, { userId: 1, appRole: 'ADMIN', userRole: 'USER' });
+      expect(instance.updateUserRoles).toHaveBeenCalledWith(ctx, {
+        userId: 1,
+        appRole: 'ADMIN',
+        userRole: 'USER',
+      });
       expect(mockedPublish).toHaveBeenCalledTimes(2);
       expect(res).toEqual({ id: 1 });
     });
@@ -132,7 +136,7 @@ describe('UserResolvers', () => {
       const ctx = createContext();
       ctx.userId = undefined as any;
       await expect(
-        UserResolvers.Mutation.updateUserTrainingPreferences(null as any, { input: {} }, ctx)
+        UserResolvers.Mutation.updateUserTrainingPreferences(null as any, { input: {} }, ctx),
       ).rejects.toThrow('Unauthorized');
     });
 
@@ -143,7 +147,7 @@ describe('UserResolvers', () => {
       const res = await UserResolvers.Mutation.updateUserTrainingPreferences(
         null as any,
         { input: { trainingGoalId: 1, experienceLevelId: 2 } },
-        ctx
+        ctx,
       );
       expect(instance.updateTrainingPreferences).toHaveBeenCalledWith(1, {
         trainingGoalId: 1,

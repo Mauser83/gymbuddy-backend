@@ -1,5 +1,5 @@
 import { prisma } from '../src/lib/prisma';
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,7 +11,7 @@ async function main() {
 
   if (!username || !email || !password) {
     console.error(
-      "ADMIN_USERNAME, ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set."
+      'ADMIN_USERNAME, ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set.',
     );
     process.exit(1);
   }
@@ -30,35 +30,35 @@ async function main() {
         email: email,
         username: username,
         password: hashedPassword,
-        appRole: "ADMIN",
-        userRole: "USER",
+        appRole: 'ADMIN',
+        userRole: 'USER',
       },
     });
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("Created demo user");
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Created demo user');
     }
   } else {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Demo user already exists");
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Demo user already exists');
     }
   }
 
   await prisma.experienceLevel.createMany({
     data: [
       {
-        name: "Beginner",
-        key: "beginner",
+        name: 'Beginner',
+        key: 'beginner',
         isDefault: true,
       },
       {
-        name: "Intermediate",
-        key: "intermediate",
+        name: 'Intermediate',
+        key: 'intermediate',
         isDefault: false,
       },
       {
-        name: "Advanced",
-        key: "advanced",
+        name: 'Advanced',
+        key: 'advanced',
         isDefault: false,
       },
     ],

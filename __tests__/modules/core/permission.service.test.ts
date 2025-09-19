@@ -59,9 +59,7 @@ describe('PermissionService', () => {
     });
 
     test('verifyGymRoles checks roles per gym', () => {
-      const map = new Map<number, GymRole[]>([
-        [1, [GymRole.GYM_ADMIN]],
-      ]);
+      const map = new Map<number, GymRole[]>([[1, [GymRole.GYM_ADMIN]]]);
       expect(service.verifyGymRoles(map, 1, [GymRole.GYM_ADMIN])).toBe(true);
       expect(service.verifyGymRoles(map, 2, [GymRole.GYM_ADMIN])).toBe(false);
     });

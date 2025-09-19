@@ -32,7 +32,7 @@ describe('SharingService', () => {
       permissionType: PermissionType.OWNERSHIP,
       userId: 1,
       userRoles: {},
-      resource: { ownerId: 2 }
+      resource: { ownerId: 2 },
     });
     expect(result).toBe(true);
   });

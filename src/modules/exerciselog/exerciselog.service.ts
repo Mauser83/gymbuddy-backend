@@ -1,19 +1,19 @@
-import { PrismaClient } from "../../lib/prisma";
-import { PermissionService } from "../core/permission.service";
+import {
+  CreateExerciseLogDto,
+  UpdateExerciseLogDto,
+  CreateWorkoutSessionDto,
+  UpdateWorkoutSessionDto,
+} from './exerciselog.dto';
 import {
   CreateExerciseLogInput,
   UpdateExerciseLogInput,
   CreateWorkoutSessionInput,
   UpdateWorkoutSessionInput,
   WorkoutSession,
-} from "./exerciselog.types";
-import { validateInput } from "../../middlewares/validation";
-import {
-  CreateExerciseLogDto,
-  UpdateExerciseLogDto,
-  CreateWorkoutSessionDto,
-  UpdateWorkoutSessionDto,
-} from "./exerciselog.dto";
+} from './exerciselog.types';
+import { PrismaClient } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
+import { PermissionService } from '../core/permission.service';
 
 export class ExerciseLogService {
   private prisma: PrismaClient;
@@ -27,7 +27,7 @@ export class ExerciseLogService {
   async getExerciseLogs(userId: number) {
     const roles = await this.permissionService.getUserRoles(userId);
 
-    if (this.permissionService.verifyAppRoles(roles.appRoles, ["ADMIN"])) {
+    if (this.permissionService.verifyAppRoles(roles.appRoles, ['ADMIN'])) {
       return this.prisma.exerciseLog.findMany();
     }
 
@@ -112,9 +112,7 @@ export class ExerciseLogService {
     await validateInput(input, CreateWorkoutSessionDto);
 
     if (input.userId !== userId) {
-      throw new Error(
-        "You are not authorized to create a session for another user"
-      );
+      throw new Error('You are not authorized to create a session for another user');
     }
 
     const existing = await this.prisma.workoutSession.findFirst({
@@ -125,7 +123,7 @@ export class ExerciseLogService {
     });
 
     if (existing) {
-      throw new Error("You already have an active workout session.");
+      throw new Error('You already have an active workout session.');
     }
 
     return this.prisma.workoutSession.create({
@@ -140,19 +138,15 @@ export class ExerciseLogService {
     });
   }
 
-  async updateWorkoutSession(
-    id: number,
-    input: UpdateWorkoutSessionInput,
-    userId: number
-  ) {
+  async updateWorkoutSession(id: number, input: UpdateWorkoutSessionInput, userId: number) {
     await validateInput(input, UpdateWorkoutSessionDto); // Uncomment when DTO is available
 
     const session = await this.prisma.workoutSession.findUnique({
       where: { id },
     });
 
-    if (!session) throw new Error("WorkoutSession not found");
-    if (session.userId !== userId) throw new Error("Unauthorized");
+    if (!session) throw new Error('WorkoutSession not found');
+    if (session.userId !== userId) throw new Error('Unauthorized');
 
     return this.prisma.workoutSession.update({
       where: { id },
@@ -169,8 +163,8 @@ export class ExerciseLogService {
       select: { userId: true },
     });
 
-    if (!session) throw new Error("Session not found");
-    if (session.userId !== userId) throw new Error("Unauthorized");
+    if (!session) throw new Error('Session not found');
+    if (session.userId !== userId) throw new Error('Unauthorized');
 
     await this.prisma.exerciseLog.deleteMany({
       where: { workoutSessionId: id },

@@ -4,7 +4,7 @@ import xss from 'xss';
 // Sanitize all string properties in an object
 function sanitizeObject(obj: any): any {
   if (!obj) return obj;
-  
+
   if (typeof obj === 'string') {
     return xss(obj);
   }

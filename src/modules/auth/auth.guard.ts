@@ -1,28 +1,25 @@
-import { Request } from "express";
-import jwt from "jsonwebtoken";
-import { GraphQLError } from "graphql";
-import { JWT_SECRET } from "../../server";
-import { DIContainer } from "../core/di.container";
-import { AuditService } from "../core/audit.service";
-import { prisma } from "../../lib/prisma";
-import { AppRole, UserRole, GymRole, AuthContext } from "./auth.types";
+import { Request } from 'express';
+import { GraphQLError } from 'graphql';
+import jwt from 'jsonwebtoken';
 
-export const graphqlAuth = async ({
-  req,
-}: {
-  req: Request;
-}): Promise<Partial<AuthContext>> => {
+import { AppRole, UserRole, GymRole, AuthContext } from './auth.types';
+import { prisma } from '../../lib/prisma';
+import { JWT_SECRET } from '../../server';
+import { AuditService } from '../core/audit.service';
+import { DIContainer } from '../core/di.container';
+
+export const graphqlAuth = async ({ req }: { req: Request }): Promise<Partial<AuthContext>> => {
   const container = DIContainer.getInstance();
-  const auditService = container.resolve<AuditService>("AuditService");
+  const auditService = container.resolve<AuditService>('AuditService');
 
   const operationName = req.body?.operationName;
   const query = req.body?.query;
 
   // Allow unauthenticated for introspection/login/register
   if (
-    operationName === "Login" ||
-    operationName === "Register" ||
-    query?.includes("IntrospectionQuery")
+    operationName === 'Login' ||
+    operationName === 'Register' ||
+    query?.includes('IntrospectionQuery')
   ) {
     return {
       userId: null,
@@ -35,10 +32,10 @@ export const graphqlAuth = async ({
 
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    throw new Error("Authorization header missing");
+    throw new Error('Authorization header missing');
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET!) as {
       sub: string;
@@ -51,7 +48,7 @@ export const graphqlAuth = async ({
 
     const userId = parseInt(decoded.sub, 10);
     if (isNaN(userId)) {
-      throw new Error("Invalid user ID in token.");
+      throw new Error('Invalid user ID in token.');
     }
 
     const user = await prisma.user.findUnique({
@@ -60,12 +57,12 @@ export const graphqlAuth = async ({
     });
 
     if (!user || user.tokenVersion !== decoded.tokenVersion) {
-      throw new GraphQLError("Token invalidated. Please log in again.", {
-        extensions: { code: "UNAUTHENTICATED" },
+      throw new GraphQLError('Token invalidated. Please log in again.', {
+        extensions: { code: 'UNAUTHENTICATED' },
       });
     }
 
-    await auditService.logUserLogin(userId, req.ip || "unknown");
+    await auditService.logUserLogin(userId, req.ip || 'unknown');
 
     return {
       userId,
@@ -76,12 +73,12 @@ export const graphqlAuth = async ({
     };
   } catch (err) {
     await auditService.logEvent({
-      action: "LOGIN_FAILURE",
+      action: 'LOGIN_FAILURE',
       metadata: {
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: err instanceof Error ? err.message : 'Unknown error',
         ip: req.ip,
       },
     });
-    throw new Error("Invalid or expired token");
+    throw new Error('Invalid or expired token');
   }
 };

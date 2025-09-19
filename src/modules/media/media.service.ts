@@ -5,32 +5,33 @@ import {
   HeadObjectCommand,
   CopyObjectCommand,
   DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { randomUUID, createHash } from "crypto";
-import { GraphQLError } from "graphql";
-import { DIContainer } from "../core/di.container";
-import { AuditService } from "../core/audit.service";
-import { makeKey, parseKey } from "../../utils/makeKey";
-import { assertSizeWithinLimit } from "./media.utils";
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID, createHash } from 'crypto';
+import { GraphQLError } from 'graphql';
+
+import { assertSizeWithinLimit } from './media.utils';
+import { makeKey, parseKey } from '../../utils/makeKey';
+import { AuditService } from '../core/audit.service';
+import { DIContainer } from '../core/di.container';
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 if (!BUCKET || !ACCOUNT_ID) {
-  throw new Error("R2_BUCKET and R2_ACCOUNT_ID must be set");
+  throw new Error('R2_BUCKET and R2_ACCOUNT_ID must be set');
 }
 
 function contentTypeFromExt(ext: string): string {
   switch (ext.toLowerCase()) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
     default:
-      return "application/octet-stream";
+      return 'application/octet-stream';
   }
 }
 
@@ -41,16 +42,16 @@ function clampTtl(ttlSec: number) {
   return Math.max(MIN, Math.min(ttlSec, MAX));
 }
 
-function extFromContentType(ct: string): "jpg" | "png" | "webp" {
-  if (/jpeg/i.test(ct)) return "jpg";
-  if (/png/i.test(ct)) return "png";
-  if (/webp/i.test(ct)) return "webp";
-  return "jpg";
+function extFromContentType(ct: string): 'jpg' | 'png' | 'webp' {
+  if (/jpeg/i.test(ct)) return 'jpg';
+  if (/png/i.test(ct)) return 'png';
+  if (/webp/i.test(ct)) return 'webp';
+  return 'jpg';
 }
 
 export class MediaService {
   private s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -78,8 +79,8 @@ export class MediaService {
       return;
     }
     if (bucket.count >= 60) {
-      throw new GraphQLError("Too many requests", {
-        extensions: { code: "TOO_MANY_REQUESTS" },
+      throw new GraphQLError('Too many requests', {
+        extensions: { code: 'TOO_MANY_REQUESTS' },
       });
     }
     bucket.count += 1;
@@ -93,20 +94,20 @@ export class MediaService {
     // Basic safety: only allow known prefixes
     if (
       !(
-        storageKey.startsWith("public/golden/") ||
-        storageKey.startsWith("public/training/") ||
-        storageKey.startsWith("private/uploads/") ||
-        storageKey.startsWith("private/uploads/global/") ||
-        storageKey.startsWith("private/gym/") ||
-        storageKey.startsWith("private/global/") ||
-        storageKey.startsWith("private/recognition/")
+        storageKey.startsWith('public/golden/') ||
+        storageKey.startsWith('public/training/') ||
+        storageKey.startsWith('private/uploads/') ||
+        storageKey.startsWith('private/uploads/global/') ||
+        storageKey.startsWith('private/gym/') ||
+        storageKey.startsWith('private/global/') ||
+        storageKey.startsWith('private/recognition/')
       )
     ) {
-      throw new Error("Invalid storage key prefix");
+      throw new Error('Invalid storage key prefix');
     }
 
     const parsed = parseKey(storageKey);
-    const ext = parsed?.ext ?? "jpg";
+    const ext = parsed?.ext ?? 'jpg';
     const ResponseContentType = contentTypeFromExt(ext);
 
     const cmd = new GetObjectCommand({
@@ -114,9 +115,7 @@ export class MediaService {
       Key: storageKey,
       // Optional: force inline display and content type in the response
       ResponseContentType,
-      ResponseContentDisposition: `inline; filename="${storageKey
-        .split("/")
-        .pop()}"`,
+      ResponseContentDisposition: `inline; filename="${storageKey.split('/').pop()}"`,
       // You can also set ResponseCacheControl here if desired
     });
 
@@ -148,11 +147,11 @@ export class MediaService {
       if (existingKey) {
         key = existingKey;
       } else {
-        key = makeKey("upload", { gymId: input.gymId }, { ext });
+        key = makeKey('upload', { gymId: input.gymId }, { ext });
         this.uploadKeyBySha.set(mapKey, key);
       }
     } else {
-      key = makeKey("upload", { gymId: input.gymId }, { ext });
+      key = makeKey('upload', { gymId: input.gymId }, { ext });
     }
 
     let alreadyUploaded = false;
@@ -169,9 +168,7 @@ export class MediaService {
       Bucket: BUCKET,
       Key: key,
       ContentType: input.contentType,
-      ContentDisposition: input.filename
-        ? `inline; filename="${input.filename}"`
-        : undefined,
+      ContentDisposition: input.filename ? `inline; filename="${input.filename}"` : undefined,
     });
 
     const url = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
@@ -184,7 +181,7 @@ export class MediaService {
       expiresAt,
       expiresAtMs,
       alreadyUploaded,
-      requiredHeaders: [{ name: "Content-Type", value: input.contentType }],
+      requiredHeaders: [{ name: 'Content-Type', value: input.contentType }],
     };
   }
 
@@ -195,10 +192,9 @@ export class MediaService {
     filenamePrefix?: string;
     equipmentId?: number;
   }) {
-    if (input.count < 1 || input.count > 10)
-      throw new Error("count must be between 1 and 10");
+    if (input.count < 1 || input.count > 10) throw new Error('count must be between 1 and 10');
     if (input.contentTypes.length !== input.count)
-      throw new Error("contentTypes length must equal count");
+      throw new Error('contentTypes length must equal count');
 
     const ttl = 900; // ~15 minutes
     const expiresAtMs = Date.now() + ttl * 1000;
@@ -220,7 +216,7 @@ export class MediaService {
           alreadyUploaded: presign.alreadyUploaded,
           requiredHeaders: presign.requiredHeaders,
         };
-      })
+      }),
     );
 
     return {
@@ -237,27 +233,25 @@ export class MediaService {
         const url = await this.presignGetForKey(key, ttlSec);
         const expiresAt = new Date(Date.now() + clampTtl(ttlSec) * 1000).toISOString();
         return { storageKey: key, url, expiresAt };
-      })
+      }),
     );
   }
 
   async imageUrl(
     storageKey: string,
     ttlSec = 300,
-    actorId?: number | null
+    actorId?: number | null,
   ): Promise<{ url: string; expiresAt: string }> {
     this.checkRateLimit(actorId ?? 0);
     const ttl = this.clampShortTtl(ttlSec);
 
-    if (storageKey.startsWith("private/")) {
+    if (storageKey.startsWith('private/')) {
       try {
-        await this.s3.send(
-          new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })
-        );
+        await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
       } catch (err: any) {
         if (err?.$metadata?.httpStatusCode === 404) {
-          throw new GraphQLError("Object not found", {
-            extensions: { code: "NOT_FOUND" },
+          throw new GraphQLError('Object not found', {
+            extensions: { code: 'NOT_FOUND' },
           });
         }
         throw err;
@@ -267,10 +261,10 @@ export class MediaService {
     const url = await this.presignGetForKey(storageKey, ttl);
     const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
 
-    const audit = DIContainer.resolve<AuditService>("AuditService");
-    const keyHash = createHash("sha256").update(storageKey).digest("hex");
+    const audit = DIContainer.resolve<AuditService>('AuditService');
+    const keyHash = createHash('sha256').update(storageKey).digest('hex');
     await audit.logEvent({
-      action: "SIGNED_URL_ISSUED",
+      action: 'SIGNED_URL_ISSUED',
       userId: actorId ?? undefined,
       metadata: { keyHash, ttlSec: ttl },
     });
@@ -281,7 +275,7 @@ export class MediaService {
 
 // --- storage helpers ---
 const helperS3 = new S3Client({
-  region: "auto",
+  region: 'auto',
   endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
   forcePathStyle: true,
   credentials: {
@@ -290,14 +284,9 @@ const helperS3 = new S3Client({
   },
 });
 
-export async function copyObjectIfMissing(
-  srcKey: string,
-  dstKey: string
-): Promise<void> {
+export async function copyObjectIfMissing(srcKey: string, dstKey: string): Promise<void> {
   try {
-    await helperS3.send(
-      new HeadObjectCommand({ Bucket: BUCKET, Key: dstKey })
-    );
+    await helperS3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: dstKey }));
     return; // destination exists
   } catch (err: any) {
     if (err?.$metadata?.httpStatusCode !== 404) throw err;
@@ -307,9 +296,9 @@ export async function copyObjectIfMissing(
       Bucket: BUCKET,
       CopySource: `${BUCKET}/${srcKey}`,
       Key: dstKey,
-      MetadataDirective: "COPY",
-      ACL: "private",
-    })
+      MetadataDirective: 'COPY',
+      ACL: 'private',
+    }),
   );
 }
 

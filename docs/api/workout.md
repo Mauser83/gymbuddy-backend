@@ -1,14 +1,17 @@
 # Workout API Documentation
 
 ## Authentication
+
 All endpoints require authentication.
 
 ## Endpoints
 
 ### Create Workout
+
 `POST /workouts`
 
 **Request:**
+
 ```json
 {
   "name": "My Workout Plan",
@@ -25,6 +28,7 @@ All endpoints require authentication.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "workout_123",
@@ -37,9 +41,11 @@ All endpoints require authentication.
 ---
 
 ### Get Workouts
+
 `GET /workouts`
 
 **Response:**
+
 ```json
 [
   {
@@ -54,9 +60,11 @@ All endpoints require authentication.
 ---
 
 ### Share Workout
+
 `POST /workouts/:id/share`
 
 **Request:**
+
 ```json
 {
   "userId": "user_456",
@@ -65,14 +73,17 @@ All endpoints require authentication.
 ```
 
 **Permissions:**
+
 - Workout owner or admin only
 
 ---
 
 ### Get Workout Details
+
 `GET /workouts/:id`
 
 **Response:**
+
 ```json
 {
   "id": "workout_123",
@@ -95,6 +106,7 @@ All endpoints require authentication.
 ```
 
 **Permissions:**
+
 - Owner
 - Users with shared access
 - Admin
@@ -102,7 +114,9 @@ All endpoints require authentication.
 ---
 
 ### Delete Workout
+
 `DELETE /workouts/:id`
 
 **Permissions:**
+
 - Owner or admin only

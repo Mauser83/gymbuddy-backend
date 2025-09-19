@@ -1,16 +1,17 @@
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
-import typeDefs from "./rootSchema";
-import resolvers from "./rootResolvers";
-import { graphqlAuth } from "../modules/auth/auth.guard";
-import type { AuthContext, UserRole } from "../modules/auth/auth.types";
-import { PermissionService } from "../modules/core/permission.service";
-import { PrismaClient } from "../lib/prisma";
-import { MediaService } from "../modules/media/media.service";
-import { ImageIntakeService } from "../modules/images/image-intake.service";
-import { ImagePromotionService } from "../modules/images/image-promotion.service";
-import { ImageModerationService } from "../modules/images/image-moderation.service";
-import { RecognitionService } from "../modules/recognition/recognition.service";
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+
+import resolvers from './rootResolvers';
+import typeDefs from './rootSchema';
+import { PrismaClient } from '../lib/prisma';
+import { graphqlAuth } from '../modules/auth/auth.guard';
+import type { AuthContext, UserRole } from '../modules/auth/auth.types';
+import { PermissionService } from '../modules/core/permission.service';
+import { ImageIntakeService } from '../modules/images/image-intake.service';
+import { ImageModerationService } from '../modules/images/image-moderation.service';
+import { ImagePromotionService } from '../modules/images/image-promotion.service';
+import { MediaService } from '../modules/media/media.service';
+import { RecognitionService } from '../modules/recognition/recognition.service';
 
 export async function setupApollo(
   app: any,
@@ -20,13 +21,13 @@ export async function setupApollo(
   imageIntakeService: ImageIntakeService,
   imagePromotionService: ImagePromotionService,
   imageModerationService: ImageModerationService,
-  recognitionService: RecognitionService
+  recognitionService: RecognitionService,
 ) {
   const apolloServer = new ApolloServer<AuthContext>({ typeDefs, resolvers });
   await apolloServer.start();
 
   app.use(
-    "/graphql",
+    '/graphql',
     expressMiddleware(apolloServer, {
       context: async ({ req }): Promise<AuthContext> => {
         const authContext = await graphqlAuth({ req });
@@ -46,6 +47,6 @@ export async function setupApollo(
           recognitionService,
         };
       },
-    })
+    }),
   );
 }

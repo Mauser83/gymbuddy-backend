@@ -9,12 +9,12 @@ import {
   IsNumber,
   Min,
   IsEnum,
-} from "class-validator";
+} from 'class-validator';
 
 export enum SafetyStateDto {
-  PENDING = "PENDING",
-  COMPLETE = "COMPLETE",
-  FAILED = "FAILED",
+  PENDING = 'PENDING',
+  COMPLETE = 'COMPLETE',
+  FAILED = 'FAILED',
 }
 
 export class CandidateSafetyFilterDto {
@@ -35,7 +35,7 @@ export class FinalizeGymImageDto {
 
   // sha256 (optional; hex)
   @IsOptional()
-  @Matches(/^[a-f0-9]{64}$/i, { message: "sha256 must be a 64-char hex string" })
+  @Matches(/^[a-f0-9]{64}$/i, { message: 'sha256 must be a 64-char hex string' })
   sha256?: string;
 
   // optional taxonomy FKs
@@ -97,10 +97,10 @@ export class RejectTrainingCandidateDto {
 }
 
 export enum TrainingCandidateStatusDto {
-  PENDING = "PENDING",
-  QUARANTINED = "QUARANTINED",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
+  PENDING = 'PENDING',
+  QUARANTINED = 'QUARANTINED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 export class ListTrainingCandidatesDto {
@@ -111,24 +111,28 @@ export class ListTrainingCandidatesDto {
   @IsEnum(TrainingCandidateStatusDto)
   status?: TrainingCandidateStatusDto;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   equipmentId?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   q?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   cursor?: string;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   limit?: number;
 }
 
 export enum AdminImageListStatusDto {
-  CANDIDATE = "CANDIDATE",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-  QUARANTINED = "QUARANTINED",
+  CANDIDATE = 'CANDIDATE',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  QUARANTINED = 'QUARANTINED',
 }
 export class CandidateGlobalImagesDto {
   @IsInt()
@@ -169,7 +173,7 @@ export class GymImageDefaultsDto {
 export class FinalizeGymImageItemDto {
   @IsString() storageKey!: string;
   @IsOptional()
-  @Matches(/^[a-f0-9]{64}$/i, { message: "sha256 must be a 64-char hex string" })
+  @Matches(/^[a-f0-9]{64}$/i, { message: 'sha256 must be a 64-char hex string' })
   sha256?: string;
   @IsOptional() @IsInt() angleId?: number;
   @IsOptional() @IsInt() heightId?: number;
@@ -203,25 +207,30 @@ export class ApplyTaxonomiesDto {
 }
 
 export enum GlobalSuggestionStatusDto {
-  PENDING = "PENDING",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 export class ListGlobalSuggestionsDto {
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   equipmentId?: number;
 
-  @IsOptional() @IsEnum(GlobalSuggestionStatusDto)
+  @IsOptional()
+  @IsEnum(GlobalSuggestionStatusDto)
   status?: GlobalSuggestionStatusDto;
 
-  @IsOptional() @IsNumber()
+  @IsOptional()
+  @IsNumber()
   minScore?: number;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   limit?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   cursor?: string;
 }
 

@@ -18,7 +18,7 @@ describe('AuditService', () => {
         entity: 'User',
         entityId: 2,
         userId: 3,
-        metadata: { foo: 'bar' }
+        metadata: { foo: 'bar' },
       });
 
       expect(res).toBeUndefined();
@@ -35,7 +35,7 @@ describe('AuditService', () => {
         entity: 'User',
         entityId: 1,
         userId: 1,
-        metadata: { ipAddress: '1.1.1.1' }
+        metadata: { ipAddress: '1.1.1.1' },
       });
     });
 
@@ -47,7 +47,7 @@ describe('AuditService', () => {
         entity: 'User',
         entityId: 2,
         userId: 1,
-        metadata: { changes: { a: 1 } }
+        metadata: { changes: { a: 1 } },
       });
     });
 
@@ -58,7 +58,7 @@ describe('AuditService', () => {
         action: 'DATA_DELETION',
         entity: 'User',
         entityId: 2,
-        userId: 1
+        userId: 1,
       });
     });
 
@@ -70,7 +70,7 @@ describe('AuditService', () => {
         entity: 'User',
         entityId: 2,
         userId: 1,
-        metadata: { changes: { b: 2 } }
+        metadata: { changes: { b: 2 } },
       });
     });
   });

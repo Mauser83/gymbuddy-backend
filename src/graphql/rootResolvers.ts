@@ -1,32 +1,31 @@
-import { PubSub } from "graphql-subscriptions";
-import { EquipmentResolvers } from "../modules/equipment/equipment.resolvers";
-import { GymResolvers } from "../modules/gym/gym.resolvers";
-import { UserResolvers } from "../modules/user/user.resolvers";
-import { WorkoutPlanResolvers } from "../modules/workoutplan/workoutplan.resolvers";
-import { ExerciseResolvers } from "../modules/exercise/exercise.resolvers";
-import { ExerciseLogResolvers } from "../modules/exerciselog/exerciselog.resolvers";
-import { AuthResolvers } from "../modules/auth/auth.resolvers";
-import { SubscriptionResolvers } from "./subscription.resolvers";
-import { GraphQLJSON } from "graphql-type-json";
-import { GraphQLScalarType, Kind } from "graphql";
-import { EmbeddingResolvers } from "../modules/cv/embedding.resolvers";
-import { QueueResolvers } from "../modules/cv/queue.resolvers";
-import { TaxonomyResolvers } from "../modules/cv/taxonomy.resolvers";
-import { KnnResolvers } from "../modules/cv/knn.resolvers";
-import { MediaResolvers } from "../modules/media/media.resolvers";
-import { ImagesResolvers } from "../modules/images/images.resolvers";
-import { WorkerResolvers } from "../modules/worker/worker.resolvers";
-import { RecognitionResolvers } from "../modules/recognition/recognition.resolvers";
+import { GraphQLScalarType, Kind } from 'graphql';
+import { PubSub } from 'graphql-subscriptions';
+import { GraphQLJSON } from 'graphql-type-json';
+
+import { SubscriptionResolvers } from './subscription.resolvers';
+import { AuthResolvers } from '../modules/auth/auth.resolvers';
+import { EmbeddingResolvers } from '../modules/cv/embedding.resolvers';
+import { KnnResolvers } from '../modules/cv/knn.resolvers';
+import { QueueResolvers } from '../modules/cv/queue.resolvers';
+import { TaxonomyResolvers } from '../modules/cv/taxonomy.resolvers';
+import { EquipmentResolvers } from '../modules/equipment/equipment.resolvers';
+import { ExerciseResolvers } from '../modules/exercise/exercise.resolvers';
+import { ExerciseLogResolvers } from '../modules/exerciselog/exerciselog.resolvers';
+import { GymResolvers } from '../modules/gym/gym.resolvers';
+import { ImagesResolvers } from '../modules/images/images.resolvers';
+import { MediaResolvers } from '../modules/media/media.resolvers';
+import { RecognitionResolvers } from '../modules/recognition/recognition.resolvers';
+import { UserResolvers } from '../modules/user/user.resolvers';
+import { WorkerResolvers } from '../modules/worker/worker.resolvers';
+import { WorkoutPlanResolvers } from '../modules/workoutplan/workoutplan.resolvers';
 
 export const pubsub = new PubSub();
 
 const DateTimeScalar = new GraphQLScalarType({
-  name: "DateTime",
-  description: "ISO-8601 date-time scalar",
+  name: 'DateTime',
+  description: 'ISO-8601 date-time scalar',
   serialize(value) {
-    return value instanceof Date
-      ? value.toISOString()
-      : new Date(value as string).toISOString();
+    return value instanceof Date ? value.toISOString() : new Date(value as string).toISOString();
   },
   parseValue(value) {
     return value ? new Date(value as string) : null;
@@ -56,7 +55,7 @@ const resolvers = {
   ...WorkerResolvers,
   ...RecognitionResolvers,
   Query: {
-    hello: () => "Hello world!",
+    hello: () => 'Hello world!',
     ...EquipmentResolvers.Query,
     ...GymResolvers.Query,
     ...UserResolvers.Query,
@@ -68,7 +67,7 @@ const resolvers = {
     ...TaxonomyResolvers.Query,
     ...KnnResolvers.Query,
     ...MediaResolvers.Query,
-    ...ImagesResolvers.Query
+    ...ImagesResolvers.Query,
   },
   Mutation: {
     ...EquipmentResolvers.Mutation,

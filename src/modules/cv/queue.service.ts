@@ -1,7 +1,7 @@
-import { PrismaClient } from "../../lib/prisma";
-import { EnqueueImageJobDto, UpdateImageJobStatusDto } from "./queue.dto";
-import { validateInput } from "../../middlewares/validation";
-import { kickBurstRunner } from "../images/image-worker";
+import { EnqueueImageJobDto, UpdateImageJobStatusDto } from './queue.dto';
+import { PrismaClient } from '../../lib/prisma';
+import { validateInput } from '../../middlewares/validation';
+import { kickBurstRunner } from '../images/image-worker';
 
 export class QueueService {
   private prisma: PrismaClient;
@@ -20,11 +20,7 @@ export class QueueService {
         finishedAt: null,
         ...(status ? { status: status as any } : {}),
       },
-      orderBy: [
-        { priority: "desc" },
-        { scheduledAt: "asc" },
-        { createdAt: "asc" },
-      ],
+      orderBy: [{ priority: 'desc' }, { scheduledAt: 'asc' }, { createdAt: 'asc' }],
       take: Math.min(limit, 200),
     });
   }
@@ -36,15 +32,11 @@ export class QueueService {
         imageId: input.imageId,
         jobType: input.jobType,
         priority: input.priority ?? 0,
-        scheduledAt: input.scheduledAt
-          ? new Date(input.scheduledAt)
-          : undefined,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
       },
     });
     setImmediate(() => {
-      kickBurstRunner().catch((e) =>
-        console.error("burst runner error", e)
-      );
+      kickBurstRunner().catch((e) => console.error('burst runner error', e));
     });
     return job;
   }

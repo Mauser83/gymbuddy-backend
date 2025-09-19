@@ -1,10 +1,5 @@
 export function priorityFromSource(
-  source:
-    | 'recognition_user'
-    | 'gym_manager'
-    | 'admin'
-    | 'backfill'
-    | 'gym_equipment'
+  source: 'recognition_user' | 'gym_manager' | 'admin' | 'backfill' | 'gym_equipment',
 ): number {
   switch (source) {
     case 'recognition_user':

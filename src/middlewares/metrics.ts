@@ -24,11 +24,11 @@ export const metricsMiddleware = promBundle({
   includeUp: true,
   customLabels: {
     app: 'gymbuddy_backend',
-    version: process.env.npm_package_version || 'unknown'
+    version: process.env.npm_package_version || 'unknown',
   },
   promClient: {
     collectDefaultMetrics: {
-      timeout: 5000
-    }
-  }
+      timeout: 5000,
+    },
+  },
 });

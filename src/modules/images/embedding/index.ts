@@ -1,5 +1,5 @@
-import type { EmbeddingProvider } from './provider';
 import { initLocalOpenCLIP, embedImage, EMBEDDING_DIM } from './local-openclip-light';
+import type { EmbeddingProvider } from './provider';
 
 class LocalOpenClipLight implements EmbeddingProvider {
   dim = EMBEDDING_DIM;

@@ -1,42 +1,43 @@
-import * as ort from "onnxruntime-node";
-import sharp from "sharp";
-import { ensureModelFile } from "../models.ensure";
-import type { SafetyProvider, SafetyResult } from "./provider";
+import * as ort from 'onnxruntime-node';
+import sharp from 'sharp';
 
-const MODEL_PATH = process.env.SAFETY_MODEL_PATH ?? "./models/open_nsfw.onnx";
+import { ensureModelFile } from '../models.ensure';
+import type { SafetyProvider, SafetyResult } from './provider';
+
+const MODEL_PATH = process.env.SAFETY_MODEL_PATH ?? './models/open_nsfw.onnx';
 const MODEL_SRC = process.env.SAFETY_MODEL_R2_KEY
   ? ({
-      kind: "r2",
+      kind: 'r2',
       bucket: process.env.R2_BUCKET!,
       key: process.env.SAFETY_MODEL_R2_KEY!,
     } as const)
   : ({
-      kind: "url",
+      kind: 'url',
       url:
         process.env.SAFETY_MODEL_URL ??
-        "https://huggingface.co/sommersoft/open_nsfw/resolve/main/open_nsfw.onnx",
+        'https://huggingface.co/sommersoft/open_nsfw/resolve/main/open_nsfw.onnx',
     } as const);
 const MODEL_SHA = process.env.SAFETY_MODEL_SHA256;
-const LABELS = (process.env.SAFETY_OUTPUT_LABELS ?? "")
-  .split(",")
+const LABELS = (process.env.SAFETY_OUTPUT_LABELS ?? '')
+  .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 const NSFW_LABELS = new Set(
-  (process.env.SAFETY_NSFW_CLASSES ?? "porn,hentai,soft,sexy,nsfw")
-    .split(",")
+  (process.env.SAFETY_NSFW_CLASSES ?? 'porn,hentai,soft,sexy,nsfw')
+    .split(',')
     .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
+    .filter(Boolean),
 );
 
 const SIZE = 224;
-const SAFETY_PREPROC = (process.env.SAFETY_PREPROC ?? "vgg").toLowerCase();
-const SAFETY_COLOR = (process.env.SAFETY_COLOR ?? "bgr").toLowerCase();
+const SAFETY_PREPROC = (process.env.SAFETY_PREPROC ?? 'vgg').toLowerCase();
+const SAFETY_COLOR = (process.env.SAFETY_COLOR ?? 'bgr').toLowerCase();
 
 // NCHW [1,3,H,W]
 async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
   const { data, info } = await sharp(bytes)
     .removeAlpha()
-    .resize(SIZE, SIZE, { fit: "cover" })
+    .resize(SIZE, SIZE, { fit: 'cover' })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
@@ -52,11 +53,11 @@ async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
         g = data[p + 1],
         b = data[p + 2];
 
-      if (SAFETY_PREPROC === "vgg") {
+      if (SAFETY_PREPROC === 'vgg') {
         // Caffe/OpenNSFW: BGR 0..255 minus mean values
-        out[oB++] = (SAFETY_COLOR === "bgr" ? b : r) - 104;
+        out[oB++] = (SAFETY_COLOR === 'bgr' ? b : r) - 104;
         out[oG++] = g - 117;
-        out[oR++] = (SAFETY_COLOR === "bgr" ? r : b) - 123;
+        out[oR++] = (SAFETY_COLOR === 'bgr' ? r : b) - 123;
       } else {
         // ImageNet normalization (RGB)
         out[oR++] = (r / 255 - 0.485) / 0.229;
@@ -66,14 +67,14 @@ async function toTensorNCHW(bytes: Uint8Array): Promise<ort.Tensor> {
     }
   }
 
-  return new ort.Tensor("float32", out, [1, 3, SIZE, SIZE]);
+  return new ort.Tensor('float32', out, [1, 3, SIZE, SIZE]);
 }
 
 // NHWC [1,H,W,3]
 async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
   const { data, info } = await sharp(bytes)
     .removeAlpha()
-    .resize(SIZE, SIZE, { fit: "cover" })
+    .resize(SIZE, SIZE, { fit: 'cover' })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
@@ -86,10 +87,10 @@ async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
         g = data[p + 1],
         b = data[p + 2];
 
-      if (SAFETY_PREPROC === "vgg") {
-        const c0 = SAFETY_COLOR === "bgr" ? b : r;
+      if (SAFETY_PREPROC === 'vgg') {
+        const c0 = SAFETY_COLOR === 'bgr' ? b : r;
         const c1 = g;
-        const c2 = SAFETY_COLOR === "bgr" ? r : b;
+        const c2 = SAFETY_COLOR === 'bgr' ? r : b;
         out[i++] = c0 - 104;
         out[i++] = c1 - 117;
         out[i++] = c2 - 123;
@@ -102,7 +103,7 @@ async function toTensorNHWC(bytes: Uint8Array): Promise<ort.Tensor> {
     }
   }
 
-  return new ort.Tensor("float32", out, [1, SIZE, SIZE, 3]);
+  return new ort.Tensor('float32', out, [1, SIZE, SIZE, 3]);
 }
 
 function softmax(v: Float32Array): Float32Array {
@@ -118,13 +119,13 @@ export class LocalNSFW implements SafetyProvider {
     this.sessionPromise = (async () => {
       await ensureModelFile(modelPath, MODEL_SRC, MODEL_SHA);
       return ort.InferenceSession.create(modelPath, {
-        executionProviders: ["cpu"],
+        executionProviders: ['cpu'],
       });
     })();
   }
   async check(bytes: Uint8Array): Promise<SafetyResult> {
     const session = await this.sessionPromise;
-    const inputName = session.inputNames?.[0] ?? "input";
+    const inputName = session.inputNames?.[0] ?? 'input';
     const meta = (
       session.inputMetadata as unknown as
         | Record<string, { dimensions: readonly number[] }>
@@ -133,10 +134,7 @@ export class LocalNSFW implements SafetyProvider {
     const dims = meta?.dimensions;
     const nchw = dims?.[1] === 3;
     const input = nchw ? await toTensorNCHW(bytes) : await toTensorNHWC(bytes);
-    const out = (await session.run({ [inputName]: input })) as Record<
-      string,
-      ort.Tensor
-    >;
+    const out = (await session.run({ [inputName]: input })) as Record<string, ort.Tensor>;
     const firstKey = session.outputNames?.[0] ?? Object.keys(out)[0];
     const logits = out[firstKey].data as Float32Array;
 
@@ -156,8 +154,7 @@ export class LocalNSFW implements SafetyProvider {
         LABELS.forEach((lab, i) => {
           const p = probs[i];
           if (NSFW_LABELS.has(lab.toLowerCase())) nsfw += p;
-          if (lab.toLowerCase() === "neutral" || lab.toLowerCase() === "drawings")
-            neutral += p;
+          if (lab.toLowerCase() === 'neutral' || lab.toLowerCase() === 'drawings') neutral += p;
         });
         nsfwScore = nsfw || Math.max(0, 1 - neutral);
       } else if (probs.length === 2) {

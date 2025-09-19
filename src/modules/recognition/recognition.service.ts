@@ -1,4 +1,3 @@
-import { randomUUID, createHmac, createHash } from "crypto";
 import {
   S3Client,
   PutObjectCommand,
@@ -6,20 +5,22 @@ import {
   GetObjectCommand,
   CopyObjectCommand,
   DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { prisma } from "../../lib/prisma";
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID, createHmac, createHash } from 'crypto';
+
+import { ImageJobStatus } from '../../generated/prisma';
+import { prisma } from '../../lib/prisma';
+import { knnFromVectorGlobal, knnFromVectorGym } from '../cv/knn.service';
 import {
   embedImage,
   initLocalOpenCLIP,
   EMBEDDING_DIM,
-} from "../images/embedding/local-openclip-light";
-import { knnFromVectorGlobal, knnFromVectorGym } from "../cv/knn.service";
-import { ImageJobStatus } from "../../generated/prisma";
-import { priorityFromSource } from "../images/queue.service";
-import { kickBurstRunner } from "../images/image-worker";
-import type { UploadTicketInput } from "../media/media.types";
-import { assertSizeWithinLimit } from "../media/media.utils";
+} from '../images/embedding/local-openclip-light';
+import { kickBurstRunner } from '../images/image-worker';
+import { priorityFromSource } from '../images/queue.service';
+import type { UploadTicketInput } from '../media/media.types';
+import { assertSizeWithinLimit } from '../media/media.utils';
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -27,21 +28,21 @@ const TICKET_SECRET = process.env.TICKET_SECRET!;
 const T_HIGH = 0.85;
 const T_LOW = 0.55;
 
-const EXT_WHITELIST = new Set(["jpg", "jpeg", "png", "webp", "heic"]);
+const EXT_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic']);
 
 function inferContentType(ext: string) {
   switch (ext) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
-    case "heic":
-      return "image/heic";
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'heic':
+      return 'image/heic';
     default:
-      return "application/octet-stream";
+      return 'application/octet-stream';
   }
 }
 
@@ -78,9 +79,9 @@ type EquipmentCandidate = {
 
 function groupTopEquipment(
   imgs: Img[],
-  options: { keepPerEq?: number; source?: string; totalImages?: number } = {}
+  options: { keepPerEq?: number; source?: string; totalImages?: number } = {},
 ): EquipmentCandidate[] {
-  const { keepPerEq = PER_EQUIPMENT_IMAGES, source = "GYM", totalImages = imgs.length } = options;
+  const { keepPerEq = PER_EQUIPMENT_IMAGES, source = 'GYM', totalImages = imgs.length } = options;
   if (!imgs?.length) return [];
   const sorted = [...imgs].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const buckets = new Map<number, Img[]>();
@@ -117,7 +118,7 @@ function groupTopEquipment(
 
 export class RecognitionService {
   private s3 = new S3Client({
-    region: "auto",
+    region: 'auto',
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     forcePathStyle: true,
     credentials: {
@@ -128,33 +129,26 @@ export class RecognitionService {
   private embedInit = initLocalOpenCLIP();
 
   private sign(payload: any) {
-    const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const sig = createHmac("sha256", TICKET_SECRET)
-      .update(body)
-      .digest("base64url");
+    const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = createHmac('sha256', TICKET_SECRET).update(body).digest('base64url');
     return `${body}.${sig}`;
   }
 
   private verify(token: string) {
-    const [body, sig] = token.split(".");
-    const expected = createHmac("sha256", TICKET_SECRET)
-      .update(body)
-      .digest("base64url");
-    if (expected !== sig) throw new Error("Invalid ticketToken");
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString());
+    const [body, sig] = token.split('.');
+    const expected = createHmac('sha256', TICKET_SECRET).update(body).digest('base64url');
+    if (expected !== sig) throw new Error('Invalid ticketToken');
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (payload.exp && Date.now() / 1000 > payload.exp) {
-      throw new Error("ticketToken expired");
+      throw new Error('ticketToken expired');
     }
     return payload as { gid: number; key: string };
   }
 
   private async downloadBytes(key: string): Promise<Uint8Array> {
-    const res = await this.s3.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: key })
-    );
+    const res = await this.s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
     const body: any = res.Body;
-    if (typeof body?.transformToByteArray === "function")
-      return body.transformToByteArray();
+    if (typeof body?.transformToByteArray === 'function') return body.transformToByteArray();
     const chunks: Uint8Array[] = [];
     for await (const chunk of body as AsyncIterable<Uint8Array>) {
       chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
@@ -172,11 +166,11 @@ export class RecognitionService {
   async createUploadTicket(gymId: number, upload: UploadTicketInput) {
     assertSizeWithinLimit(upload.contentLength);
     const ext = upload.ext.trim().toLowerCase();
-    if (!EXT_WHITELIST.has(ext)) throw new Error("Unsupported image extension");
+    if (!EXT_WHITELIST.has(ext)) throw new Error('Unsupported image extension');
 
     const now = new Date();
     const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
     const uuid = randomUUID();
     const storageKey = `private/recognition/${gymId}/${yyyy}/${mm}/${uuid}.${ext}`;
 
@@ -202,31 +196,23 @@ export class RecognitionService {
 
   async recognizeImage(token: string, limit = 3) {
     const { gid: gymId, key: storageKey } = this.verify(token);
-    await this.s3
-      .send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }))
-      .catch(() => {
-        throw new Error("Uploaded object not found");
-      });
+    await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })).catch(() => {
+      throw new Error('Uploaded object not found');
+    });
 
     await this.embedInit;
     const bytes = await this.downloadBytes(storageKey);
     const vecF32 = await embedImage(Buffer.from(bytes));
     const vector = Array.from(vecF32);
     if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIM) {
-      throw new Error("Embedding failed");
+      throw new Error('Embedding failed');
     }
 
     const vecBuf = Buffer.from(vecF32.buffer);
-    const vectorHash = createHash("sha256")
-      .update(vecBuf)
-      .digest("hex")
-      .slice(0, 16);
+    const vectorHash = createHash('sha256').update(vecBuf).digest('hex').slice(0, 16);
 
     const N = Math.max(1, Math.min(limit ?? 3, 10));
-    const searchTopK = Math.min(
-      SEARCH_TOPK_MAX,
-      N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR
-    );
+    const searchTopK = Math.min(SEARCH_TOPK_MAX, N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR);
 
     const [gymRows, globalRows] = await Promise.all([
       knnFromVectorGym({ vector, gymId, limit: searchTopK }),
@@ -254,28 +240,28 @@ export class RecognitionService {
     const gymTop = gymImages[0];
     const globalTop = globalImages[0];
 
-    let decision: "GYM_ACCEPT" | "GLOBAL_ACCEPT" | "REJECT" = "REJECT";
+    let decision: 'GYM_ACCEPT' | 'GLOBAL_ACCEPT' | 'REJECT' = 'REJECT';
     if (gymTop && (!globalTop || gymTop.score >= globalTop.score) && gymTop.score >= T_HIGH) {
-      decision = "GYM_ACCEPT";
+      decision = 'GYM_ACCEPT';
     } else if (globalTop && globalTop.score >= T_HIGH) {
-      decision = "GLOBAL_ACCEPT";
+      decision = 'GLOBAL_ACCEPT';
     }
 
     let chosen: CandidateImage[] = [];
-    let sourceTag = "DECISION";
-    if (decision === "GYM_ACCEPT") {
+    let sourceTag = 'DECISION';
+    if (decision === 'GYM_ACCEPT') {
       chosen = gymImages;
-      sourceTag = "GYM";
-    } else if (decision === "GLOBAL_ACCEPT") {
+      sourceTag = 'GYM';
+    } else if (decision === 'GLOBAL_ACCEPT') {
       chosen = globalImages;
-      sourceTag = "GLOBAL";
+      sourceTag = 'GLOBAL';
     }
 
-    if (decision !== "REJECT" && chosen.length === 0) {
-      const alt = decision === "GYM_ACCEPT" ? globalImages : gymImages;
+    if (decision !== 'REJECT' && chosen.length === 0) {
+      const alt = decision === 'GYM_ACCEPT' ? globalImages : gymImages;
       if (alt.length) {
         chosen = alt;
-        sourceTag = "DECISION";
+        sourceTag = 'DECISION';
       }
     }
 
@@ -287,20 +273,21 @@ export class RecognitionService {
     let bestEquipmentId = equipmentCandidates[0]?.equipmentId ?? null;
     let bestScore = equipmentCandidates[0]?.topScore ?? 0;
 
-    if (decision !== "REJECT" && equipmentCandidates.length === 0) {
+    if (decision !== 'REJECT' && equipmentCandidates.length === 0) {
       const fallbackBest =
-        decision === "GYM_ACCEPT" ? gymTop ?? globalTop : globalTop ?? gymTop;
+        decision === 'GYM_ACCEPT' ? (gymTop ?? globalTop) : (globalTop ?? gymTop);
       if (fallbackBest) {
         bestEquipmentId = fallbackBest.equipmentId;
         bestScore = fallbackBest.score;
-        const rep =
-          gymImages.concat(globalImages).find((i) => i.equipmentId === fallbackBest.equipmentId) ?? {
-            imageId: "synthetic",
-            equipmentId: fallbackBest.equipmentId,
-            gymId: decision === "GYM_ACCEPT" ? gymId : null,
-            storageKey,
-            score: bestScore,
-          };
+        const rep = gymImages
+          .concat(globalImages)
+          .find((i) => i.equipmentId === fallbackBest.equipmentId) ?? {
+          imageId: 'synthetic',
+          equipmentId: fallbackBest.equipmentId,
+          gymId: decision === 'GYM_ACCEPT' ? gymId : null,
+          storageKey,
+          score: bestScore,
+        };
         equipmentCandidates = [
           {
             equipmentId: fallbackBest.equipmentId,
@@ -308,7 +295,7 @@ export class RecognitionService {
             topScore: bestScore,
             representative: rep,
             images: [rep],
-            source: "ATTEMPT",
+            source: 'ATTEMPT',
             totalImagesConsidered: gymImages.length + globalImages.length,
             lowConfidence: bestScore < 0.7,
           },
@@ -367,7 +354,7 @@ export class RecognitionService {
     };
   }
 
-async confirmRecognition(input: {
+  async confirmRecognition(input: {
     attemptId: bigint;
     selectedEquipmentId: number;
     offerForTraining: boolean;
@@ -376,7 +363,7 @@ async confirmRecognition(input: {
     const attempt = await prisma.recognitionAttempt.findUnique({
       where: { id: input.attemptId },
     });
-    if (!attempt) throw new Error("Attempt not found");
+    if (!attempt) throw new Error('Attempt not found');
 
     const gymEquipment = await prisma.gymEquipment.findFirst({
       where: {
@@ -384,20 +371,19 @@ async confirmRecognition(input: {
         equipmentId: input.selectedEquipmentId,
       },
     });
-    if (!gymEquipment)
-      throw new Error("Selected equipment is not part of this gym");
+    if (!gymEquipment) throw new Error('Selected equipment is not part of this gym');
 
     await prisma.recognitionAttempt.update({
       where: { id: input.attemptId },
       data: {
-        consent: input.offerForTraining ? "granted" : "denied",
+        consent: input.offerForTraining ? 'granted' : 'denied',
         bestEquipmentId: input.selectedEquipmentId,
       },
     });
 
     if (input.offerForTraining) {
-      const parts = attempt.storageKey.split(".");
-      const ext = parts[parts.length - 1] || "jpg";
+      const parts = attempt.storageKey.split('.');
+      const ext = parts[parts.length - 1] || 'jpg';
       const candidatesKey = `private/gym/${gymEquipment.id}/candidates/${randomUUID()}.${ext}`;
 
       await this.s3.send(
@@ -405,7 +391,7 @@ async confirmRecognition(input: {
           Bucket: BUCKET,
           CopySource: `/${BUCKET}/${attempt.storageKey}`,
           Key: candidatesKey,
-        })
+        }),
       );
 
       const tc = await prisma.trainingCandidate.create({
@@ -441,7 +427,10 @@ async confirmRecognition(input: {
   }
 
   async discardRecognition(attemptId: bigint) {
-    const attempt = await prisma.recognitionAttempt.update({ where: { id: attemptId }, data: { consent: 'denied' } });
+    const attempt = await prisma.recognitionAttempt.update({
+      where: { id: attemptId },
+      data: { consent: 'denied' },
+    });
     try {
       await this.s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: attempt.storageKey }));
     } catch {}

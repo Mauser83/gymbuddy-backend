@@ -1,5 +1,5 @@
-import { User } from "../user/user.types";
-import type { UploadTicketInput } from "../media/media.types";
+import type { UploadTicketInput } from '../media/media.types';
+import { User } from '../user/user.types';
 
 export interface Gym {
   id: number;
@@ -75,8 +75,8 @@ export interface GymEquipment {
 }
 
 export interface GymEquipmentImage {
-  id: string;          // cuid
-  gymId: number;       // Int FK
+  id: string; // cuid
+  gymId: number; // Int FK
   equipmentId: number; // Int FK
   storageKey: string;
   sha256?: string;
@@ -106,12 +106,8 @@ export interface UpdateGymEquipmentInput {
   note?: string;
 }
 
-export type GymImageStatus =
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
-  | "QUARANTINED";
-  
+export type GymImageStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'QUARANTINED';
+
 export interface UploadGymImageInput {
   gymId: number;
   equipmentId: number;

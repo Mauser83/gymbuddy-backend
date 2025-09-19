@@ -1,9 +1,9 @@
 import { prisma, PrismaClient } from '../../lib/prisma';
-import { PermissionService } from '../core/permission.service';
-import { SharingService } from '../workoutplan/workoutplanSharing.service';
 import { UserService } from '../auth/user.service';
 import { AuditService } from '../core/audit.service';
+import { PermissionService } from '../core/permission.service';
 import { MediaService } from '../media/media.service';
+import { SharingService } from '../workoutplan/workoutplanSharing.service';
 
 type ServiceConstructor<T> = new (...args: any[]) => T;
 
@@ -31,7 +31,7 @@ export class DIContainer {
   private registerDefaultServices() {
     // Register core services
     this.registerSingleton<PrismaClient>('PrismaClient', () => prisma);
-    
+
     // Register application services with their dependencies
     this.registerSingleton<PermissionService>('PermissionService', (container) => {
       const prisma = container.resolve<PrismaClient>('PrismaClient');
@@ -55,7 +55,7 @@ export class DIContainer {
       const prisma = container.resolve<PrismaClient>('PrismaClient');
       return new AuditService(prisma);
     });
-    
+
     this.registerSingleton<MediaService>('MediaService', () => {
       return new MediaService();
     });
@@ -64,14 +64,14 @@ export class DIContainer {
   public registerSingleton<T>(key: string, factory: (container: DIContainer) => T) {
     this.services.set(key, {
       factory,
-      isSingleton: true
+      isSingleton: true,
     });
   }
 
   public registerTransient<T>(key: string, factory: (container: DIContainer) => T) {
     this.services.set(key, {
       factory,
-      isSingleton: false
+      isSingleton: false,
     });
   }
 

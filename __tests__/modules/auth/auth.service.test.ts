@@ -55,7 +55,11 @@ describe('AuthService', () => {
       gymManagementRoles: [],
     });
 
-    const result = await service.register({ username: 'user', email: 'a@example.com', password: 'pass' });
+    const result = await service.register({
+      username: 'user',
+      email: 'a@example.com',
+      password: 'pass',
+    });
 
     expect(prisma.user.create).toHaveBeenCalled();
     expect(result.user.username).toBe('user');
@@ -65,7 +69,9 @@ describe('AuthService', () => {
 
   test('login throws for invalid credentials', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(service.login({ email: 'a@example.com', password: 'pass' })).rejects.toThrow('Invalid credentials');
+    await expect(service.login({ email: 'a@example.com', password: 'pass' })).rejects.toThrow(
+      'Invalid credentials',
+    );
   });
 
   test('login returns tokens when credentials valid', async () => {
@@ -88,28 +94,52 @@ describe('AuthService', () => {
 
   test('requestPasswordReset fails for unknown email', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(service.requestPasswordReset({ email: 'x@test.com' })).rejects.toThrow('Invalid email');
+    await expect(service.requestPasswordReset({ email: 'x@test.com' })).rejects.toThrow(
+      'Invalid email',
+    );
   });
 
   test('resetPassword fails with invalid token', async () => {
     prisma.user.findFirst.mockResolvedValue(null);
-    await expect(service.resetPassword({ token: 'bad', password: 'newpass' })).rejects.toThrow('Invalid or expired token');
+    await expect(service.resetPassword({ token: 'bad', password: 'newpass' })).rejects.toThrow(
+      'Invalid or expired token',
+    );
   });
 
   test('refreshToken validates token and token version', async () => {
     const refresh = jwt.sign({ sub: '1', tokenVersion: 1 }, 'testsecret');
-    prisma.user.findUnique.mockResolvedValue({ id: 1, username: 'u', email: 'a', appRole: null, userRole: 'USER', tokenVersion: 1, gymManagementRoles: [] });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 1,
+      username: 'u',
+      email: 'a',
+      appRole: null,
+      userRole: 'USER',
+      tokenVersion: 1,
+      gymManagementRoles: [],
+    });
     const result = await service.refreshToken({ refreshToken: refresh });
     expect(result.accessToken).toBeDefined();
   });
 
   test('refreshToken fails for invalid token', async () => {
-    await expect(service.refreshToken({ refreshToken: 'bad.token' })).rejects.toThrow('Invalid or expired refresh token');
+    await expect(service.refreshToken({ refreshToken: 'bad.token' })).rejects.toThrow(
+      'Invalid or expired refresh token',
+    );
   });
 
   test('refreshToken fails for mismatched token version', async () => {
     const refresh = jwt.sign({ sub: '1', tokenVersion: 2 }, 'testsecret');
-    prisma.user.findUnique.mockResolvedValue({ id: 1, username: 'u', email: 'a', appRole: null, userRole: 'USER', tokenVersion: 1, gymManagementRoles: [] });
-    await expect(service.refreshToken({ refreshToken: refresh })).rejects.toThrow('Invalid or expired refresh token');
+    prisma.user.findUnique.mockResolvedValue({
+      id: 1,
+      username: 'u',
+      email: 'a',
+      appRole: null,
+      userRole: 'USER',
+      tokenVersion: 1,
+      gymManagementRoles: [],
+    });
+    await expect(service.refreshToken({ refreshToken: refresh })).rejects.toThrow(
+      'Invalid or expired refresh token',
+    );
   });
 });

@@ -3,9 +3,9 @@
   "compilerOptions": {
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["jest", "node"],         // makes describe/it/expect typed
+    "types": ["jest", "node"], // makes describe/it/expect typed
     "esModuleInterop": true,
-    "skipLibCheck": true               // often reduces noise in node projects
+    "skipLibCheck": true // often reduces noise in node projects
   },
   "include": [
     "src/**/*.ts",

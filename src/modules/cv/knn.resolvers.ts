@@ -1,18 +1,19 @@
-import { knnSearchService } from "./knn.service";
-import { GraphQLError } from "graphql";
+import { GraphQLError } from 'graphql';
+
+import { knnSearchService } from './knn.service';
 
 export const KnnResolvers = {
   Query: {
     knnSearch: async (_: unknown, { input }: any) => {
       const { imageId, scope, limit, gymId, minScore } = input;
       if (!imageId) {
-        throw new GraphQLError("imageId is required", {
-          extensions: { code: "BAD_USER_INPUT" },
+        throw new GraphQLError('imageId is required', {
+          extensions: { code: 'BAD_USER_INPUT' },
         });
       }
-      if ((scope === "GYM" || scope === "AUTO") && !gymId) {
-        throw new GraphQLError("gymId is required for this scope", {
-          extensions: { code: "BAD_USER_INPUT" },
+      if ((scope === 'GYM' || scope === 'AUTO') && !gymId) {
+        throw new GraphQLError('gymId is required for this scope', {
+          extensions: { code: 'BAD_USER_INPUT' },
         });
       }
 
