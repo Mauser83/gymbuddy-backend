@@ -1,8 +1,6 @@
 import { compare, hash } from 'bcrypt';
 import { verify } from 'jsonwebtoken';
 
-import { JWT_SECRET } from '../../server';
-
 const saltRounds = 10;
 
 export const hashPassword = async (password: string): Promise<string> => {
@@ -20,8 +18,9 @@ export const verifyToken = (
   token: string,
 ): { userId: number; email: string; role: string } | null => {
   try {
-    if (!JWT_SECRET) throw new Error('JWT_SECRET not defined');
-    return verify(token, JWT_SECRET) as {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) throw new Error('JWT_SECRET not defined');
+    return verify(token, jwtSecret) as {
       userId: number;
       email: string;
       role: string;
