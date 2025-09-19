@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { createLogger, format, transports } from 'winston';
 import { verify } from 'jsonwebtoken';
+import { createLogger, format, transports } from 'winston';
+
 import { prisma } from '../lib/prisma';
 
 const logger = createLogger({

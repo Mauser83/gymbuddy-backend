@@ -1,5 +1,6 @@
 import { compare, hash } from 'bcrypt';
 import { verify } from 'jsonwebtoken';
+
 import { JWT_SECRET } from '../../server';
 
 const saltRounds = 10;

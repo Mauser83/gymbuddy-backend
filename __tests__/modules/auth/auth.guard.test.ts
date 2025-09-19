@@ -1,5 +1,8 @@
 import { sign } from 'jsonwebtoken';
+
 import { prisma } from '../../../src/lib/prisma';
+import { graphqlAuth } from '../../../src/modules/auth/auth.guard';
+import { AuditService } from '../../../src/modules/core/audit.service';
 import { DIContainer } from '../../../src/modules/core/di.container';
 
 jest.mock('../../../src/server', () => ({ JWT_SECRET: 'testsecret' }));
@@ -24,8 +27,6 @@ const containerInstance = {
 (jest.mocked(DIContainer.getInstance as any) as any).mockReturnValue(containerInstance);
 
 // Import after setting env and mocks
-import { graphqlAuth } from '../../../src/modules/auth/auth.guard';
-import { AuditService } from '../../../src/modules/core/audit.service';
 
 describe('graphqlAuth', () => {
   beforeEach(() => {
