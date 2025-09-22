@@ -125,8 +125,27 @@ jobs:
           restore-keys: |
             models-${{ runner.os }}-
 
-      - name: Prisma migrate (deploy)
-        run: npx prisma migrate deploy
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for DB to wake
+        run: |
+          for i in {1..30}; do
+            if PGPASSWORD='' psql "$DATABASE_URL" -c 'select 1' >/dev/null 2>&1; then
+              echo "DB is awake"; exit 0
+            fi
+            echo "waiting for DB ($i/30)…"; sleep 2
+          done
+          echo "DB did not wake in time"; exit 1     
+
+      - name: Prisma migrate (deploy) with retry
+        run: |
+          n=0
+          until [ $n -ge 5 ]; do
+            npx prisma migrate deploy && break
+            n=$((n+1)); echo "migrate retry $n"; sleep $((2**n))
+          done
+          [ $n -lt 5 ] || (echo "migrate failed after retries" && exit 1)
 
       - name: Run tests
         run: npm run test:ci
