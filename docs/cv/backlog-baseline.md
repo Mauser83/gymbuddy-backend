@@ -242,43 +242,42 @@ Notes
 • Unsupported("vector") is intentional; we finalize the vector(…) + ANN index with raw SQL migrations below.
 
 SQL migration 001 — enable pgvector
-Create a migration like 001_enable_pgvector.sql and run it once per database:
+This now runs as part of Prisma migration `20250421150000_add_cv_pipeline_tables` during `npx prisma migrate deploy`:
 
-sql
-Copy
-Edit
+```sql
 -- 001_enable_pgvector.sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- sanity check
 SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
+```
+
 SQL migration 002 — shape the vector column + ANN index
-Adjust the column subtype (set dims) and add an IVFFlat index with cosine ops. Change 1536 if your model differs.
+The follow-up migrations `20250915000000_embeddingVec_dim_512` and `20250919000000_embedding_vector_ivfflat` handle the pgvector tuning automatically. The key SQL lives in those migrations:
 
-sql
-Copy
-Edit
--- 002_embedding_vector_ivfflat.sql
-
--- Ensure the column uses a fixed-dimension pgvector type
--- (Prisma defined the column as "vector", here we set vector(1536))
+```sql
+-- Ensure the column uses a fixed-dimension pgvector type (vector(512))
 ALTER TABLE "ImageEmbedding"
-ALTER COLUMN "embeddingVec" TYPE vector(1536);
+  ALTER COLUMN "embeddingVec" TYPE vector(512);
 
--- Recommended for cosine similarity with most CLIP/OpenAI embeddings
-CREATE INDEX IF NOT EXISTS imageembedding_ivfflat_cosine
-ON "ImageEmbedding"
-USING ivfflat ("embeddingVec" vector_cosine_ops)
-WITH (lists = 100);
+-- Partial ivfflat indexes by scope
+CREATE INDEX IF NOT EXISTS imageembedding_global_vec_idx
+  ON "ImageEmbedding"
+  USING ivfflat ("embeddingVec" vector_cosine_ops)
+  WITH (lists = 100)
+  WHERE "scope_type" = 'GLOBAL';
 
--- Optional: a smaller, general-purpose HNSW index if you need better recall on smaller corpora
--- CREATE INDEX IF NOT EXISTS imageembedding_hnsw_cosine
--- ON "ImageEmbedding"
--- USING hnsw ("embeddingVec" vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS imageembedding_gym_vec_idx
+  ON "ImageEmbedding"
+  USING ivfflat ("embeddingVec" vector_cosine_ops)
+  WITH (lists = 100)
+  WHERE "scope_type" = 'GYM';
 
 -- Helpful filter index by model signature (speeds up queries when you pin a model)
 CREATE INDEX IF NOT EXISTS imageembedding_model_idx
-ON "ImageEmbedding" ("scope", "modelVendor", "modelName", "modelVersion");
+  ON "ImageEmbedding" ("scope_type", "gym_id", "modelVendor", "modelName", "modelVersion");
+```
+
 Example query — nearest neighbors (cosine)
 sql
 Copy

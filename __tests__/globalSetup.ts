@@ -19,6 +19,7 @@ import { ImageModerationService } from '../src/modules/images/image-moderation.s
 import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { MediaService } from '../src/modules/media/media.service';
 import { RecognitionService } from '../src/modules/recognition/recognition.service';
+import { ensureSafeDb } from '../src/utils/ensure-safe-db';
 
 async function cleanDatabase() {
   // Delete in proper order to respect foreign key constraints
@@ -47,6 +48,8 @@ async function cleanDatabase() {
 
 export default async function () {
   try {
+    ensureSafeDb();
+
     // Initialize ApolloServer
     const testServer = new ApolloServer<AuthContext>({
       typeDefs,
