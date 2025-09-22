@@ -11,7 +11,7 @@
     "seed": "ts-node prisma/seed.ts",
     "test:db:deploy": "dotenv -e .env.test -- npx prisma migrate deploy",
     "test": "npm run test:db:deploy && dotenv -e .env.test jest --detectOpenHandles --runInBand",
-    "test:ci": "cross-env NODE_ENV=test jest --ci --runInBand --detectOpenHandles",
+    "test:ci": "jest --ci --runInBand --detectOpenHandles",
     "preinstall": "npx npm-force-resolutions",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint . --ext .ts",
