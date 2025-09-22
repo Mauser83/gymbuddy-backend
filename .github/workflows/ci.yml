@@ -136,7 +136,7 @@ jobs:
             fi
             echo "waiting for DB ($i/30)…"; sleep 2
           done
-          echo "DB did not wake in time"; exit 1     
+          echo "DB did not wake in time"; exit 1
 
       - name: Prisma migrate (deploy) with retry
         run: |
