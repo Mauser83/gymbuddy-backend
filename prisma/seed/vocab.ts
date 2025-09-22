@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { PrismaClient } from '../../src/generated/prisma';
+import { PrismaClient } from '../../src/prisma';
 const prisma = new PrismaClient();
 
 async function upsertAll<T extends { key: string }>(model: any, rows: T[]) {

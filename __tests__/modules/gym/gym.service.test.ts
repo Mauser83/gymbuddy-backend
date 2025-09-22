@@ -1,9 +1,9 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { pubsub } from '../../../src/graphql/rootResolvers';
-import { PrismaClient } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
 import { GymService } from '../../../src/modules/gym/gym.service';
+import { PrismaClient } from '../../../src/prisma';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/graphql/rootResolvers', () => ({

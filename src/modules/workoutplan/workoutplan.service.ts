@@ -18,8 +18,8 @@ import {
 } from './workoutplan.dto';
 import { CreateWorkoutPlanInput, UpdateWorkoutPlanInput } from './workoutplan.types';
 import { SharingService } from './workoutplanSharing.service';
-import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { PrismaClient } from '../../prisma';
 import { verifyRoles } from '../auth/auth.roles';
 import { PermissionService } from '../core/permission.service';
 

@@ -1,6 +1,6 @@
 import { EnqueueImageJobDto, UpdateImageJobStatusDto } from './queue.dto';
-import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { PrismaClient } from '../../prisma';
 import { kickBurstRunner } from '../images/image-worker';
 
 export class QueueService {

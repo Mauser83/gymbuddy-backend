@@ -15,9 +15,8 @@ import {
   RequestPasswordResetInput,
   ResetPasswordInput,
 } from './auth.types';
-import { PrismaClient } from '../../generated/prisma';
-import { AppRole, GymRole, UserRole } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { AppRole, GymRole, PrismaClient, UserRole } from '../../prisma';
 import { JWT_SECRET } from '../../server';
 import { hashPassword, comparePassword } from '../auth/auth.helpers';
 

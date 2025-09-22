@@ -10,7 +10,6 @@ loadEnv();
 import apiRouter from './api/apiRouter';
 import { setupApollo } from './graphql/setupApollo';
 import { setupWebSocket } from './graphql/setupWebsocket';
-import { PrismaClient } from './lib/prisma';
 import { errorHandler } from './middlewares/errorHandler';
 import { errorLogger, requestLogger } from './middlewares/logger';
 import { metricsMiddleware } from './middlewares/metrics';
@@ -23,6 +22,7 @@ import { ImageModerationService } from './modules/images/image-moderation.servic
 import { ImagePromotionService } from './modules/images/image-promotion.service';
 import { MediaService } from './modules/media/media.service';
 import { RecognitionService } from './modules/recognition/recognition.service';
+import { PrismaClient } from './prisma';
 import { startMemoryLogger } from './utils/memoryTracker';
 
 export const app = express();

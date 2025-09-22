@@ -1,7 +1,7 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-import { PrismaClient } from '../../../src/generated/prisma';
 import { AuditService } from '../../../src/modules/core/audit.service';
+import { PrismaClient } from '../../../src/prisma';
 
 describe('AuditService', () => {
   let prisma: DeepMockProxy<PrismaClient>;

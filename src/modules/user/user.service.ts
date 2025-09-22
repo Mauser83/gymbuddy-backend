@@ -1,6 +1,6 @@
 import { UpdateUserRolesDto, UpdateUserTrainingPreferencesDto } from './user.dto';
-import { PrismaClient, AppRole, UserRole } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { PrismaClient, AppRole, UserRole } from '../../prisma';
 import { verifyRoles } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';

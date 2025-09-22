@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import { prisma } from '../../prisma';
 
 /**
  * Persist an embedding into the correct table/row.

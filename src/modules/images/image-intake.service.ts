@@ -3,9 +3,8 @@ import { randomUUID } from 'crypto';
 
 import { kickBurstRunner } from './image-worker';
 import { priorityFromSource } from './queue.service';
-import { ImageJobStatus, GymImageStatus } from '../../generated/prisma';
-import type { Prisma } from '../../generated/prisma';
-import type { PrismaClient } from '../../lib/prisma';
+import { ImageJobStatus, GymImageStatus } from '../../prisma';
+import type { Prisma, PrismaClient } from '../../prisma';
 import { parseKey } from '../../utils/makeKey';
 import {
   FinalizeGymImageDto,

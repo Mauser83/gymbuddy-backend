@@ -2,9 +2,8 @@ import { S3Client, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/clien
 
 import { kickBurstRunner } from './image-worker';
 import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from './images.dto';
-import type { Prisma } from '../../generated/prisma';
-import { ImageJobStatus } from '../../generated/prisma';
-import { PrismaClient } from '../../lib/prisma';
+import type { Prisma } from '../../prisma';
+import { ImageJobStatus, PrismaClient } from '../../prisma';
 import { makeGymApprovedKey, fileExtFrom } from '../../utils/makeKey';
 import { verifyGymScope } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';

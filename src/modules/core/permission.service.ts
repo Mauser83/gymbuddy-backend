@@ -1,4 +1,4 @@
-import { PrismaClient, AppRole, GymRole, UserRole } from '../../lib/prisma';
+import { PrismaClient, AppRole, GymRole, UserRole } from '../../prisma';
 import { PermissionType } from '../auth/auth.types';
 
 interface UserRoles {

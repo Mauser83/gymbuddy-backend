@@ -1,9 +1,9 @@
 import { sign } from 'jsonwebtoken';
 
-import { prisma } from '../../../src/lib/prisma';
 import { graphqlAuth } from '../../../src/modules/auth/auth.guard';
 import { AuditService } from '../../../src/modules/core/audit.service';
 import { DIContainer } from '../../../src/modules/core/di.container';
+import { prisma } from '../../../src/prisma';
 
 jest.mock('../../../src/server', () => ({ JWT_SECRET: 'testsecret' }));
 
@@ -11,7 +11,7 @@ process.env.JWT_SECRET = 'testsecret';
 
 jest.mock('../../../src/modules/core/di.container');
 // Mock prisma client used in auth.guard
-jest.mock('../../../src/lib/prisma', () => ({
+jest.mock('../../../src/prisma', () => ({
   prisma: {
     user: {
       findUnique: jest.fn(),

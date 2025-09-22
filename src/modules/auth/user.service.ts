@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../lib/prisma';
+import { PrismaClient } from '../../prisma';
 import { AuditService } from '../core/audit.service';
 import { PermissionService } from '../core/permission.service';
 

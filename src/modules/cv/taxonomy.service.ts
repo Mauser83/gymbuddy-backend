@@ -1,6 +1,6 @@
 import { CreateTaxonomyInputDto } from './taxonomy.dto';
 import { TaxonomyKind } from './taxonomy.types';
-import { PrismaClient, Prisma } from '../../lib/prisma';
+import { PrismaClient, Prisma } from '../../prisma';
 
 export class TaxonomyService {
   constructor(private readonly prisma: PrismaClient) {}

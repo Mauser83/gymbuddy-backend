@@ -1,5 +1,4 @@
-import { AppRole, GymRole } from '../../generated/prisma';
-import { prisma, PrismaClient } from '../../lib/prisma';
+import { AppRole, GymRole, prisma, PrismaClient } from '../../prisma';
 
 /**
  * Determine if a user is trusted for a given gym.

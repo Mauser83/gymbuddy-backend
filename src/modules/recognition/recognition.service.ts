@@ -9,8 +9,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID, createHmac, createHash } from 'crypto';
 
-import { ImageJobStatus } from '../../generated/prisma';
-import { prisma } from '../../lib/prisma';
+import { ImageJobStatus, prisma } from '../../prisma';
 import { knnFromVectorGlobal, knnFromVectorGym } from '../cv/knn.service';
 import {
   embedImage,

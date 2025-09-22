@@ -11,14 +11,16 @@ import { getPort } from 'get-port-please';
 
 import resolvers from '../src/graphql/rootResolvers';
 import typeDefs from '../src/graphql/rootSchema';
-import { prisma } from '../src/lib/prisma';
 import { AuthContext, UserRole } from '../src/modules/auth/auth.types';
 import { PermissionService } from '../src/modules/core/permission.service';
+import { initLocalOpenCLIP } from '../src/modules/images/embedding/local-openclip-light';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
 import { ImageModerationService } from '../src/modules/images/image-moderation.service';
 import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { MediaService } from '../src/modules/media/media.service';
 import { RecognitionService } from '../src/modules/recognition/recognition.service';
+import { prisma } from '../src/prisma';
+import { ensureSafeDb } from '../src/utils/ensure-safe-db';
 
 async function cleanDatabase() {
   // Delete in proper order to respect foreign key constraints
@@ -47,6 +49,10 @@ async function cleanDatabase() {
 
 export default async function () {
   try {
+    ensureSafeDb();
+
+    await initLocalOpenCLIP(); // downloads (if missing) + warms once
+
     // Initialize ApolloServer
     const testServer = new ApolloServer<AuthContext>({
       typeDefs,

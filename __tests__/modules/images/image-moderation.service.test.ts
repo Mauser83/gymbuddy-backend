@@ -5,10 +5,10 @@ jest.mock('../../../src/modules/images/image-worker', () => ({
 
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
-import { PrismaClient } from '../../../src/lib/prisma';
 import { AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
 import { ImageModerationService } from '../../../src/modules/images/image-moderation.service';
 import { AdminImageListStatusDto } from '../../../src/modules/images/images.dto';
+import { PrismaClient } from '../../../src/prisma';
 import { cleanDB, prisma } from '../../testUtils';
 
 jest.spyOn(S3Client.prototype, 'send').mockImplementation((_cmd: any) => {

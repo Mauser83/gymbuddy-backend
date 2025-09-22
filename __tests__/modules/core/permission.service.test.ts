@@ -1,8 +1,8 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-import { PrismaClient, AppRole, UserRole, GymRole } from '../../../src/lib/prisma';
 import { PermissionType } from '../../../src/modules/auth/auth.types';
 import { PermissionService } from '../../../src/modules/core/permission.service';
+import { PrismaClient, AppRole, UserRole, GymRole } from '../../../src/prisma';
 
 describe('PermissionService', () => {
   let prisma: DeepMockProxy<PrismaClient>;

@@ -1,4 +1,4 @@
-import { PrismaClient, User } from '../../lib/prisma';
+import { PrismaClient, User } from '../../prisma';
 import { PermissionService } from '../core/permission.service';
 import { ImageIntakeService } from '../images/image-intake.service';
 import { ImageModerationService } from '../images/image-moderation.service';

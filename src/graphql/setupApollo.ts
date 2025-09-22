@@ -3,7 +3,6 @@ import { expressMiddleware } from '@apollo/server/express4';
 
 import resolvers from './rootResolvers';
 import typeDefs from './rootSchema';
-import { PrismaClient } from '../lib/prisma';
 import { graphqlAuth } from '../modules/auth/auth.guard';
 import type { AuthContext, UserRole } from '../modules/auth/auth.types';
 import { PermissionService } from '../modules/core/permission.service';
@@ -12,6 +11,7 @@ import { ImageModerationService } from '../modules/images/image-moderation.servi
 import { ImagePromotionService } from '../modules/images/image-promotion.service';
 import { MediaService } from '../modules/media/media.service';
 import { RecognitionService } from '../modules/recognition/recognition.service';
+import { PrismaClient } from '../prisma';
 
 export async function setupApollo(
   app: any,

@@ -1,5 +1,5 @@
-import { PrismaClient } from '../../lib/prisma';
-import type { User } from '../../lib/prisma';
+import { PrismaClient } from '../../prisma';
+import type { User } from '../../prisma';
 import { PermissionType } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';
 

@@ -1,6 +1,6 @@
 import { IsEmail, IsOptional, IsString, MaxLength, IsEnum, IsInt } from 'class-validator';
 
-import { AppRole, UserRole } from '../../lib/prisma'; // Adjust path if needed
+import { AppRole, UserRole } from '../../prisma'; // Adjust path if needed
 
 export class UpdateUserProfileDto {
   @IsOptional()

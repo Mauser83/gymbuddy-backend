@@ -6,13 +6,13 @@ import { WebSocketServer } from 'ws';
 
 import resolvers from './rootResolvers';
 import typeDefs from './rootSchema';
-import { PrismaClient } from '../lib/prisma';
 import { PermissionService } from '../modules/core/permission.service';
 import { ImageIntakeService } from '../modules/images/image-intake.service';
 import { ImageModerationService } from '../modules/images/image-moderation.service';
 import { ImagePromotionService } from '../modules/images/image-promotion.service';
 import { MediaService } from '../modules/media/media.service';
 import { RecognitionService } from '../modules/recognition/recognition.service';
+import { PrismaClient } from '../prisma';
 import { JWT_SECRET } from '../server';
 
 export function setupWebSocket(

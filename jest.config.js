@@ -6,7 +6,10 @@ module.exports = {
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   globalSetup: '<rootDir>/__tests__/globalSetup.ts',
   globalTeardown: '<rootDir>/__tests__/globalTeardown.ts',
-  setupFilesAfterEnv: ['<rootDir>/__tests__/testUtils.ts'],
+  setupFilesAfterEnv: [
+    '<rootDir>/__tests__/ensureSafeDb.hook.ts',
+    '<rootDir>/__tests__/testUtils.ts',
+  ],
   testPathIgnorePatterns: [
     '<rootDir>/__tests__/globalSetup.ts',
     '<rootDir>/__tests__/globalTeardown.ts',

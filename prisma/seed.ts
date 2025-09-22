@@ -1,7 +1,7 @@
 import { hash } from 'bcrypt';
 import * as dotenv from 'dotenv';
 
-import { prisma } from '../src/lib/prisma';
+import { prisma } from '../src/prisma';
 
 dotenv.config();
 

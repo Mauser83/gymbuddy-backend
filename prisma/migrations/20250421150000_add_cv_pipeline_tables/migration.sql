@@ -2,8 +2,12 @@
 DROP TABLE IF EXISTS "GymEquipmentImage";
 DROP TABLE IF EXISTS "EquipmentImage";
 
--- Enable pgvector extension for embeddings
+-- Mirrors former sql/001_enable_pgvector.sql so that migrate deploy enables the
+-- extension automatically.
 CREATE EXTENSION IF NOT EXISTS "vector";
+
+-- Sanity check (no-op when the extension already exists)
+SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
 
 -- CreateTable EquipmentImage
 CREATE TABLE "EquipmentImage" (

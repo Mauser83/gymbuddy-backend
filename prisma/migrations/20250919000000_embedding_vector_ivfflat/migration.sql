@@ -1,7 +1,7 @@
--- 002_embedding_vector_ivfflat.sql
+-- Former sql/002_embedding_vector_ivfflat.sql — included here so migrate deploy
+-- applies the pgvector tuning automatically.
 
--- Ensure the column uses a fixed-dimension pgvector type
--- (Prisma defined the column as "vector", here we set vector(1536))
+-- Ensure the column uses a fixed-dimension pgvector type (vector(512))
 ALTER TABLE "ImageEmbedding"
   ALTER COLUMN "embeddingVec" TYPE vector(512);
 
@@ -18,6 +18,5 @@ CREATE INDEX IF NOT EXISTS imageembedding_gym_vec_idx
   WITH (lists = 100)
   WHERE "scope_type" = 'GYM';
 
--- Helpful filter index by model signature (speeds up queries when you pin a model)
 CREATE INDEX IF NOT EXISTS imageembedding_model_idx
   ON "ImageEmbedding" ("scope_type", "gym_id", "modelVendor", "modelName", "modelVersion");

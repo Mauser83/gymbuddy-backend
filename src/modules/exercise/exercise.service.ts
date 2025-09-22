@@ -27,8 +27,8 @@ import {
   CreateMetricInput,
   UpdateMetricInput,
 } from './exercise.types';
-import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { PrismaClient } from '../../prisma';
 import { verifyRoles } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';

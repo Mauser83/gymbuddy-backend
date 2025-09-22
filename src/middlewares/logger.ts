@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verify } from 'jsonwebtoken';
 import { createLogger, format, transports } from 'winston';
 
-import { prisma } from '../lib/prisma';
+import { prisma } from '../prisma';
 
 const logger = createLogger({
   level: 'info',
