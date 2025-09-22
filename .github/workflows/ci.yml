@@ -61,6 +61,51 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       CI_TEST_DB: ${{ secrets.CI_TEST_DB }}
+
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_TOKEN: ${{ secrets.R2_TOKEN }}
+
+      CLIP_IMAGE_SIZE: ${{ secrets.CLIP_IMAGE_SIZE }}
+      EMBED_DIM: ${{ secrets.EMBED_DIM }}
+      EMBED_IMAGE_SIZE: ${{ secrets.EMBED_IMAGE_SIZE }}
+      EMBED_MODEL_PATH: ${{ secrets.EMBED_MODEL_PATH }}
+      EMBED_MODEL_R2_KEY: ${{ secrets.EMBED_MODEL_R2_KEY }}
+      EMBED_MODEL_SHA256: ${{ secrets.EMBED_MODEL_SHA256 }}
+      EMBED_MODEL_URL: ${{ secrets.EMBED_MODEL_URL }}
+      EMBED_VENDOR: ${{ secrets.EMBED_VENDOR }}
+
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+
+      NSFW_BLOCK: ${{ secrets.NSFW_BLOCK }}
+      SAFETY_MODEL_PATH: ${{ secrets.SAFETY_MODEL_PATH }}
+      SAFETY_MODEL_R2_KEY: ${{ secrets.SAFETY_MODEL_R2_KEY }}
+      SAFETY_MODEL_SHA256: ${{ secrets.SAFETY_MODEL_SHA256 }}
+      SAFETY_MODEL_URL: ${{ secrets.SAFETY_MODEL_URL }}
+      SAFETY_NSFW_CLASSES: ${{ secrets.SAFETY_NSFW_CLASSES }}
+      SAFETY_VENDOR: ${{ secrets.SAFETY_VENDOR }}
+
+      PERSON_AREA_MAX: ${{ secrets.PERSON_AREA_MAX }}
+      PERSON_AREA_MIN: ${{ secrets.PERSON_AREA_MIN }}
+      PERSON_ASPECT_MAX: ${{ secrets.PERSON_ASPECT_MAX }}
+      PERSON_ASPECT_MIN: ${{ secrets.PERSON_ASPECT_MIN }}
+      PERSON_CONF: ${{ secrets.PERSON_CONF }}
+      PERSON_INPUT_SIZE: ${{ secrets.PERSON_INPUT_SIZE }}
+      PERSON_MODEL_PATH: ${{ secrets.PERSON_MODEL_PATH }}
+      PERSON_MODEL_R2_KEY: ${{ secrets.PERSON_MODEL_R2_KEY }}
+      PERSON_MODEL_SHA256: ${{ secrets.PERSON_MODEL_SHA256 }}
+      PERSON_OBJ_MIN: ${{ secrets.PERSON_OBJ_MIN }}
+
+      TICKET_SECRET: ${{ secrets.TICKET_SECRET }}
+      QUEUE_BACKOFF_BASE_SEC: ${{ secrets.QUEUE_BACKOFF_BASE_SEC }}
+      QUEUE_BACKOFF_MAX_SEC: ${{ secrets.QUEUE_BACKOFF_MAX_SEC }}
+      WORKER_CONCURRENCY: ${{ secrets.WORKER_CONCURRENCY }}
+      WORKER_MAX_RETRIES: ${{ secrets.WORKER_MAX_RETRIES }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -70,7 +115,15 @@ jobs:
           cache: npm
 
       - name: Install deps
-        run: npm ci
+        run: npm ci --include=dev
+
+      - name: Restore model cache
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ runner.os }}-${{ hashFiles('models/manifest.json') }}
+          restore-keys: |
+            models-${{ runner.os }}-
 
       - name: Prisma migrate (deploy)
         run: npx prisma migrate deploy
