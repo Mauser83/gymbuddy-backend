@@ -10,8 +10,8 @@ import {
   CreateWorkoutSessionInput,
   UpdateWorkoutSessionInput,
 } from './exerciselog.types';
-import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { PrismaClient } from '../../prisma';
 import { PermissionService } from '../core/permission.service';
 
 export class ExerciseLogService {

@@ -1,6 +1,5 @@
-import { ImageJobStatus } from '../../generated/prisma';
-import type { ImageQueue } from '../../generated/prisma';
-import type { PrismaClient } from '../../lib/prisma';
+import { ImageJobStatus } from '../../prisma';
+import type { ImageQueue, PrismaClient } from '../../prisma';
 
 export type QueueJob = Pick<
   ImageQueue,

@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import { prisma } from '../../prisma';
 
 type Scope = 'GLOBAL' | 'GYM' | 'AUTO';
 

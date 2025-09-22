@@ -1,6 +1,5 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-import { PrismaClient } from '../../../src/lib/prisma';
 import { validateInput } from '../../../src/middlewares/validation';
 import {
   CreateExerciseLogDto,
@@ -9,6 +8,7 @@ import {
   UpdateWorkoutSessionDto,
 } from '../../../src/modules/exerciselog/exerciselog.dto';
 import { ExerciseLogService } from '../../../src/modules/exerciselog/exerciselog.service';
+import { PrismaClient } from '../../../src/prisma';
 
 jest.mock('../../../src/middlewares/validation');
 

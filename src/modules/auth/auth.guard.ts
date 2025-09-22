@@ -3,7 +3,7 @@ import { GraphQLError } from 'graphql';
 import { verify } from 'jsonwebtoken';
 
 import { AppRole, UserRole, GymRole, AuthContext } from './auth.types';
-import { prisma } from '../../lib/prisma';
+import { prisma } from '../../prisma';
 import { JWT_SECRET } from '../../server';
 import { AuditService } from '../core/audit.service';
 import { DIContainer } from '../core/di.container';

@@ -9,10 +9,9 @@ import {
   UpdateGymEquipmentDto,
 } from './gym.dto';
 import { CreateGymInput, UpdateGymInput } from './gym.types';
-import { ImageJobStatus } from '../../generated/prisma';
 import { pubsub } from '../../graphql/rootResolvers';
-import { PrismaClient } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { ImageJobStatus, PrismaClient } from '../../prisma';
 import { makeKey } from '../../utils/makeKey';
 import { PermissionType } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';

@@ -11,7 +11,6 @@ import { getPort } from 'get-port-please';
 
 import resolvers from '../src/graphql/rootResolvers';
 import typeDefs from '../src/graphql/rootSchema';
-import { prisma } from '../src/lib/prisma';
 import { AuthContext, UserRole } from '../src/modules/auth/auth.types';
 import { PermissionService } from '../src/modules/core/permission.service';
 import { ImageIntakeService } from '../src/modules/images/image-intake.service';
@@ -19,6 +18,7 @@ import { ImageModerationService } from '../src/modules/images/image-moderation.s
 import { ImagePromotionService } from '../src/modules/images/image-promotion.service';
 import { MediaService } from '../src/modules/media/media.service';
 import { RecognitionService } from '../src/modules/recognition/recognition.service';
+import { prisma } from '../src/prisma';
 import { ensureSafeDb } from '../src/utils/ensure-safe-db';
 
 async function cleanDatabase() {

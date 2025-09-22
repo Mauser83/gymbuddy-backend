@@ -17,9 +17,8 @@ import {
   ApproveGlobalSuggestionDto,
   RejectGlobalSuggestionDto,
 } from './images.dto';
-import { ImageJobStatus } from '../../generated/prisma';
-import type { Prisma as PrismaTypes } from '../../generated/prisma';
-import { PrismaClient, Prisma } from '../../lib/prisma';
+import type { Prisma as PrismaTypes } from '../../prisma';
+import { ImageJobStatus, PrismaClient, Prisma } from '../../prisma';
 import { fileExtFrom } from '../../utils/makeKey';
 import { verifyGymScope } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';

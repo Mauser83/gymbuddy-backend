@@ -1,11 +1,11 @@
-import { prisma } from '../../../src/lib/prisma';
 import { UserService } from '../../../src/modules/auth/user.service';
 import { AuditService } from '../../../src/modules/core/audit.service';
 import { DIContainer } from '../../../src/modules/core/di.container';
 import { PermissionService } from '../../../src/modules/core/permission.service';
 import { SharingService } from '../../../src/modules/workoutplan/workoutplanSharing.service';
+import { prisma } from '../../../src/prisma';
 
-jest.mock('../../../src/lib/prisma', () => {
+jest.mock('../../../src/prisma', () => {
   const prisma = {};
   return { prisma, PrismaClient: class {} };
 });

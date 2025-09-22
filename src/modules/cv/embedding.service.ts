@@ -1,6 +1,6 @@
 import { GetImageEmbeddingsByImageDto, UpsertImageEmbeddingDto } from './embedding.dto';
-import { Prisma, PrismaClient, prisma } from '../../lib/prisma';
 import { validateInput } from '../../middlewares/validation';
+import { Prisma, PrismaClient, prisma } from '../../prisma';
 
 export class EmbeddingService {
   private prisma: PrismaClient;

@@ -10,9 +10,9 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 
-import { PrismaClient } from '../../../src/lib/prisma';
 import { AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
 import { ImagePromotionService } from '../../../src/modules/images/image-promotion.service';
+import { PrismaClient } from '../../../src/prisma';
 
 process.env.EMBED_VENDOR = 'local';
 process.env.EMBED_MODEL = 'openclip-vit-b32';

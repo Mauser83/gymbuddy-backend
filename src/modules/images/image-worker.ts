@@ -5,8 +5,7 @@ import { initLocalOpenCLIP, embedImage } from './embedding/local-openclip-light'
 import { QueueRunnerService, type QueueJob } from './queue-runner.service';
 import { createSafetyProvider } from './safety';
 import { hasPerson } from './safety/local-person';
-import { ImageJobStatus } from '../../generated/prisma';
-import { prisma } from '../../lib/prisma';
+import { ImageJobStatus, prisma } from '../../prisma';
 import { writeImageEmbedding } from '../cv/embeddingWriter';
 import { userIsTrustedForGym } from '../gym/permission-helpers';
 import { copyObjectIfMissing, deleteObjectIgnoreMissing } from '../media/media.service';
