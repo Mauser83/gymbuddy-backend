@@ -59,7 +59,7 @@ jest.mock('../../../src/modules/cv/knn.service', () => ({
   knnFromVectorGlobal: knnFromVectorGlobalMock,
 }));
 
-jest.mock('../../../src/modules/images/image-worker', () => ({
+jest.mock('../../../src/modules/images/image-worker.js', () => ({
   kickBurstRunner: kickBurstRunnerMock,
 }));
 

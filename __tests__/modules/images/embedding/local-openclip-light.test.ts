@@ -2,7 +2,7 @@ import {
   fp16ToFloat32Array,
   l2NormalizeChecked,
   resolveOrtLogLevel,
-} from '../../../src/modules/images/embedding/local-openclip-light';
+} from '../../../../src/modules/images/embedding/local-openclip-light';
 
 describe('local-openclip-light helpers', () => {
   const originalNodeEnv = process.env.NODE_ENV;

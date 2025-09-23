@@ -1,7 +1,20 @@
 import { verifyRoles } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';
 
+type ImageWorkerModule = typeof import('../images/image-worker.js');
+
 let isRunning = false;
+let loadImageWorker: () => Promise<ImageWorkerModule> = () =>
+  import('../images/image-worker.js');
+
+export const __setImageWorkerLoader = (loader?: typeof loadImageWorker) => {
+  loadImageWorker = loader ?? (() => import('../images/image-worker.js'));
+};
+
+export const __resetImageWorkerState = () => {
+  isRunning = false;
+  __setImageWorkerLoader();
+};
 
 export const WorkerResolvers = {
   Mutation: {
@@ -19,7 +32,7 @@ export const WorkerResolvers = {
       isRunning = true;
       setImmediate(async () => {
         try {
-          const { runOnce } = await import('../images/image-worker.js');
+          const { runOnce } = await loadImageWorker();
           await runOnce(max);
         } catch (err) {
           console.error('[image-worker] runOnce error:', err);

@@ -98,7 +98,7 @@ jest.mock('../../../src/prisma', () => ({
 }));
 
 function importWorker() {
-  return Promise.resolve(require('../../../src/modules/images/image-worker'));
+  return Promise.resolve(require('../../../src/modules/images/image-worker.js'));
 }
 
 const BASE_ENV = {
