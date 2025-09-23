@@ -4,6 +4,26 @@ import sharp, { cache, concurrency } from 'sharp';
 
 import { ensureModelFile } from '../models.ensure';
 
+const shouldLog = () => process.env.EMBED_LOG === '1' || process.env.NODE_ENV !== 'test';
+const log = (...args: unknown[]) => {
+  if (shouldLog()) {
+    console.log(...(args as any[]));
+  }
+};
+
+export type OrtLogLevel = 0 | 1 | 2 | 3 | 4;
+
+export function resolveOrtLogLevel(): OrtLogLevel {
+  const explicit = process.env.ORT_LOG_LEVEL;
+  if (explicit !== undefined) {
+    const parsed = Number(explicit);
+    if (Number.isFinite(parsed)) {
+      return Math.min(Math.max(parsed, 0), 4) as OrtLogLevel;
+    }
+  }
+  return (process.env.NODE_ENV === 'test' ? 3 : 0) as OrtLogLevel;
+}
+
 // Safer sharp defaults
 concurrency(1);
 cache(false);
@@ -12,7 +32,7 @@ cache(false);
 // --- Runtime & memory knobs (MUST set env threads=1 too) ---
 function mkSessionOptions(): ort.InferenceSession.SessionOptions {
   const so: Partial<ort.InferenceSession.SessionOptions> = {};
-  so.logSeverityLevel = 0;
+  so.logSeverityLevel = resolveOrtLogLevel();
   so.intraOpNumThreads = 1;
   so.interOpNumThreads = 1;
   so.graphOptimizationLevel = 'basic'; // 'all' can spike memory
@@ -33,7 +53,7 @@ const MEAN = Float32Array.from([0.48145466, 0.4578275, 0.40821073]);
 const STD = Float32Array.from([0.26862954, 0.26130258, 0.27577711]);
 
 // Correct FP16 → FP32 conversion
-function fp16ToFloat32Array(u16: Uint16Array): Float32Array {
+export function fp16ToFloat32Array(u16: Uint16Array): Float32Array {
   const out = new Float32Array(u16.length);
   for (let i = 0; i < u16.length; i++) {
     const h = u16[i];
@@ -113,7 +133,7 @@ async function toCHWFloat32(input: Buffer, W: number, H: number): Promise<Float3
   return chw;
 }
 
-function l2NormalizeChecked(vec: Float32Array): Float32Array {
+export function l2NormalizeChecked(vec: Float32Array): Float32Array {
   const D = vec.length;
   if (D !== 512 && D !== 1 * 512) {
     throw new Error(`[embed] unexpected embed length ${D}; expected 512`);
@@ -193,17 +213,17 @@ export async function initLocalOpenCLIP(): Promise<void> {
 
     const so = mkSessionOptions();
     const sess = await ort.InferenceSession.create(modelPath, so);
-    console.log('[embed] inputs:', sess.inputNames);
-    console.log('[embed] outputs:', sess.outputNames);
+    log('[embed] inputs:', sess.inputNames);
+    log('[embed] outputs:', sess.outputNames);
     const inName = sess.inputNames[0];
     const outName = sess.outputNames[0];
     const inMeta = (sess.inputMetadata as any)[inName];
     const outMeta = (sess.outputMetadata as any)[outName];
-    console.log('[embed] input meta:', {
+    log('[embed] input meta:', {
       type: inMeta?.type,
       dims: inMeta?.dimensions,
     });
-    console.log('[embed] output meta:', {
+    log('[embed] output meta:', {
       type: outMeta?.type,
       dims: outMeta?.dimensions,
     });
@@ -215,7 +235,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
     const md = sess.inputMetadata as unknown as Record<string, Metadata>;
     const meta = md[INPUT_NAME];
     const dimsRaw = meta?.dimensions ?? [];
-    console.log('[openclip] input dims raw:', JSON.stringify(dimsRaw));
+    log('[openclip] input dims raw:', JSON.stringify(dimsRaw));
 
     const ENV_SIZE = Number(process.env.EMBED_IMAGE_SIZE ?? process.env.CLIP_IMAGE_SIZE);
     let targetH: number | undefined;
@@ -236,7 +256,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
             await sess.run({ [INPUT_NAME]: dummy });
             targetH = s;
             targetW = s;
-            console.log(`[openclip] size autodetected by probe: ${s}x${s}`);
+            log(`[openclip] size autodetected by probe: ${s}x${s}`);
             break;
           } catch {
             // try next
@@ -252,7 +272,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
 
     TARGET_H = targetH!;
     TARGET_W = targetW!;
-    console.log(`[openclip] resolved input size: ${TARGET_H}x${TARGET_W}`);
+    log(`[openclip] resolved input size: ${TARGET_H}x${TARGET_W}`);
 
     const oMd = sess.outputMetadata as unknown as Record<string, Metadata>;
     const odm = oMd[OUTPUT_NAME];
@@ -261,7 +281,7 @@ export async function initLocalOpenCLIP(): Promise<void> {
     if (D !== 512) throw new Error(`Unexpected embedding dim ${D}, expected 512.`);
 
     CLIP_SESS = sess;
-    console.log(
+    log(
       `[openclip] loaded ${modelPath} | in=${INPUT_NAME} out=${OUTPUT_NAME} size=${TARGET_W}x${TARGET_H}`,
     );
     if (process.env.EMBED_SELFTEST === '1') {

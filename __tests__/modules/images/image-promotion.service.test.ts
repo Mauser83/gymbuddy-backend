@@ -10,8 +10,14 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 
-import { AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
-import { ImagePromotionService } from '../../../src/modules/images/image-promotion.service';
+import { AppRole, AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
+import {
+  GlobalCandidateScoreInput,
+  ImagePromotionService,
+  cosine,
+  parsePgvectorText,
+  scoreGlobalCandidate,
+} from '../../../src/modules/images/image-promotion.service';
 import { PrismaClient } from '../../../src/prisma';
 
 process.env.EMBED_VENDOR = 'local';
@@ -63,10 +69,145 @@ function createPrismaMock() {
   return prisma;
 }
 
+describe('helper utilities', () => {
+  test('parsePgvectorText parses valid arrays', () => {
+    expect(parsePgvectorText('[1.5, -2, 0]')).toEqual([1.5, -2, 0]);
+  });
+
+  test('parsePgvectorText returns null for invalid inputs', () => {
+    expect(parsePgvectorText('not-an-array')).toBeNull();
+    expect(parsePgvectorText('[a, b]')).toBeNull();
+  });
+
+  test('cosine handles mismatched inputs gracefully', () => {
+    expect(cosine([1, 2], [1])).toBe(0);
+    expect(cosine([0, 0], [0, 0])).toBe(0);
+  });
+
+  test('scoreGlobalCandidate composes reason codes', () => {
+    const input: GlobalCandidateScoreInput = {
+      globalCount: 0,
+      hiRes: true,
+      simMax: 0.99,
+    };
+    const result = scoreGlobalCandidate(input);
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.reasons).toEqual(expect.arrayContaining(['NO_GLOBAL', 'HI_RES', 'FRESH']));
+  });
+});
+
+describe('maybeCreateGlobalSuggestion', () => {
+  function setup(overrides?: Partial<ReturnType<typeof createSuggestionPrismaMock>>) {
+    const base = createSuggestionPrismaMock();
+    const prisma = {
+      ...base,
+      ...(overrides ?? {}),
+    } as ReturnType<typeof createSuggestionPrismaMock>;
+    const svc = new ImagePromotionService(prisma as unknown as PrismaClient);
+    (svc as any).s3 = { send: jest.fn().mockResolvedValue({ ContentLength: 400 * 1024 }) };
+    jest.spyOn(svc as any, 's3CopyIfMissing').mockResolvedValue(undefined);
+    return { svc, prisma };
+  }
+
+  function createSuggestionPrismaMock() {
+    return {
+      equipmentImage: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      $queryRawUnsafe: jest
+        .fn()
+        .mockResolvedValue([{ id: 'dup', v: '[0.9,0.9]' }]),
+      globalImageSuggestion: { upsert: jest.fn() },
+    } as any;
+  }
+
+  test('skips when vector or checksum missing', async () => {
+    const { svc, prisma } = setup();
+    await (svc as any).maybeCreateGlobalSuggestion({
+      equipmentId: 1,
+      gymImageId: 'g1',
+      storageKey: 'key',
+      sha256: '',
+      vector: [],
+    });
+    expect(prisma.globalImageSuggestion.upsert).not.toHaveBeenCalled();
+  });
+
+  test('persists suggestion with scoring metadata', async () => {
+    const { svc, prisma } = setup();
+    await (svc as any).maybeCreateGlobalSuggestion({
+      equipmentId: 2,
+      gymImageId: 'g1',
+      storageKey: 'private/uploads/img.jpg',
+      sha256: 'abc',
+      vector: [1, 1],
+    });
+
+    expect((svc as any).s3CopyIfMissing).toHaveBeenCalledWith(
+      'private/uploads/img.jpg',
+      expect.stringContaining('private/global/candidates/2/abc.'),
+    );
+
+    expect(prisma.globalImageSuggestion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { sha256: 'abc' },
+        update: expect.objectContaining({
+          usefulnessScore: expect.any(Number),
+          reasonCodes: expect.arrayContaining(['NO_GLOBAL', 'HI_RES', 'FRESH']),
+          nearDupImageId: 'dup',
+        }),
+      }),
+    );
+
+    const [{ update }] = prisma.globalImageSuggestion.upsert.mock.calls[0];
+    expect(update.usefulnessScore).toBeGreaterThanOrEqual(0);
+    expect(update.usefulnessScore).toBeLessThanOrEqual(1);
+  });
+
+  test('stops when duplicate global image already exists', async () => {
+    const { svc, prisma } = setup({
+      equipmentImage: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'existing' }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+    });
+
+    await (svc as any).maybeCreateGlobalSuggestion({
+      equipmentId: 2,
+      gymImageId: 'g1',
+      storageKey: 'key',
+      sha256: 'dup-sha',
+      vector: [0.5, 0.25],
+    });
+
+    expect(prisma.globalImageSuggestion.upsert).not.toHaveBeenCalled();
+  });
+
+  test('skips when equipment already has ample coverage', async () => {
+    const { svc, prisma } = setup({
+      equipmentImage: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(20),
+      },
+    });
+
+    await (svc as any).maybeCreateGlobalSuggestion({
+      equipmentId: 2,
+      gymImageId: 'g1',
+      storageKey: 'key',
+      sha256: 'abc',
+      vector: [0.1, 0.2],
+    });
+
+    expect(prisma.globalImageSuggestion.upsert).not.toHaveBeenCalled();
+  });
+});
+
 describe('promoteGymImageToGlobal', () => {
   const ctx: AuthContext = {
     userId: 1,
-    appRole: 'ADMIN',
+    appRole: AppRole.ADMIN,
     userRole: UserRole.USER,
     gymRoles: [],
     isPremium: false,
@@ -76,6 +217,7 @@ describe('promoteGymImageToGlobal', () => {
     imageIntakeService: {} as any,
     imagePromotionService: {} as any,
     imageModerationService: {} as any,
+    recognitionService: {} as any,
   };
 
   it('copies object and creates equipment image', async () => {

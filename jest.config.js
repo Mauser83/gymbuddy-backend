@@ -32,4 +32,7 @@ module.exports = {
   maxWorkers: 1, // Run tests serially to avoid port conflicts
   detectOpenHandles: true,
   forceExit: true,
+  collectCoverage: true,
+  collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.d.ts'],
+  coveragePathIgnorePatterns: ['<rootDir>/src/generated/'],
 };

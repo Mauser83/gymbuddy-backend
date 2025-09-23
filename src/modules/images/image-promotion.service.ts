@@ -33,7 +33,7 @@ const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 if (!BUCKET || !ACCOUNT_ID) throw new Error('R2_BUCKET/R2_ACCOUNT_ID must be set');
 
 // helper: parse pgvector text like "[0.12, -0.34, 0.56]" → number[]
-function parsePgvectorText(v: string | null | undefined): number[] | null {
+export function parsePgvectorText(v: string | null | undefined): number[] | null {
   if (!v) return null;
   const s = v.trim();
   if (s.length < 2 || s[0] !== '[' || s[s.length - 1] !== ']') return null;
@@ -47,7 +47,7 @@ function parsePgvectorText(v: string | null | undefined): number[] | null {
   return out;
 }
 
-function cosine(a: number[], b: number[]): number {
+export function cosine(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
   let dot = 0,
     na = 0,
@@ -61,15 +61,17 @@ function cosine(a: number[], b: number[]): number {
   return dot / Math.sqrt(na * nb);
 }
 
-function scoreGlobalCandidate({
-  globalCount,
-  hiRes,
-  simMax,
-}: {
+export type GlobalCandidateScoreInput = {
   globalCount: number;
   hiRes: boolean;
   simMax: number;
-}) {
+};
+
+export function scoreGlobalCandidate({
+  globalCount,
+  hiRes,
+  simMax,
+}: GlobalCandidateScoreInput) {
   let s = 0;
   const reasons: string[] = [];
   if (globalCount === 0) {

@@ -38,6 +38,12 @@ export class WorkoutPlanService {
     this.sharingService = sharingService;
   }
 
+  private debug(...args: unknown[]) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(...(args as any[]));
+    }
+  }
+  
   private async verifyWorkoutPlanAccess(userId: number, workoutPlanId: number) {
     const userRoles = await this.permissionService.getUserRoles(userId);
 
@@ -52,7 +58,7 @@ export class WorkoutPlanService {
     const isOwner = workoutPlan.userId === userId;
     const isShared = workoutPlan.sharedWith.some((user) => user.id === userId);
 
-    console.log({
+    this.debug({
       workoutPlan,
       userId,
       roles: userRoles,
@@ -151,7 +157,7 @@ export class WorkoutPlanService {
       },
     });
 
-    console.log('createWorkoutPlan → userId:', userId);
+    this.debug('createWorkoutPlan → userId:', userId);
 
     const groupMap = await this.createPlanGroups(workoutPlan.id, data.groups || []);
     await this.createPlanExercises(workoutPlan.id, data.exercises || [], groupMap);
