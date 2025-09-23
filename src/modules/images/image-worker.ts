@@ -290,6 +290,8 @@ async function processJob(job: QueueJob) {
   }
   if (!key) throw new Error('Job missing storageKey');
 
+  const jobWithStorage = { ...job, storageKey: key };
+
   const type = (job.jobType ?? '').trim().toUpperCase();
   switch (type) {
     case 'HASH': {
@@ -319,7 +321,7 @@ async function processJob(job: QueueJob) {
       break;
     }
     case 'EMBED':
-      await handleEMBED(job);
+      await handleEMBED(jobWithStorage);
       break;
     default:
       throw new Error(`Unsupported jobType: ${job.jobType}`);

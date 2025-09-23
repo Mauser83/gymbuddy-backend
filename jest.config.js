@@ -26,6 +26,11 @@ module.exports = {
   },
 
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*image-worker)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*subscription.resolvers)\\.js$': '$1.ts',
+
+  },
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
 
   testTimeout: 30000,

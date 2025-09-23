@@ -220,6 +220,33 @@ describe('image worker processOnce', () => {
     expect(mockQueue.markDone).toHaveBeenCalledWith(1);
   });
 
+  it('records hashes for non-candidate uploads without moving files', async () => {
+    mockQueue.claimBatch.mockResolvedValueOnce([
+      {
+        id: 21,
+        jobType: 'HASH',
+        storageKey: 'public/gym/photo.jpg',
+        priority: 0,
+      },
+    ] as any);
+
+    const worker = await importWorker();
+    await worker.processOnce();
+
+    expect(mockCopyObjectIfMissing).not.toHaveBeenCalled();
+    expect(mockDeleteObjectIgnoreMissing).not.toHaveBeenCalled();
+    expect(prismaFn.trainingCandidate.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          storageKey: 'public/gym/photo.jpg',
+          OR: [{ hash: null }, { hash: '' }],
+        }),
+        data: { hash: expect.stringMatching(/^[0-9a-f]{64}$/) },
+      }),
+    );
+    expect(mockQueue.markDone).toHaveBeenCalledWith(21);
+  });
+
   it('quarantines unsafe images and falls back when status update fails', async () => {
     mockSafetyCheck.mockResolvedValue({ nsfwScore: 0.95 });
     mockHasPerson.mockResolvedValue(true);
@@ -263,6 +290,31 @@ describe('image worker processOnce', () => {
     expect(prismaFn.imageQueue.create).not.toHaveBeenCalled();
   });
 
+  it('enqueues embedding jobs for safe images', async () => {
+    mockQueue.claimBatch.mockResolvedValueOnce([
+      {
+        id: 4,
+        jobType: 'SAFETY',
+        storageKey: 'private/gym/1/candidates/safe.jpg',
+        priority: 2,
+      },
+    ] as any);
+
+    const worker = await importWorker();
+    await worker.processOnce();
+
+    expect(prismaFn.imageQueue.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          jobType: 'EMBED',
+          storageKey: 'private/gym/1/candidates/safe.jpg',
+          priority: 2,
+        }),
+      }),
+    );
+    expect(mockQueue.markDone).toHaveBeenCalledWith(4);
+  });
+
   it('writes embeddings for fresh training candidates', async () => {
     mockEmbedImage.mockResolvedValue(Float32Array.from([3, 4]));
     prismaFn.trainingCandidate.findFirst.mockResolvedValue({
@@ -293,6 +345,101 @@ describe('image worker processOnce', () => {
     expect(rest).toEqual([42, 'vendor', 'model', 'version']);
     expect(mockQueue.markDone).toHaveBeenCalledWith(3);
     expect(prismaFn.imageQueue.create).not.toHaveBeenCalled();
+  });
+
+  it('approves trusted gym uploads when auto-approve is enabled', async () => {
+    mockEmbedImage.mockResolvedValue(Float32Array.from([0, 2]));
+    prismaFn.trainingCandidate.findFirst.mockResolvedValue({
+      id: 'tc-1',
+      gymId: 'gym-9',
+      uploaderUserId: 'user-7',
+      imageId: 'img-4',
+    });
+    prismaFn.gymEquipmentImage.findFirst.mockResolvedValue({
+      id: 'img-4',
+      gymId: 'gym-9',
+    });
+    prismaFn.gym.findUnique.mockResolvedValue({ autoApproveManagerUploads: true });
+    mockUserIsTrustedForGym.mockResolvedValue(true);
+
+    mockQueue.claimBatch.mockResolvedValueOnce([
+      {
+        id: 5,
+        jobType: 'EMBED',
+        storageKey: 'private/gym/9/images/pic.jpg',
+      },
+    ] as any);
+
+    const worker = await importWorker();
+    await worker.processOnce();
+
+    expect(mockUserIsTrustedForGym).toHaveBeenCalledWith('user-7', 'gym-9');
+    expect(prismaFn.trainingCandidate.update).toHaveBeenCalledWith({
+      where: { id: 'tc-1' },
+      data: { status: 'approved' },
+    });
+    expect(prismaFn.gymEquipmentImage.updateMany).toHaveBeenCalledWith({
+      where: { id: 'img-4' },
+      data: expect.objectContaining({
+        status: 'APPROVED',
+        approvedByUserId: 'user-7',
+      }),
+    });
+    expect(mockWriteImageEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({ target: 'GYM', imageId: 'img-4', gymId: 'gym-9' }),
+    );
+    expect(mockQueue.markDone).toHaveBeenCalledWith(5);
+  });
+
+  it('writes embeddings for equipment images discovered via lookup', async () => {
+    mockEmbedImage.mockResolvedValue(Float32Array.from([1, 1, 1]));
+    prismaFn.equipmentImage.findUnique.mockResolvedValueOnce({ storageKey: 'global/eq/img.jpg' });
+    prismaFn.equipmentImage.findFirst.mockResolvedValueOnce({ id: 'eq-11' });
+
+    mockQueue.claimBatch.mockResolvedValueOnce([
+      {
+        id: 6,
+        jobType: 'EMBED',
+        imageId: 'eq-11',
+        storageKey: null,
+      },
+    ] as any);
+
+    const worker = await importWorker();
+    await worker.processOnce();
+
+    expect(prismaFn.equipmentImage.findUnique).toHaveBeenCalledWith({
+      where: { id: 'eq-11' },
+      select: { storageKey: true },
+    });
+    expect(prismaFn.equipmentImage.findFirst).toHaveBeenCalledWith({
+      where: { storageKey: 'global/eq/img.jpg' },
+      select: { id: true },
+    });
+    expect(mockWriteImageEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({ target: 'GLOBAL', imageId: 'eq-11' }),
+    );
+    expect(mockQueue.markDone).toHaveBeenCalledWith(6);
+  });
+
+  it('retries transient errors for hash jobs when under the retry limit', async () => {
+    const err = new Error('temporary-r2-failure');
+    mockTransformToByteArray.mockRejectedValueOnce(err);
+    mockQueue.claimBatch.mockResolvedValueOnce([
+      {
+        id: 22,
+        jobType: 'HASH',
+        storageKey: 'private/gym/1/candidates/flaky.jpg',
+        attempts: 0,
+      },
+    ] as any);
+
+    const worker = await importWorker();
+    await worker.processOnce();
+
+    expect(mockQueue.markFailed).toHaveBeenCalledWith(22, err, 30);
+    expect(prismaFn.imageQueue.update).not.toHaveBeenCalled();
+    expect(mockQueue.markDone).not.toHaveBeenCalled();
   });
 
   it('marks exhausted jobs as failed when unsupported', async () => {
