@@ -1,17 +1,15 @@
-const mockAsyncIterable = jest.fn();
+import { pubsub } from '../../../src/graphql/rootResolvers';
+import { SubscriptionResolvers } from '../../../src/graphql/subscription.resolvers';
 
-jest.mock('../../src/graphql/rootResolvers.js', () => ({
-  pubsub: {
-    asyncIterableIterator: mockAsyncIterable,
-  },
-}));
-
-const { SubscriptionResolvers } = require('../../src/graphql/subscription.resolvers.js') as typeof import('../../src/graphql/subscription.resolvers.js');
+const mockAsyncIterable = jest.spyOn(pubsub, 'asyncIterableIterator');
 
 describe('SubscriptionResolvers', () => {
   beforeEach(() => {
     mockAsyncIterable.mockReset();
-    mockAsyncIterable.mockImplementation((topics: string[]) => ({ topics }));
+  });
+
+  afterAll(() => {
+    mockAsyncIterable.mockRestore();
   });
 
   it('maps subscription fields to their pubsub topics', () => {
@@ -23,11 +21,19 @@ describe('SubscriptionResolvers', () => {
     } as const;
 
     for (const [field, topics] of Object.entries(expectedTopics)) {
-      const resolver = (SubscriptionResolvers.Subscription as Record<string, { subscribe: () => unknown }>)[field];
+      const resolver = (
+        SubscriptionResolvers.Subscription as Record<
+          string,
+          { subscribe: () => ReturnType<typeof pubsub.asyncIterableIterator> }
+        >
+      )[field];
       expect(typeof resolver.subscribe).toBe('function');
 
+      const sentinel = Symbol(field) as unknown as ReturnType<typeof pubsub.asyncIterableIterator>;
+      mockAsyncIterable.mockReturnValueOnce(sentinel);
+
       const iterator = resolver.subscribe();
-      expect(iterator).toEqual({ topics });
+      expect(iterator).toBe(sentinel);
     }
 
     expect(mockAsyncIterable).toHaveBeenCalledTimes(Object.keys(expectedTopics).length);
@@ -36,5 +42,3 @@ describe('SubscriptionResolvers', () => {
     );
   });
 });
-
-export {};

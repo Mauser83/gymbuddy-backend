@@ -30,4 +30,18 @@ describe('auth.helpers', () => {
   test('verifyToken returns null for invalid token', () => {
     expect(verifyToken('invalid.token')).toBeNull();
   });
+
+  test('verifyToken returns null when JWT secret missing', () => {
+    const originalSecret = process.env.JWT_SECRET;
+    delete process.env.JWT_SECRET;
+
+    const token = sign(
+      { userId: 2, email: 'missing@example.com', role: 'ADMIN' },
+      'another-secret',
+    );
+
+    expect(verifyToken(token)).toBeNull();
+
+    process.env.JWT_SECRET = originalSecret;
+  });
 });

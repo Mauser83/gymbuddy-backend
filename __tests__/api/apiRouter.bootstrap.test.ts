@@ -14,7 +14,7 @@ describe('apiRouter bootstrap', () => {
   it('warns when the Google Maps API key is missing', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    await import('../../src/api/apiRouter.js');
+    await Promise.resolve().then(() => require('../../src/api/apiRouter'));
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[apiRouter] Maps_API_KEY is not set. Google calls will fail.',
@@ -27,7 +27,7 @@ describe('apiRouter bootstrap', () => {
     process.env.GOOGLE_MAPS_API_KEY = 'test-key';
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    await import('../../src/api/apiRouter.js');
+    await Promise.resolve().then(() => require('../../src/api/apiRouter'));
 
     expect(warnSpy).not.toHaveBeenCalled();
 
