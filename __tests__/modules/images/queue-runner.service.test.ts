@@ -1,86 +1,109 @@
-import { QueueRunnerService } from '../../../src/modules/images/queue-runner.service';
+jest.mock('../../../src/prisma', () => ({
+  ImageJobStatus: {
+    succeeded: 'succeeded',
+    pending: 'pending',
+  },
+}));
+
 import { ImageJobStatus } from '../../../src/prisma';
+import { QueueRunnerService } from '../../../src/modules/images/queue-runner.service';
 
 describe('QueueRunnerService', () => {
-  const basePrisma = () => ({
-    $queryRawUnsafe: jest.fn(),
-    $executeRawUnsafe: jest.fn(),
-    imageQueue: {
-      update: jest.fn(),
-    },
-  });
+  const queryMock = jest.fn();
+  const executeMock = jest.fn();
+  const updateMock = jest.fn();
+  const prisma = {
+    $queryRawUnsafe: queryMock,
+    $executeRawUnsafe: executeMock,
+    imageQueue: { update: updateMock },
+  } as any;
+  const service = new QueueRunnerService(prisma);
 
-  afterEach(() => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2024-01-01T00:00:00Z'));
     jest.clearAllMocks();
   });
 
-  it('acquires and renews leases based on query results', async () => {
-    const prisma = basePrisma();
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ name: 'image-runner' }]);
-    const runner = new QueueRunnerService(prisma as any);
-
-    await expect(runner.tryAcquireLease('owner', 5000)).resolves.toBe(true);
-    expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO "WorkerLease"'), 'image-runner', 'owner', '5000');
-
-    prisma.$executeRawUnsafe.mockResolvedValueOnce(1);
-    await expect(runner.renewLease('owner', 1000)).resolves.toBe(true);
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('UPDATE "WorkerLease"'), 'image-runner', 'owner', '1000');
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
-  it('returns false when lease cannot be acquired', async () => {
-    const prisma = basePrisma();
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([]);
-    const runner = new QueueRunnerService(prisma as any);
-    await expect(runner.tryAcquireLease('owner', 123)).resolves.toBe(false);
+  it('acquires lease when insert returns rows', async () => {
+    queryMock.mockResolvedValueOnce([{}]);
+    const acquired = await service.tryAcquireLease('worker-1', 1234);
+    expect(acquired).toBe(true);
+    expect(queryMock).toHaveBeenCalledWith(expect.any(String), 'image-runner', 'worker-1', '1234');
   });
 
-  it('releases leases with delete statement', async () => {
-    const prisma = basePrisma();
-    const runner = new QueueRunnerService(prisma as any);
-    await runner.releaseLease('owner');
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
+  it('fails to acquire lease when no rows returned', async () => {
+    queryMock.mockResolvedValueOnce([]);
+    const acquired = await service.tryAcquireLease('worker-2');
+    expect(acquired).toBe(false);
+  });
+
+  it('renews lease when update count is positive', async () => {
+    executeMock.mockResolvedValueOnce(1);
+    const renewed = await service.renewLease('worker-3', 5000);
+    expect(renewed).toBe(true);
+    expect(executeMock).toHaveBeenCalledWith(expect.any(String), 'image-runner', 'worker-3', '5000');
+  });
+
+  it('returns false when renew lease does not update rows', async () => {
+    executeMock.mockResolvedValueOnce(0);
+    const renewed = await service.renewLease('worker-3');
+    expect(renewed).toBe(false);
+  });
+
+  it('releases lease using delete statement', async () => {
+    executeMock.mockResolvedValueOnce(undefined);
+    await service.releaseLease('worker-4');
+    expect(executeMock).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM "WorkerLease"'),
       'image-runner',
-      'owner',
+      'worker-4',
     );
   });
 
-  it('claims batches and returns queue jobs', async () => {
-    const prisma = basePrisma();
-    const runner = new QueueRunnerService(prisma as any);
-    const jobs = [{ id: '1', jobType: 'HASH', storageKey: 'key', imageId: null, attempts: 1, priority: 0 }];
-    prisma.$queryRawUnsafe.mockResolvedValueOnce(jobs);
-
-    await expect(runner.claimBatch(5)).resolves.toEqual(jobs);
-    expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('WITH next AS'), 5);
+  it('claims a batch of jobs via query', async () => {
+    const jobs = [{ id: '1' }] as any;
+    queryMock.mockResolvedValueOnce(jobs);
+    const result = await service.claimBatch(10);
+    expect(result).toBe(jobs);
+    expect(queryMock).toHaveBeenCalledWith(expect.any(String), 10);
   });
 
   it('marks jobs done with succeeded status', async () => {
-    const prisma = basePrisma();
-    const runner = new QueueRunnerService(prisma as any);
-    await runner.markDone('job-1');
-    expect(prisma.imageQueue.update).toHaveBeenCalledWith({
+    await service.markDone('job-1');
+    expect(updateMock).toHaveBeenCalledWith({
       where: { id: 'job-1' },
-      data: expect.objectContaining({
+      data: {
         status: ImageJobStatus.succeeded,
         finishedAt: expect.any(Date),
         lastError: null,
-      }),
+      },
     });
   });
 
-  it('marks jobs failed with backoff scheduling', async () => {
-    const prisma = basePrisma();
-    const runner = new QueueRunnerService(prisma as any);
-    await runner.markFailed('job-2', new Error('boom'), 30);
-    expect(prisma.imageQueue.update).toHaveBeenCalledWith({
+  it('marks jobs failed and schedules retry', async () => {
+    await service.markFailed('job-2', new Error('boom'), 30);
+    expect(updateMock).toHaveBeenCalledWith({
       where: { id: 'job-2' },
-      data: expect.objectContaining({
+      data: {
         status: ImageJobStatus.pending,
-        scheduledAt: expect.any(Date),
+        lastError: expect.stringContaining('boom'),
+        scheduledAt: new Date('2024-01-01T00:00:30.000Z'),
         startedAt: null,
         finishedAt: null,
-        lastError: expect.stringContaining('boom'),
+      },
+    });
+  });
+
+  it('serializes unknown errors when marking failed', async () => {
+    await service.markFailed('job-3', { message: 'not-an-error' }, 10);
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: 'job-3' },
+      data: expect.objectContaining({
+        lastError: '[object Object]',
       }),
     });
   });

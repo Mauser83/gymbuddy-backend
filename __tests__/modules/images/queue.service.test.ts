@@ -1,21 +1,17 @@
 import { priorityFromSource } from '../../../src/modules/images/queue.service';
 
 describe('priorityFromSource', () => {
-  it('returns high priority for recognition user jobs', () => {
-    expect(priorityFromSource('recognition_user')).toBe(100);
+  it.each([
+    ['recognition_user', 100],
+    ['gym_manager', 80],
+    ['gym_equipment', 80],
+    ['admin', 20],
+    ['backfill', 20],
+  ] as const)('returns %s priority %i', (source, expected) => {
+    expect(priorityFromSource(source)).toBe(expected);
   });
 
-  it('gives medium priority for gym submissions', () => {
-    expect(priorityFromSource('gym_manager')).toBe(80);
-    expect(priorityFromSource('gym_equipment')).toBe(80);
-  });
-
-  it('returns lower priority for admin and backfill', () => {
-    expect(priorityFromSource('admin')).toBe(20);
-    expect(priorityFromSource('backfill')).toBe(20);
-  });
-
-  it('defaults to zero for unknown sources', () => {
-    expect(priorityFromSource('something_else' as any)).toBe(0);
+  it('falls back to zero for unknown sources', () => {
+    expect(priorityFromSource('unknown' as any)).toBe(0);
   });
 });

@@ -23,9 +23,9 @@ describe('makeKey', () => {
   });
 
   it('rejects missing or invalid IDs', () => {
-    // @ts-expect-error - gymId is required for upload keys
+    // Intentionally omit the required gymId to ensure runtime validation triggers.
     expect(() => makeKey('upload', { equipmentId: 1 }, { now: FIXED })).toThrow(/gymId/);
-    // @ts-expect-error - equipmentId is required for global uploads
+    // Intentionally omit the required equipmentId to ensure runtime validation triggers.
     expect(() => makeKey('upload_global', { gymId: 1 }, { now: FIXED })).toThrow(/equipmentId/);
     // negative / non-integer
     expect(() => makeKey('upload_global', { equipmentId: 0 }, { now: FIXED })).toThrow(
@@ -35,12 +35,17 @@ describe('makeKey', () => {
   });
 
   it('rejects invalid ext and uuid', () => {
-    // @ts-expect-error - invalid extension must throw
-    expect(() => makeKey('upload', { gymId: 1 }, { now: FIXED, ext: 'gif' })).toThrow(
+    expect(() => makeKey('upload', { gymId: 1 }, { now: FIXED, ext: 'gif' as any })).toThrow(
       /jpg, png, webp/,
     );
     expect(() => makeKey('upload', { gymId: 1 }, { now: FIXED, uuid: 'not-a-uuid' })).toThrow(
       /UUID v4/,
+    );
+  });
+
+  it('throws for unsupported key kinds', () => {
+    expect(() => makeKey('golden' as any, { gymId: 1 }, { now: FIXED })).toThrow(
+      /Unsupported key kind/,
     );
   });
 });
@@ -50,6 +55,11 @@ describe('makeGymApprovedKey', () => {
     const key = makeGymApprovedKey(5, 'png', { now: FIXED, uuid: FIX_UUID });
     expect(key).toBe('private/gym/5/approved/2025/123e4567-e89b-4a12-9abc-1234567890ab.png');
   });
+
+  it('requires a positive integer gym identifier', () => {
+    expect(() => makeGymApprovedKey(0 as any, 'jpg')).toThrow(/positive integer/);
+    expect(() => makeGymApprovedKey(-1 as any, 'jpg')).toThrow(/positive integer/);
+  });
 });
 
 describe('fileExtFrom', () => {
@@ -57,6 +67,10 @@ describe('fileExtFrom', () => {
     expect(fileExtFrom('foo/bar.jpg')).toBe('jpg');
     expect(fileExtFrom('foo/bar', 'image/png')).toBe('png');
     expect(fileExtFrom('foo/bar')).toBe('jpg');
+  });
+
+  it('prefers mime type when the key suffix is too long to trust', () => {
+    expect(fileExtFrom('foo/bar.longextension', 'image/webp')).toBe('webp');
   });
 });
 
@@ -89,7 +103,108 @@ describe('parseKey & isValidStorageKey', () => {
       'public/unknown/1/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg',
       'public/golden/1/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.gif',
       'private/uploads/global/x/2025/01/123e4567-e89b-4a12-9abc-1234567890ab.jpg',
+      'private/gym/0/approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg',
+      'private/global/equipment/0/approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg',
     ];
     for (const k of bad) expect(isValidStorageKey(k)).toBe(false);
+  });
+
+  it('extracts uuid or sha fields for equipment approval keys', () => {
+    const uuidKey = 'private/global/equipment/12/quarantine/123e4567-e89b-4a12-9abc-1234567890ab.png';
+    const sha = 'a'.repeat(64);
+    const shaKey = `private/global/equipment/12/approved/${sha}.jpg`;
+
+    expect(parseKey(uuidKey)).toEqual({
+      kind: 'quarantine_global',
+      equipmentId: 12,
+      uuid: '123e4567-e89b-4a12-9abc-1234567890ab',
+      sha: undefined,
+      ext: 'png',
+    });
+
+    expect(parseKey(shaKey)).toEqual({
+      kind: 'approved_global',
+      equipmentId: 12,
+      uuid: undefined,
+      sha,
+      ext: 'jpg',
+    });
+  });
+
+  it('extracts uuid or sha fields for gym approval keys', () => {
+    const uuidKey = 'private/gym/77/approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg';
+    const sha = 'b'.repeat(64);
+    const shaKey = `private/gym/77/quarantine/${sha}.webp`;
+
+    expect(parseKey(uuidKey)).toEqual({
+      kind: 'approved_gym',
+      gymEquipmentId: 77,
+      uuid: '123e4567-e89b-4a12-9abc-1234567890ab',
+      sha: undefined,
+      ext: 'jpg',
+    });
+
+    expect(parseKey(shaKey)).toEqual({
+      kind: 'quarantine_gym',
+      gymEquipmentId: 77,
+      uuid: undefined,
+      sha,
+      ext: 'webp',
+    });
+  });
+
+  it('rejects approval keys missing required identifiers', () => {
+    expect(
+      isValidStorageKey('private/global/equipment//approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg'),
+    ).toBe(false);
+    expect(
+      isValidStorageKey('private/gym//quarantine/123e4567-e89b-4a12-9abc-1234567890ab.jpg'),
+    ).toBe(false);
+  });
+});
+
+describe('uuid generation fallbacks', () => {
+  const originalCrypto = global.crypto;
+
+  afterEach(() => {
+    if (originalCrypto) {
+      (global as any).crypto = originalCrypto;
+    } else {
+      delete (global as any).crypto;
+    }
+    jest.resetModules();
+    jest.unmock('crypto');
+  });
+
+  it('uses node randomUUID when web crypto is unavailable', () => {
+    const nodeRandomUUID = jest.fn().mockReturnValue('node-based-uuid');
+
+    jest.isolateModules(() => {
+      jest.doMock('crypto', () => ({ randomUUID: nodeRandomUUID }));
+      delete (global as any).crypto;
+
+      const mod = require('../../src/utils/makeKey') as typeof import('../../src/utils/makeKey');
+      const key = mod.makeKey('upload', { gymId: 11 }, { now: FIXED, ext: 'png' });
+
+      expect(nodeRandomUUID).toHaveBeenCalledTimes(1);
+      expect(key).toContain('node-based-uuid.png');
+    });
+  });
+
+  it('prefers web crypto randomUUID when available', () => {
+    const nodeRandomUUID = jest.fn().mockReturnValue('node-based-uuid');
+    const webRandomUUID = jest.fn().mockReturnValue('web-uuid');
+
+    jest.isolateModules(() => {
+      jest.doMock('crypto', () => ({ randomUUID: nodeRandomUUID }));
+      (global as any).crypto = { randomUUID: webRandomUUID };
+
+      const mod = require('../../src/utils/makeKey') as typeof import('../../src/utils/makeKey');
+      const key = mod.makeKey('upload', { gymId: 12 }, { now: FIXED, ext: 'png' });
+
+      expect(webRandomUUID).toHaveBeenCalledTimes(1);
+      expect(nodeRandomUUID).not.toHaveBeenCalled();
+      expect(key).toContain('web-uuid.png');
+    });
   });
 });
