@@ -144,6 +144,34 @@ describe('RecognitionService', () => {
     ).rejects.toThrow('Unsupported image extension');
   });
 
+  it('rejects expired recognition tickets before hitting storage', async () => {
+    const service = await loadService();
+    const token = (service as any).sign({
+      gid: 99,
+      key: 'private/recognition/99/expired.jpg',
+      exp: Math.floor(Date.now() / 1000) - 1,
+    });
+
+    await expect(service.recognizeImage(token)).rejects.toThrow('ticketToken expired');
+    expect(s3SendMock).not.toHaveBeenCalled();
+  });
+
+  it('throws when uploaded object is missing during recognition', async () => {
+    s3SendMock.mockImplementation(async (cmd) => {
+      if ((cmd as any).__type === 'HeadObjectCommand') {
+        const err: any = new Error('missing');
+        err.$metadata = { httpStatusCode: 404 };
+        throw err;
+      }
+      throw new Error(`unexpected command ${(cmd as any).__type}`);
+    });
+
+    const service = await loadService();
+    const token = (service as any).sign({ gid: 7, key: 'private/recognition/7/missing.jpg' });
+
+    await expect(service.recognizeImage(token, 1)).rejects.toThrow('Uploaded object not found');
+  });
+
   it('recognizes images and aggregates gym candidates', async () => {
     embedImageMock.mockResolvedValue(Float32Array.from({ length: 512 }, (_, idx) => (idx % 5) + 1));
     knnFromVectorGymMock.mockResolvedValue([
@@ -199,6 +227,58 @@ describe('RecognitionService', () => {
       source: 'GYM',
     });
     expect(result.attempt.attemptId).toBe('111');
+  });
+
+  it('favours global matches when gym scores are too low', async () => {
+    embedImageMock.mockResolvedValue(Float32Array.from({ length: 512 }, () => 1));
+    knnFromVectorGymMock.mockResolvedValue([
+      { id: 'gym-low', equipmentId: 10, storageKey: 'gym-low.jpg', score: 0.4 },
+    ]);
+    knnFromVectorGlobalMock.mockResolvedValue([
+      { id: 'global-1', equipmentId: 99, storageKey: 'glob-1.jpg', score: 0.92 },
+      { id: 'global-2', equipmentId: 98, storageKey: 'glob-2.jpg', score: 0.9 },
+    ]);
+    prismaMock.equipment.findMany.mockResolvedValue([
+      { id: 99, name: 'Lat Pulldown' },
+      { id: 98, name: 'Leg Press' },
+    ]);
+    prismaMock.recognitionAttempt.create.mockResolvedValue({
+      id: BigInt(555),
+      createdAt: new Date('2024-02-02T00:00:00Z'),
+      gymId: 20,
+      storageKey: 'private/recognition/20/x.jpg',
+      vectorHash: 'hash',
+      bestEquipmentId: 99,
+      bestScore: 0.92,
+      decision: 'GLOBAL_ACCEPT',
+    });
+
+    const byteBody = {
+      transformToByteArray: jest.fn().mockResolvedValue(Uint8Array.from([9, 8, 7, 6])),
+    };
+    s3SendMock.mockImplementation(async (cmd) => {
+      switch ((cmd as any).__type) {
+        case 'HeadObjectCommand':
+          return {};
+        case 'GetObjectCommand':
+          return { Body: byteBody };
+        default:
+          throw new Error(`unexpected command ${(cmd as any).__type}`);
+      }
+    });
+
+    const service = await loadService();
+    const token = (service as any).sign({ gid: 20, key: 'private/recognition/20/x.jpg' });
+    const result = await service.recognizeImage(token, 2);
+
+    expect(result.attempt.decision).toBe('GLOBAL_ACCEPT');
+    expect(result.equipmentCandidates[0]).toMatchObject({
+      equipmentId: 99,
+      equipmentName: 'Lat Pulldown',
+      source: 'GLOBAL',
+      topScore: 0.92,
+    });
+    expect(byteBody.transformToByteArray).toHaveBeenCalled();
   });
 
   it('confirms recognition with training consent and enqueues hashing', async () => {
@@ -259,6 +339,35 @@ describe('RecognitionService', () => {
     immediateSpy.mockRestore();
   });
 
+  it('fails recognition when embedding output shape is invalid', async () => {
+    embedImageMock.mockResolvedValue(Float32Array.from([1, 2, 3]));
+    const chunks = [Uint8Array.from([1, 2]), Buffer.from([3, 4, 5])];
+    const body = {
+      async *[Symbol.asyncIterator]() {
+        for (const chunk of chunks) {
+          yield chunk;
+        }
+      },
+    };
+
+    s3SendMock.mockImplementation(async (cmd) => {
+      switch ((cmd as any).__type) {
+        case 'HeadObjectCommand':
+          return {};
+        case 'GetObjectCommand':
+          return { Body: body };
+        default:
+          throw new Error(`unexpected command ${(cmd as any).__type}`);
+      }
+    });
+
+    const service = await loadService();
+    const token = (service as any).sign({ gid: 12, key: 'private/recognition/12/x.jpg' });
+
+    await expect(service.recognizeImage(token, 1)).rejects.toThrow('Embedding failed');
+    expect(embedImageMock).toHaveBeenCalledWith(expect.any(Buffer));
+  });
+
   it('throws when attempting to confirm an unknown recognition attempt', async () => {
     prismaMock.recognitionAttempt.findUnique.mockResolvedValue(null);
     const service = await loadService();
@@ -314,6 +423,30 @@ describe('RecognitionService', () => {
       data: { consent: 'denied' },
     });
     expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('warns when deletion during discard fails unexpectedly', async () => {
+    prismaMock.recognitionAttempt.update.mockResolvedValue({ storageKey: 'problem.jpg' });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    s3SendMock.mockImplementation(async (cmd) => {
+      if ((cmd as any).__type === 'DeleteObjectCommand') {
+        const err: any = new Error('boom');
+        err.$metadata = { httpStatusCode: 500 };
+        throw err;
+      }
+      throw new Error(`unexpected command ${(cmd as any).__type}`);
+    });
+
+    const service = await loadService();
+    const result = await service.discardRecognition(BigInt(88));
+
+    expect(result).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Failed to delete recognition attempt object',
+      expect.any(Error),
+    );
 
     warnSpy.mockRestore();
   });
