@@ -29,7 +29,7 @@ const ONE_BY_ONE_PNG = Buffer.from(
   'base64',
 );
 
-jest.spyOn(S3Client.prototype, 'send').mockImplementation((cmd: any) => {
+const s3SendMock = jest.spyOn(S3Client.prototype, 'send').mockImplementation((cmd: any) => {
   if (cmd instanceof HeadObjectCommand) {
     return Promise.resolve({ ContentType: 'image/png' } as any);
   }
@@ -44,6 +44,10 @@ jest.spyOn(S3Client.prototype, 'send').mockImplementation((cmd: any) => {
     } as any);
   }
   return Promise.resolve({} as any);
+});
+
+beforeEach(() => {
+  s3SendMock.mockClear();
 });
 
 function createPrismaMock() {
@@ -218,21 +222,35 @@ describe('promoteGymImageToGlobal', () => {
     recognitionService: {} as any,
   };
 
+  const createGymImage = (overrides?: Partial<any>) => ({
+    id: 'g1',
+    gymId: 10,
+    equipmentId: 20,
+    storageKey: 'private/uploads/10/2025/01/img.jpg',
+    sha256: 'abc',
+    status: 'APPROVED',
+    isSafe: true,
+    angleId: null,
+    heightId: null,
+    lightingId: null,
+    mirrorId: null,
+    distanceId: null,
+    sourceId: null,
+    splitId: null,
+    capturedByUserId: null,
+    approvedByUserId: null,
+    hasPerson: null,
+    personCount: null,
+    personBoxes: null,
+    modelVendor: null,
+    modelName: null,
+    modelVersion: null,
+    ...overrides,
+  });
+
   it('copies object and creates equipment image', async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
-      id: 'g1',
-      gymId: 10,
-      equipmentId: 20,
-      storageKey: 'private/uploads/10/2025/01/img.jpg',
-      sha256: 'abc',
-      status: 'APPROVED',
-      isSafe: true,
-      embedding: null,
-      modelVendor: null,
-      modelName: null,
-      modelVersion: null,
-    });
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(createGymImage());
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
       id: 'e1',
       storageKey: data.storageKey,
@@ -249,19 +267,14 @@ describe('promoteGymImageToGlobal', () => {
 
   it('skips embed queue when gym embedding exists', async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
-      id: 'g1',
-      gymId: 10,
-      equipmentId: 20,
-      storageKey: 'private/uploads/10/2025/01/img.jpg',
-      sha256: 'abc',
-      status: 'APPROVED',
-      isSafe: true,
-      embedding: [0.1, 0.2],
-      modelVendor: process.env.EMBED_VENDOR,
-      modelName: process.env.EMBED_MODEL,
-      modelVersion: process.env.EMBED_VERSION,
-    });
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(
+      createGymImage({
+        embedding: [0.1, 0.2],
+        modelVendor: process.env.EMBED_VENDOR,
+        modelName: process.env.EMBED_MODEL,
+        modelVersion: process.env.EMBED_VERSION,
+      }),
+    );
     (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
       id: 'e1',
       storageKey: data.storageKey,
@@ -282,19 +295,7 @@ describe('promoteGymImageToGlobal', () => {
 
   it('returns existing on duplicate sha', async () => {
     const prisma = createPrismaMock();
-    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue({
-      id: 'g1',
-      gymId: 10,
-      equipmentId: 20,
-      storageKey: 'private/uploads/10/2025/01/img.jpg',
-      sha256: 'abc',
-      status: 'APPROVED',
-      isSafe: true,
-      embedding: null,
-      modelVendor: null,
-      modelName: null,
-      modelVersion: null,
-    });
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(createGymImage());
     (prisma.equipmentImage.findFirst as any).mockResolvedValue({
       id: 'e1',
       storageKey: 'private/global/equipment/20/approved/existing.jpg',
@@ -303,5 +304,62 @@ describe('promoteGymImageToGlobal', () => {
     const res = await svc.promoteGymImageToGlobal({ id: 'g1' } as any, ctx);
     expect(res.equipmentImage.id).toBe('e1');
     expect(prisma.equipmentImage.create).not.toHaveBeenCalled();
+    expect(s3SendMock).not.toHaveBeenCalled();
+  });
+
+  it('throws when gym image is not approved and force is not provided', async () => {
+    const prisma = createPrismaMock();
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(
+      createGymImage({ status: 'PENDING' }),
+    );
+    const svc = new ImagePromotionService(prisma);
+    await expect(svc.promoteGymImageToGlobal({ id: 'g1' } as any, ctx)).rejects.toThrow(
+      'Image must be APPROVED before promotion',
+    );
+    expect(s3SendMock).not.toHaveBeenCalled();
+  });
+
+  it('throws when gym image failed safety checks', async () => {
+    const prisma = createPrismaMock();
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(
+      createGymImage({ isSafe: false }),
+    );
+    const svc = new ImagePromotionService(prisma);
+    await expect(svc.promoteGymImageToGlobal({ id: 'g1' } as any, ctx)).rejects.toThrow(
+      'Image failed safety checks',
+    );
+  });
+
+  it('rejects force usage for non-admins', async () => {
+    const prisma = createPrismaMock();
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(createGymImage());
+    const svc = new ImagePromotionService(prisma);
+    const moderatorCtx: AuthContext = {
+      ...ctx,
+      appRole: AppRole.MODERATOR,
+      permissionService: { checkPermission: () => true } as any,
+    };
+    await expect(
+      svc.promoteGymImageToGlobal({ id: 'g1', force: true } as any, moderatorCtx),
+    ).rejects.toThrow('force requires admin role');
+  });
+
+  it('allows admins to force promotion when checks would fail', async () => {
+    const prisma = createPrismaMock();
+    (prisma.gymEquipmentImage.findUnique as any).mockResolvedValue(
+      createGymImage({ status: 'PENDING', isSafe: false, sha256: null }),
+    );
+    (prisma.equipmentImage.create as any).mockImplementation(({ data }: any) => ({
+      id: 'e2',
+      storageKey: data.storageKey,
+    }));
+    (prisma.$queryRaw as any).mockResolvedValue([{ embedding_text: null }]);
+    const svc = new ImagePromotionService(prisma);
+    const result = await svc.promoteGymImageToGlobal({ id: 'g1', force: true } as any, ctx);
+    expect(result.equipmentImage.id).toBe('e2');
+    expect(prisma.imageQueue.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ imageId: 'e2', jobType: 'EMBED' }),
+    });
+    expect(result.destinationKey).toContain('private/global/equipment/20/approved/');
   });
 });
