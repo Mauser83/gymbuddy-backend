@@ -14,7 +14,7 @@ describe('memory tracker', () => {
     const unrefSpy = jest.fn();
     const intervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((
       fn: () => void,
-      ms?: number,
+      _intervalMs?: number,
     ) => {
       fn();
       return { unref: unrefSpy } as unknown as NodeJS.Timeout;

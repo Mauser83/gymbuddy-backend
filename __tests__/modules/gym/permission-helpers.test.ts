@@ -1,5 +1,3 @@
-+53 - 0;
-
 import { AppRole, GymRole } from '../../../src/modules/auth/auth.types';
 import { userIsTrustedForGym } from '../../../src/modules/gym/permission-helpers';
 

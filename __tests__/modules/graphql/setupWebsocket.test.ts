@@ -1,5 +1,3 @@
-import { GraphQLError } from 'graphql';
-
 const useServerMock = jest.fn();
 
 jest.mock('graphql-ws/use/ws', () => ({

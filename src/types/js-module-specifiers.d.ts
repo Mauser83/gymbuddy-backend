@@ -1,5 +1,4 @@
 declare module '../../src/api/apiRouter.js' {
-  export * from '../api/apiRouter';
   export { default } from '../api/apiRouter';
 }
 

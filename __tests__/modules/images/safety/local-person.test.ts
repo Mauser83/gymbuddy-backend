@@ -1,16 +1,25 @@
-// @ts-nocheck -- Jest runtime mocks in this suite are incompatible with NodeNext typings
+// Jest runtime mocks in this suite rely on manual type definitions for clarity.
 import { jest } from '@jest/globals';
+import type { MockedFunction } from 'jest-mock';
+
+const createMock = <Fn extends (...args: any[]) => any>(implementation?: Fn): MockedFunction<Fn> =>
+  jest.fn(implementation) as unknown as MockedFunction<Fn>;
 
 type SharpChain = {
-  metadata: jest.Mock;
-  resize: jest.Mock;
-  extend: jest.Mock;
-  removeAlpha: jest.Mock;
-  raw: jest.Mock;
-  toBuffer: jest.Mock;
+  metadata: MockedFunction<() => Promise<{ width: number; height: number }>>;
+  resize: MockedFunction<(size: { width: number; height: number }) => SharpChain>;
+  extend: MockedFunction<(options: unknown) => SharpChain>;
+  removeAlpha: MockedFunction<() => SharpChain>;
+  raw: MockedFunction<(options?: unknown) => SharpChain>;
+  toBuffer: MockedFunction<
+    () => Promise<{
+      data: Uint8Array;
+      info: { width: number; height: number; channels: number };
+    }>
+  >;
 };
 
-const sharpMock = jest.fn<SharpChain, [Buffer | Uint8Array]>(() => {
+const sharpMock = createMock<(input: Buffer | Uint8Array) => SharpChain>(() => {
   throw new Error('sharp mock not configured');
 });
 
@@ -19,7 +28,7 @@ jest.mock('sharp', () => ({
   default: sharpMock,
 }));
 
-const mockCreate = jest.fn<Promise<any>, [string, any]>();
+const mockCreate = createMock<(path: string, options?: unknown) => Promise<any>>();
 
 class MockTensor {
   constructor(
@@ -36,7 +45,8 @@ jest.mock('onnxruntime-node', () => ({
   },
 }));
 
-const ensureModelFileMock = jest.fn<Promise<void>, [string, any, string?]>();
+const ensureModelFileMock =
+  createMock<(key: string, client: unknown, destination?: string) => Promise<void>>();
 
 jest.mock('../../../../src/modules/images/models.ensure', () => ({
   ensureModelFile: ensureModelFileMock,
@@ -67,14 +77,28 @@ describe('local person safety detector', () => {
     const info = { width: size, height: size, channels: 3 };
     const data = Uint8Array.from({ length: size * size * 3 }, (_, i) => (dataValue + i) % 255);
 
+    const metadataMock = createMock<() => Promise<{ width: number; height: number }>>();
+    const resizeMock = createMock<(size: { width: number; height: number }) => SharpChain>();
+    const extendMock = createMock<(options: unknown) => SharpChain>();
+    const removeAlphaMock = createMock<() => SharpChain>();
+    const rawMock = createMock<(options?: unknown) => SharpChain>();
+    const toBufferMock = createMock<() => Promise<{ data: Uint8Array; info: typeof info }>>();
+
     const chain: SharpChain = {
-      metadata: jest.fn().mockResolvedValue(metadata),
-      resize: jest.fn().mockReturnThis(),
-      extend: jest.fn().mockReturnThis(),
-      removeAlpha: jest.fn().mockReturnThis(),
-      raw: jest.fn().mockReturnThis(),
-      toBuffer: jest.fn().mockResolvedValue({ data, info }),
-    } as unknown as SharpChain;
+      metadata: metadataMock,
+      resize: resizeMock,
+      extend: extendMock,
+      removeAlpha: removeAlphaMock,
+      raw: rawMock,
+      toBuffer: toBufferMock,
+    };
+
+    metadataMock.mockResolvedValue(metadata);
+    resizeMock.mockReturnValue(chain);
+    extendMock.mockReturnValue(chain);
+    removeAlphaMock.mockReturnValue(chain);
+    rawMock.mockReturnValue(chain);
+    toBufferMock.mockResolvedValue({ data, info });
 
     sharpMock.mockReturnValue(chain);
     return chain;
@@ -92,11 +116,15 @@ describe('local person safety detector', () => {
     logits[4] = 3; // obj logit → sigmoid ≈ 0.95
     logits[5] = 3; // class logit → sigmoid ≈ 0.95
 
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ preds: { data: Float32Array } }>>();
+    run.mockResolvedValue({ preds: { data: logits } });
+
     const session = {
       inputNames: ['images'],
       outputNames: ['preds'],
       outputMetadata: { preds: { dimensions: [1, 85] } },
-      run: jest.fn().mockResolvedValue({ preds: { data: logits } }),
+      run,
     };
 
     mockCreate.mockResolvedValue(session);
@@ -110,11 +138,15 @@ describe('local person safety detector', () => {
     configureSharp();
     const outputs = new Float32Array([0, 0, 2, 4, 0.9, 0]);
 
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ nms: { data: Float32Array } }>>();
+    run.mockResolvedValue({ nms: { data: outputs } });
+
     const session = {
       inputNames: ['images'],
       outputNames: ['nms'],
       outputMetadata: { nms: { dimensions: [1, 6] } },
-      run: jest.fn().mockResolvedValue({ nms: { data: outputs } }),
+      run,
     };
 
     mockCreate.mockResolvedValue(session);
@@ -131,11 +163,15 @@ describe('local person safety detector', () => {
     logits[4] = 0.8; // already probability
     logits[5] = 0.8;
 
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ preds: { data: Float32Array } }>>();
+    run.mockResolvedValue({ preds: { data: logits } });
+
     const session = {
       inputNames: ['images'],
       outputNames: ['preds'],
       outputMetadata: { preds: { dimensions: [1, 85] } },
-      run: jest.fn().mockResolvedValue({ preds: { data: logits } }),
+      run,
     };
 
     mockCreate.mockResolvedValue(session);
@@ -151,11 +187,15 @@ describe('local person safety detector', () => {
 
     configureSharp();
     const logits = new Float32Array(85);
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ preds: { data: Float32Array } }>>();
+    run.mockResolvedValue({ preds: { data: logits } });
+
     const session = {
       inputNames: ['images'],
       outputNames: ['preds'],
       outputMetadata: { preds: { dimensions: [1, 85] } },
-      run: jest.fn().mockResolvedValue({ preds: { data: logits } }),
+      run,
     };
 
     mockCreate.mockResolvedValue(session);

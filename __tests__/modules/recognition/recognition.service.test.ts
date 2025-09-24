@@ -1,5 +1,3 @@
-import type { Mock } from 'jest-mock';
-
 const s3SendMock = jest.fn();
 const getSignedUrlMock = jest.fn();
 const assertSizeWithinLimitMock = jest.fn();

@@ -1,101 +1,119 @@
-// @ts-nocheck -- this suite relies heavily on Jest's runtime mock typings, which
-// conflict with our NodeNext configuration. Disabling type checking keeps the
-// focus on behavioral coverage without fighting the TS analyzer.
+// This suite relies heavily on Jest's runtime mock typings and manual mocks.
+// The tests exercise behavior through the mocked interfaces without importing
+// the real implementations, so we construct lightweight helper types inline.
 import { jest } from '@jest/globals';
+import type { MockedFunction } from 'jest-mock';
 
-const mockTransformToByteArray = jest.fn<Promise<Uint8Array>, []>();
-const mockSend = jest
-  .fn()
-  .mockResolvedValue({ Body: { transformToByteArray: mockTransformToByteArray } });
+type AsyncMock<Result = void, Args extends any[] = []> = MockedFunction<
+  (...args: Args) => Promise<Result>
+>;
+
+type GetObjectResponse = {
+  Body: { transformToByteArray: () => Promise<Uint8Array> };
+};
+
+const mockTransformToByteArray: AsyncMock<Uint8Array> = jest.fn<() => Promise<Uint8Array>>();
+const mockSend: AsyncMock<GetObjectResponse, [unknown]> =
+  jest.fn<(command: unknown) => Promise<GetObjectResponse>>();
+mockSend.mockResolvedValue({ Body: { transformToByteArray: mockTransformToByteArray } });
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
   GetObjectCommand: jest.fn().mockImplementation((args) => args),
 }));
 
-const mockSafetyCheck = jest.fn();
+const mockSafetyCheck: AsyncMock<{ nsfwScore: number }, [unknown]> =
+  jest.fn<(input: unknown) => Promise<{ nsfwScore: number }>>();
 jest.mock('../../../src/modules/images/safety', () => ({
   createSafetyProvider: jest.fn(() => ({ check: mockSafetyCheck })),
 }));
 
-const mockHasPerson = jest.fn();
+const mockHasPerson: AsyncMock<boolean, [Buffer | Uint8Array]> =
+  jest.fn<(buffer: Buffer | Uint8Array) => Promise<boolean>>();
 jest.mock('../../../src/modules/images/safety/local-person', () => ({
   hasPerson: mockHasPerson,
 }));
 
-const mockInitLocalOpenCLIP = jest.fn();
-const mockEmbedImage = jest.fn();
+const mockInitLocalOpenCLIP: AsyncMock<void> = jest.fn<() => Promise<void>>();
+const mockEmbedImage: AsyncMock<Float32Array, [string]> =
+  jest.fn<(key: string) => Promise<Float32Array>>();
 jest.mock('../../../src/modules/images/embedding/local-openclip-light', () => ({
   initLocalOpenCLIP: mockInitLocalOpenCLIP,
   embedImage: mockEmbedImage,
 }));
 
-const mockCopyObjectIfMissing = jest.fn();
-const mockDeleteObjectIgnoreMissing = jest.fn();
+const mockCopyObjectIfMissing: AsyncMock<void, [string, string]> =
+  jest.fn<(source: string, destination: string) => Promise<void>>();
+const mockDeleteObjectIgnoreMissing: AsyncMock<void, [string]> =
+  jest.fn<(key: string) => Promise<void>>();
 jest.mock('../../../src/modules/media/media.service', () => ({
   copyObjectIfMissing: mockCopyObjectIfMissing,
   deleteObjectIgnoreMissing: mockDeleteObjectIgnoreMissing,
 }));
 
-const mockWriteImageEmbedding = jest.fn();
+const mockWriteImageEmbedding: AsyncMock<void, [unknown]> =
+  jest.fn<(payload: unknown) => Promise<void>>();
 jest.mock('../../../src/modules/cv/embeddingWriter', () => ({
   writeImageEmbedding: mockWriteImageEmbedding,
 }));
 
-const mockUserIsTrustedForGym = jest.fn();
+const mockUserIsTrustedForGym: AsyncMock<boolean, [string, string]> =
+  jest.fn<(userId: string, gymId: string) => Promise<boolean>>();
 jest.mock('../../../src/modules/gym/permission-helpers', () => ({
   userIsTrustedForGym: mockUserIsTrustedForGym,
 }));
 
+const mockClaimBatch: AsyncMock<any[], [number?]> = jest.fn<(limit?: number) => Promise<any[]>>();
+const mockMarkDone: AsyncMock<void, [number]> = jest.fn<(id: number) => Promise<void>>();
+const mockMarkFailed: AsyncMock<void, [number, unknown, number?]> =
+  jest.fn<(id: number, error: unknown, delay?: number) => Promise<void>>();
+const mockTryAcquireLease: AsyncMock<boolean> = jest.fn<() => Promise<boolean>>();
+const mockRenewLease: AsyncMock<void> = jest.fn<() => Promise<void>>();
+const mockReleaseLease: AsyncMock<void> = jest.fn<() => Promise<void>>();
+
 const mockQueue = {
-  claimBatch: jest.fn(),
-  markDone: jest.fn(),
-  markFailed: jest.fn(),
-  tryAcquireLease: jest.fn(),
-  renewLease: jest.fn(),
-  releaseLease: jest.fn(),
-};
+  claimBatch: mockClaimBatch,
+  markDone: mockMarkDone,
+  markFailed: mockMarkFailed,
+  tryAcquireLease: mockTryAcquireLease,
+  renewLease: mockRenewLease,
+  releaseLease: mockReleaseLease,
+} as const;
 
 jest.mock('../../../src/modules/images/queue-runner.service', () => ({
   QueueRunnerService: jest.fn(() => mockQueue),
 }));
 
-function buildPrismaMock() {
+function buildPrismaMocks() {
   return {
     gymEquipmentImage: {
-      updateMany: jest.fn(),
-      findFirst: jest.fn(),
+      updateMany: jest.fn<(args: unknown) => Promise<void>>(),
+      findFirst: jest.fn<(args: unknown) => Promise<unknown | null>>(),
     },
     trainingCandidate: {
-      updateMany: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
+      updateMany: jest.fn<(args: unknown) => Promise<void>>(),
+      findFirst: jest.fn<(args: unknown) => Promise<unknown | null>>(),
+      update: jest.fn<(args: unknown) => Promise<void>>(),
     },
     equipmentImage: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn<(args: unknown) => Promise<unknown | null>>(),
+      findUnique: jest.fn<(args: unknown) => Promise<unknown | null>>(),
     },
     imageQueue: {
-      create: jest.fn(),
-      update: jest.fn(),
+      create: jest.fn<(args: unknown) => Promise<void>>(),
+      update: jest.fn<(args: unknown) => Promise<void>>(),
     },
     gym: {
-      findUnique: jest.fn(),
+      findUnique: jest.fn<(args: unknown) => Promise<unknown | null>>(),
     },
-    $executeRawUnsafe: jest.fn(),
+    $executeRawUnsafe: jest.fn<(...args: any[]) => Promise<unknown>>(),
   } as const;
 }
 
-const prismaMock = buildPrismaMock();
-
-const prismaFn = prismaMock as unknown as {
-  [K in keyof typeof prismaMock]: {
-    [P in keyof (typeof prismaMock)[K]]: jest.Mock;
-  };
-};
+const prismaMocks = buildPrismaMocks();
 
 jest.mock('../../../src/prisma', () => ({
-  prisma: prismaMock,
+  prisma: prismaMocks,
   ImageJobStatus: { pending: 'pending', failed: 'failed' },
 }));
 
@@ -121,29 +139,29 @@ const BASE_ENV = {
 const ORIGINAL_ENV = process.env;
 
 function resetPrismaMocks() {
-  prismaFn.gymEquipmentImage.updateMany.mockReset();
-  prismaFn.gymEquipmentImage.findFirst.mockReset();
-  prismaFn.trainingCandidate.updateMany.mockReset();
-  prismaFn.trainingCandidate.findFirst.mockReset();
-  prismaFn.trainingCandidate.update.mockReset();
-  prismaFn.equipmentImage.findFirst.mockReset();
-  prismaFn.equipmentImage.findUnique.mockReset();
-  prismaFn.imageQueue.create.mockReset();
-  prismaFn.imageQueue.update.mockReset();
-  prismaFn.gym.findUnique.mockReset();
-  prismaFn.$executeRawUnsafe.mockReset();
+  prismaMocks.gymEquipmentImage.updateMany.mockReset();
+  prismaMocks.gymEquipmentImage.findFirst.mockReset();
+  prismaMocks.trainingCandidate.updateMany.mockReset();
+  prismaMocks.trainingCandidate.findFirst.mockReset();
+  prismaMocks.trainingCandidate.update.mockReset();
+  prismaMocks.equipmentImage.findFirst.mockReset();
+  prismaMocks.equipmentImage.findUnique.mockReset();
+  prismaMocks.imageQueue.create.mockReset();
+  prismaMocks.imageQueue.update.mockReset();
+  prismaMocks.gym.findUnique.mockReset();
+  prismaMocks.$executeRawUnsafe.mockReset();
 
-  prismaFn.gymEquipmentImage.updateMany.mockResolvedValue(undefined);
-  prismaFn.gymEquipmentImage.findFirst.mockResolvedValue(null);
-  prismaFn.trainingCandidate.updateMany.mockResolvedValue(undefined);
-  prismaFn.trainingCandidate.findFirst.mockResolvedValue(null);
-  prismaFn.trainingCandidate.update.mockResolvedValue(undefined);
-  prismaFn.equipmentImage.findFirst.mockResolvedValue(null);
-  prismaFn.equipmentImage.findUnique.mockResolvedValue(null);
-  prismaFn.imageQueue.create.mockResolvedValue(undefined);
-  prismaFn.imageQueue.update.mockResolvedValue(undefined);
-  prismaFn.gym.findUnique.mockResolvedValue(null);
-  prismaFn.$executeRawUnsafe.mockResolvedValue(undefined);
+  prismaMocks.gymEquipmentImage.updateMany.mockResolvedValue(undefined);
+  prismaMocks.gymEquipmentImage.findFirst.mockResolvedValue(null);
+  prismaMocks.trainingCandidate.updateMany.mockResolvedValue(undefined);
+  prismaMocks.trainingCandidate.findFirst.mockResolvedValue(null);
+  prismaMocks.trainingCandidate.update.mockResolvedValue(undefined);
+  prismaMocks.equipmentImage.findFirst.mockResolvedValue(null);
+  prismaMocks.equipmentImage.findUnique.mockResolvedValue(null);
+  prismaMocks.imageQueue.create.mockResolvedValue(undefined);
+  prismaMocks.imageQueue.update.mockResolvedValue(undefined);
+  prismaMocks.gym.findUnique.mockResolvedValue(null);
+  prismaMocks.$executeRawUnsafe.mockResolvedValue(undefined);
 }
 
 function resetQueueMocks() {
@@ -210,7 +228,7 @@ describe('image worker processOnce', () => {
       `private/gym/1/candidates/${sha}.jpg`,
     );
     expect(mockDeleteObjectIgnoreMissing).toHaveBeenCalledWith('private/gym/1/candidates/test.jpg');
-    expect(prismaFn.imageQueue.create).toHaveBeenCalledWith(
+    expect(prismaMocks.imageQueue.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           jobType: 'SAFETY',
@@ -237,7 +255,7 @@ describe('image worker processOnce', () => {
 
     expect(mockCopyObjectIfMissing).not.toHaveBeenCalled();
     expect(mockDeleteObjectIgnoreMissing).not.toHaveBeenCalled();
-    expect(prismaFn.trainingCandidate.updateMany).toHaveBeenCalledWith(
+    expect(prismaMocks.trainingCandidate.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           storageKey: 'public/gym/photo.jpg',
@@ -252,7 +270,7 @@ describe('image worker processOnce', () => {
   it('quarantines unsafe images and falls back when status update fails', async () => {
     mockSafetyCheck.mockResolvedValue({ nsfwScore: 0.95 });
     mockHasPerson.mockResolvedValue(true);
-    prismaFn.gymEquipmentImage.updateMany
+    prismaMocks.gymEquipmentImage.updateMany
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('write-fail'))
       .mockResolvedValueOnce(undefined);
@@ -271,14 +289,14 @@ describe('image worker processOnce', () => {
     const processed = await worker.processOnce();
 
     expect(processed).toBe(1);
-    expect(prismaFn.trainingCandidate.updateMany).toHaveBeenNthCalledWith(
+    expect(prismaMocks.trainingCandidate.updateMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         where: { storageKey: 'private/gym/9/candidates/photo.jpg' },
         data: expect.objectContaining({ status: 'quarantined', hasPerson: true }),
       }),
     );
-    expect(prismaFn.trainingCandidate.updateMany).toHaveBeenNthCalledWith(
+    expect(prismaMocks.trainingCandidate.updateMany).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         data: expect.objectContaining({ storageKey: 'private/gym/9/quarantine/photo.jpg' }),
@@ -289,7 +307,7 @@ describe('image worker processOnce', () => {
       'private/gym/9/quarantine/photo.jpg',
     );
     expect(mockQueue.markDone).toHaveBeenCalledWith(2);
-    expect(prismaFn.imageQueue.create).not.toHaveBeenCalled();
+    expect(prismaMocks.imageQueue.create).not.toHaveBeenCalled();
   });
 
   it('enqueues embedding jobs for safe images', async () => {
@@ -305,7 +323,7 @@ describe('image worker processOnce', () => {
     const worker = await importWorker();
     await worker.processOnce();
 
-    expect(prismaFn.imageQueue.create).toHaveBeenCalledWith(
+    expect(prismaMocks.imageQueue.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           jobType: 'EMBED',
@@ -319,7 +337,7 @@ describe('image worker processOnce', () => {
 
   it('writes embeddings for fresh training candidates', async () => {
     mockEmbedImage.mockResolvedValue(Float32Array.from([3, 4]));
-    prismaFn.trainingCandidate.findFirst.mockResolvedValue({
+    prismaMocks.trainingCandidate.findFirst.mockResolvedValue({
       id: 42,
       gymId: null,
       uploaderUserId: null,
@@ -339,29 +357,29 @@ describe('image worker processOnce', () => {
     const processed = await worker.processOnce();
 
     expect(processed).toBe(1);
-    const [[sql, vector, ...rest]] = prismaFn.$executeRawUnsafe.mock.calls;
+    const [[sql, vector, ...rest]] = prismaMocks.$executeRawUnsafe.mock.calls;
     expect(sql).toContain('UPDATE "TrainingCandidate"');
     expect(vector).toHaveLength(2);
     expect(vector[0]).toBeCloseTo(0.6, 5);
     expect(vector[1]).toBeCloseTo(0.8, 5);
     expect(rest).toEqual([42, 'vendor', 'model', 'version']);
     expect(mockQueue.markDone).toHaveBeenCalledWith(3);
-    expect(prismaFn.imageQueue.create).not.toHaveBeenCalled();
+    expect(prismaMocks.imageQueue.create).not.toHaveBeenCalled();
   });
 
   it('approves trusted gym uploads when auto-approve is enabled', async () => {
     mockEmbedImage.mockResolvedValue(Float32Array.from([0, 2]));
-    prismaFn.trainingCandidate.findFirst.mockResolvedValue({
+    prismaMocks.trainingCandidate.findFirst.mockResolvedValue({
       id: 'tc-1',
       gymId: 'gym-9',
       uploaderUserId: 'user-7',
       imageId: 'img-4',
     });
-    prismaFn.gymEquipmentImage.findFirst.mockResolvedValue({
+    prismaMocks.gymEquipmentImage.findFirst.mockResolvedValue({
       id: 'img-4',
       gymId: 'gym-9',
     });
-    prismaFn.gym.findUnique.mockResolvedValue({ autoApproveManagerUploads: true });
+    prismaMocks.gym.findUnique.mockResolvedValue({ autoApproveManagerUploads: true });
     mockUserIsTrustedForGym.mockResolvedValue(true);
 
     mockQueue.claimBatch.mockResolvedValueOnce([
@@ -376,11 +394,11 @@ describe('image worker processOnce', () => {
     await worker.processOnce();
 
     expect(mockUserIsTrustedForGym).toHaveBeenCalledWith('user-7', 'gym-9');
-    expect(prismaFn.trainingCandidate.update).toHaveBeenCalledWith({
+    expect(prismaMocks.trainingCandidate.update).toHaveBeenCalledWith({
       where: { id: 'tc-1' },
       data: { status: 'approved' },
     });
-    expect(prismaFn.gymEquipmentImage.updateMany).toHaveBeenCalledWith({
+    expect(prismaMocks.gymEquipmentImage.updateMany).toHaveBeenCalledWith({
       where: { id: 'img-4' },
       data: expect.objectContaining({
         status: 'APPROVED',
@@ -395,8 +413,10 @@ describe('image worker processOnce', () => {
 
   it('writes embeddings for equipment images discovered via lookup', async () => {
     mockEmbedImage.mockResolvedValue(Float32Array.from([1, 1, 1]));
-    prismaFn.equipmentImage.findUnique.mockResolvedValueOnce({ storageKey: 'global/eq/img.jpg' });
-    prismaFn.equipmentImage.findFirst.mockResolvedValueOnce({ id: 'eq-11' });
+    prismaMocks.equipmentImage.findUnique.mockResolvedValueOnce({
+      storageKey: 'global/eq/img.jpg',
+    });
+    prismaMocks.equipmentImage.findFirst.mockResolvedValueOnce({ id: 'eq-11' });
 
     mockQueue.claimBatch.mockResolvedValueOnce([
       {
@@ -410,11 +430,11 @@ describe('image worker processOnce', () => {
     const worker = await importWorker();
     await worker.processOnce();
 
-    expect(prismaFn.equipmentImage.findUnique).toHaveBeenCalledWith({
+    expect(prismaMocks.equipmentImage.findUnique).toHaveBeenCalledWith({
       where: { id: 'eq-11' },
       select: { storageKey: true },
     });
-    expect(prismaFn.equipmentImage.findFirst).toHaveBeenCalledWith({
+    expect(prismaMocks.equipmentImage.findFirst).toHaveBeenCalledWith({
       where: { storageKey: 'global/eq/img.jpg' },
       select: { id: true },
     });
@@ -440,7 +460,7 @@ describe('image worker processOnce', () => {
     await worker.processOnce();
 
     expect(mockQueue.markFailed).toHaveBeenCalledWith(22, err, 30);
-    expect(prismaFn.imageQueue.update).not.toHaveBeenCalled();
+    expect(prismaMocks.imageQueue.update).not.toHaveBeenCalled();
     expect(mockQueue.markDone).not.toHaveBeenCalled();
   });
 
@@ -457,7 +477,7 @@ describe('image worker processOnce', () => {
     const worker = await importWorker();
     await worker.processOnce();
 
-    expect(prismaFn.imageQueue.update).toHaveBeenCalledWith(
+    expect(prismaMocks.imageQueue.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 9 } }),
     );
     expect(mockQueue.markFailed).not.toHaveBeenCalled();

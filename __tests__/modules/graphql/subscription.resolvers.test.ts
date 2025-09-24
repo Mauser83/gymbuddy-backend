@@ -20,7 +20,7 @@ describe('SubscriptionResolvers', () => {
       gymCreated: ['GYM_CREATED'],
     } as const;
 
-    for (const [field, topics] of Object.entries(expectedTopics)) {
+    for (const field of Object.keys(expectedTopics)) {
       const resolver = (
         SubscriptionResolvers.Subscription as Record<
           string,

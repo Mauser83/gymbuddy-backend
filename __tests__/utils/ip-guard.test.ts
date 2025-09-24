@@ -1,9 +1,12 @@
-// @ts-nocheck -- DNS mocks rely on ambient Jest types that conflict with our
-// NodeNext module settings; silence the checker so the suite can exercise the
-// runtime behavior without spurious errors.
+// DNS mocks rely on ambient Jest types and Node's dns promises module. The
+// suite provides minimal manual typings to keep the focus on runtime behavior.
 import { jest } from '@jest/globals';
 
-const lookupMock = jest.fn();
+type AsyncMock<Result = void, Args extends any[] = []> = jest.Mock<
+  (...args: Args) => Promise<Result>
+>;
+
+const lookupMock: AsyncMock<{ address: string }[], [string, unknown?]> = jest.fn();
 
 jest.mock('node:dns', () => ({
   promises: {
