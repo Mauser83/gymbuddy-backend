@@ -4,8 +4,7 @@ import { AuthContext } from '../auth/auth.types';
 type ImageWorkerModule = typeof import('../images/image-worker.js');
 
 let isRunning = false;
-let loadImageWorker: () => Promise<ImageWorkerModule> = () =>
-  import('../images/image-worker.js');
+let loadImageWorker: () => Promise<ImageWorkerModule> = () => import('../images/image-worker.js');
 
 export const __setImageWorkerLoader = (loader?: typeof loadImageWorker) => {
   loadImageWorker = loader ?? (() => import('../images/image-worker.js'));

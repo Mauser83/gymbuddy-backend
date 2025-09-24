@@ -43,7 +43,7 @@ export class WorkoutPlanService {
       console.log(...(args as any[]));
     }
   }
-  
+
   private async verifyWorkoutPlanAccess(userId: number, workoutPlanId: number) {
     const userRoles = await this.permissionService.getUserRoles(userId);
 

@@ -1,8 +1,7 @@
-+53
--0
++53 - 0;
 
-import { userIsTrustedForGym } from '../../../src/modules/gym/permission-helpers';
 import { AppRole, GymRole } from '../../../src/modules/auth/auth.types';
+import { userIsTrustedForGym } from '../../../src/modules/gym/permission-helpers';
 
 describe('userIsTrustedForGym', () => {
   const createClient = (returnValue: any) => ({
@@ -36,10 +35,7 @@ describe('userIsTrustedForGym', () => {
   it('grants access when user manages the specified gym', async () => {
     const client = createClient({
       appRole: undefined,
-      gymManagementRoles: [
-        { role: GymRole.GYM_ADMIN },
-        { role: GymRole.GYM_MODERATOR },
-      ],
+      gymManagementRoles: [{ role: GymRole.GYM_ADMIN }, { role: GymRole.GYM_MODERATOR }],
     });
 
     await expect(userIsTrustedForGym(3, 4, client as any)).resolves.toBe(true);

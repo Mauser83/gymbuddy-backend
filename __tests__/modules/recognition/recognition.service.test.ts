@@ -129,9 +129,7 @@ describe('RecognitionService', () => {
     expect(assertSizeWithinLimitMock).toHaveBeenCalledWith(42);
     expect(getSignedUrlMock).toHaveBeenCalledTimes(1);
     expect(result.putUrl).toBe('https://signed.example');
-    expect(result.storageKey).toMatch(
-      /^private\/recognition\/17\/\d{4}\/\d{2}\/[-\w]+\.jpg$/,
-    );
+    expect(result.storageKey).toMatch(/^private\/recognition\/17\/\d{4}\/\d{2}\/[-\w]+\.jpg$/);
     expect(Date.parse(result.expiresAt)).toBeGreaterThanOrEqual(before);
 
     const payload = (service as any).verify(result.ticketToken);
@@ -149,9 +147,7 @@ describe('RecognitionService', () => {
   });
 
   it('recognizes images and aggregates gym candidates', async () => {
-    embedImageMock.mockResolvedValue(
-      Float32Array.from({ length: 512 }, (_, idx) => (idx % 5) + 1),
-    );
+    embedImageMock.mockResolvedValue(Float32Array.from({ length: 512 }, (_, idx) => (idx % 5) + 1));
     knnFromVectorGymMock.mockResolvedValue([
       { id: 'g1', equipmentId: 1, storageKey: 'g1.jpg', score: 0.91 },
       { id: 'g2', equipmentId: 2, storageKey: 'g2.jpg', score: 0.6 },
@@ -163,11 +159,8 @@ describe('RecognitionService', () => {
       { id: 1, name: 'Row Machine' },
       { id: 2, name: 'Bench' },
     ]);
-    prismaMock.recognitionAttempt.create.mockImplementation(async ({
-      data,
-    }: {
-      data: any;
-    }) => ({      id: BigInt(111),
+    prismaMock.recognitionAttempt.create.mockImplementation(async ({ data }: { data: any }) => ({
+      id: BigInt(111),
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
       ...data,
     }));
@@ -233,12 +226,10 @@ describe('RecognitionService', () => {
     });
 
     const service = await loadService();
-    const immediateSpy = jest
-      .spyOn(global, 'setImmediate')
-      .mockImplementation((fn: any) => {
-        fn();
-        return 0 as any;
-      });
+    const immediateSpy = jest.spyOn(global, 'setImmediate').mockImplementation((fn: any) => {
+      fn();
+      return 0 as any;
+    });
 
     const result = await service.confirmRecognition({
       attemptId: BigInt(222),

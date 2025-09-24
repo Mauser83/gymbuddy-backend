@@ -12,7 +12,10 @@ describe('memory tracker', () => {
 
   it('schedules logging and leaves the timer unreferenced', () => {
     const unrefSpy = jest.fn();
-    const intervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((fn: () => void, ms?: number) => {
+    const intervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((
+      fn: () => void,
+      ms?: number,
+    ) => {
       fn();
       return { unref: unrefSpy } as unknown as NodeJS.Timeout;
     }) as any);

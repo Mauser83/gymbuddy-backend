@@ -286,7 +286,11 @@ describe('EquipmentResolvers', () => {
   describe('EquipmentImage resolvers', () => {
     test('thumbUrl returns null when storageKey missing', async () => {
       const ctx = createContext();
-      const result = await EquipmentResolvers.EquipmentImage.thumbUrl({ storageKey: '' } as any, {}, ctx);
+      const result = await EquipmentResolvers.EquipmentImage.thumbUrl(
+        { storageKey: '' } as any,
+        {},
+        ctx,
+      );
       expect(result).toBeNull();
       expect(ctx.mediaService.presignGetForKey).not.toHaveBeenCalled();
     });
@@ -306,7 +310,11 @@ describe('EquipmentResolvers', () => {
     test('thumbUrl forwards provided ttl', async () => {
       const ctx = createContext();
       ctx.mediaService.presignGetForKey.mockResolvedValue('signed');
-      await EquipmentResolvers.EquipmentImage.thumbUrl({ storageKey: 'key' } as any, { ttlSec: 120 }, ctx);
+      await EquipmentResolvers.EquipmentImage.thumbUrl(
+        { storageKey: 'key' } as any,
+        { ttlSec: 120 },
+        ctx,
+      );
       expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 120);
     });
   });

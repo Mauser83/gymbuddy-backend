@@ -1,6 +1,6 @@
-import { QueueService } from '../../../src/modules/cv/queue.service';
-import { EnqueueImageJobDto, UpdateImageJobStatusDto } from '../../../src/modules/cv/queue.dto';
 import { validateInput } from '../../../src/middlewares/validation';
+import { EnqueueImageJobDto, UpdateImageJobStatusDto } from '../../../src/modules/cv/queue.dto';
+import { QueueService } from '../../../src/modules/cv/queue.service';
 import { kickBurstRunner } from '../../../src/modules/images/image-worker.js';
 
 jest.mock('../../../src/middlewares/validation', () => ({

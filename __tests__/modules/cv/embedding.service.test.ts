@@ -1,6 +1,12 @@
-import { GetImageEmbeddingsByImageDto, UpsertImageEmbeddingDto } from '../../../src/modules/cv/embedding.dto';
-import { EmbeddingService, getLatestEmbeddedImageService } from '../../../src/modules/cv/embedding.service';
 import { validateInput } from '../../../src/middlewares/validation';
+import {
+  GetImageEmbeddingsByImageDto,
+  UpsertImageEmbeddingDto,
+} from '../../../src/modules/cv/embedding.dto';
+import {
+  EmbeddingService,
+  getLatestEmbeddedImageService,
+} from '../../../src/modules/cv/embedding.service';
 
 jest.mock('../../../src/middlewares/validation', () => ({
   validateInput: jest.fn().mockResolvedValue(undefined),
@@ -47,7 +53,10 @@ describe('EmbeddingService', () => {
 
     const result = await service.listByImage('img-1', 'GLOBAL');
 
-    expect(validateInput).toHaveBeenCalledWith({ imageId: 'img-1', scope: 'GLOBAL' }, GetImageEmbeddingsByImageDto);
+    expect(validateInput).toHaveBeenCalledWith(
+      { imageId: 'img-1', scope: 'GLOBAL' },
+      GetImageEmbeddingsByImageDto,
+    );
     expect(prismaClient.imageEmbedding.findMany).toHaveBeenCalledWith({
       where: { imageId: 'img-1', scope: 'GLOBAL' },
       orderBy: { createdAt: 'desc' },
@@ -62,7 +71,10 @@ describe('EmbeddingService', () => {
 
     await service.listByImage('img-2');
 
-    expect(validateInput).toHaveBeenCalledWith({ imageId: 'img-2', scope: undefined }, GetImageEmbeddingsByImageDto);
+    expect(validateInput).toHaveBeenCalledWith(
+      { imageId: 'img-2', scope: undefined },
+      GetImageEmbeddingsByImageDto,
+    );
     expect(prismaClient.imageEmbedding.findMany).toHaveBeenCalledWith({
       where: { imageId: 'img-2' },
       orderBy: { createdAt: 'desc' },
@@ -141,12 +153,12 @@ describe('getLatestEmbeddedImageService', () => {
   });
 
   it('requires a gymId for gym or auto scopes', async () => {
-    await expect(
-      getLatestEmbeddedImageService({ scope: 'GYM' }),
-    ).rejects.toThrow('gymId is required for this scope');
-    await expect(
-      getLatestEmbeddedImageService({ scope: 'AUTO' }),
-    ).rejects.toThrow('gymId is required for this scope');
+    await expect(getLatestEmbeddedImageService({ scope: 'GYM' })).rejects.toThrow(
+      'gymId is required for this scope',
+    );
+    await expect(getLatestEmbeddedImageService({ scope: 'AUTO' })).rejects.toThrow(
+      'gymId is required for this scope',
+    );
   });
 
   it('returns the latest global embedding with optional equipment filter', async () => {
@@ -167,10 +179,7 @@ describe('getLatestEmbeddedImageService', () => {
 
     const result = await getLatestEmbeddedImageService({ scope: 'GYM', gymId: 5, equipmentId: 9 });
 
-    expect(queryRawUnsafeMock).toHaveBeenCalledWith(
-      expect.stringContaining('AND "gymId" = $1'),
-      5,
-    );
+    expect(queryRawUnsafeMock).toHaveBeenCalledWith(expect.stringContaining('AND "gymId" = $1'), 5);
     expect(result).toEqual({ imageId: 'gym-1', createdAt, scope: 'GYM' });
   });
 
@@ -198,9 +207,7 @@ describe('getLatestEmbeddedImageService', () => {
   });
 
   it('returns null when no embeddings are found for AUTO scope', async () => {
-    queryRawUnsafeMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    queryRawUnsafeMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const result = await getLatestEmbeddedImageService({ scope: 'AUTO', gymId: 11 });
 

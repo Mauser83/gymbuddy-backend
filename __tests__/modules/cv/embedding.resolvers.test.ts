@@ -1,8 +1,8 @@
 import { GraphQLError } from 'graphql';
 
+import { validateInput } from '../../../src/middlewares/validation';
 import { UpsertImageEmbeddingDto } from '../../../src/modules/cv/embedding.dto';
 import { EmbeddingResolvers } from '../../../src/modules/cv/embedding.resolvers';
-import { validateInput } from '../../../src/middlewares/validation';
 
 const listByImageMock = jest.fn();
 const getByIdMock = jest.fn();
@@ -71,11 +71,7 @@ describe('EmbeddingResolvers', () => {
       const record = { id: 'emb-2' };
       getByIdMock.mockResolvedValue(record);
 
-      const result = await EmbeddingResolvers.Query.imageEmbedding(
-        null,
-        { id: 'emb-2' },
-        context,
-      );
+      const result = await EmbeddingResolvers.Query.imageEmbedding(null, { id: 'emb-2' }, context);
 
       expect(EmbeddingServiceMock).toHaveBeenCalledWith(context.prisma);
       expect(getByIdMock).toHaveBeenCalledWith('emb-2');
@@ -85,9 +81,9 @@ describe('EmbeddingResolvers', () => {
 
   describe('Query.getLatestEmbeddedImage', () => {
     it('requires a scope value', async () => {
-      await expect(
-        EmbeddingResolvers.Query.getLatestEmbeddedImage({}, {} as any),
-      ).rejects.toThrow(GraphQLError);
+      await expect(EmbeddingResolvers.Query.getLatestEmbeddedImage({}, {} as any)).rejects.toThrow(
+        GraphQLError,
+      );
     });
 
     it('requires gymId for GYM scope', async () => {
@@ -100,9 +96,12 @@ describe('EmbeddingResolvers', () => {
       const response = { imageId: 'image-1', createdAt: new Date(), scope: 'GLOBAL' as const };
       getLatestEmbeddedImageServiceMock.mockResolvedValue(response);
 
-      const result = await EmbeddingResolvers.Query.getLatestEmbeddedImage({}, {
-        input: { scope: 'GLOBAL' },
-      });
+      const result = await EmbeddingResolvers.Query.getLatestEmbeddedImage(
+        {},
+        {
+          input: { scope: 'GLOBAL' },
+        },
+      );
 
       expect(getLatestEmbeddedImageServiceMock).toHaveBeenCalledWith({ scope: 'GLOBAL' });
       expect(result).toBe(response);

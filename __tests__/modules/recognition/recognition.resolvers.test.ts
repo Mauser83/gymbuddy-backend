@@ -59,7 +59,11 @@ describe('RecognitionResolvers', () => {
 
   it('enforces a minimum recognition limit of 1', async () => {
     const ctx = baseContext();
-    await RecognitionResolvers.Mutation.recognizeImage({}, { ticketToken: 'tok', limit: 0 }, ctx as any);
+    await RecognitionResolvers.Mutation.recognizeImage(
+      {},
+      { ticketToken: 'tok', limit: 0 },
+      ctx as any,
+    );
     expect(ctx.recognitionService.recognizeImage).toHaveBeenCalledWith('tok', 1);
   });
 

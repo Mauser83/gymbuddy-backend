@@ -115,9 +115,7 @@ describe('maybeCreateGlobalSuggestion', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         count: jest.fn().mockResolvedValue(0),
       },
-      $queryRawUnsafe: jest
-        .fn()
-        .mockResolvedValue([{ id: 'dup', v: '[0.9,0.9]' }]),
+      $queryRawUnsafe: jest.fn().mockResolvedValue([{ id: 'dup', v: '[0.9,0.9]' }]),
       globalImageSuggestion: { upsert: jest.fn() },
     } as any;
   }

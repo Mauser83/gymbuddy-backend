@@ -4,8 +4,8 @@ jest.mock('../../../src/prisma', () => ({
   },
 }));
 
-import { prisma } from '../../../src/prisma';
 import { writeImageEmbedding } from '../../../src/modules/cv/embeddingWriter';
+import { prisma } from '../../../src/prisma';
 
 describe('writeImageEmbedding', () => {
   beforeEach(() => {

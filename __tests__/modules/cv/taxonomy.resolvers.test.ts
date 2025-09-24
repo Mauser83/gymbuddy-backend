@@ -1,12 +1,12 @@
 import { GraphQLError } from 'graphql';
 
+import { validateInput } from '../../../src/middlewares/validation';
 import {
   CreateTaxonomyDto,
   UpdateTaxonomyDto,
   ReorderTaxonomyDto,
 } from '../../../src/modules/cv/taxonomy.dto';
 import { TaxonomyResolvers } from '../../../src/modules/cv/taxonomy.resolvers';
-import { validateInput } from '../../../src/middlewares/validation';
 
 const listMock = jest.fn();
 const getMock = jest.fn();
@@ -24,9 +24,7 @@ jest.mock('../../../src/middlewares/validation', () => ({
   validateInput: jest.fn(),
 }));
 
-const taxonomyServiceModuleMock = jest.requireMock(
-  '../../../src/modules/cv/taxonomy.service',
-) as {
+const taxonomyServiceModuleMock = jest.requireMock('../../../src/modules/cv/taxonomy.service') as {
   TaxonomyService: jest.Mock;
 };
 

@@ -1,6 +1,6 @@
+import { validateInput } from '../../../src/middlewares/validation';
 import { EnqueueImageJobDto, UpdateImageJobStatusDto } from '../../../src/modules/cv/queue.dto';
 import { QueueResolvers } from '../../../src/modules/cv/queue.resolvers';
-import { validateInput } from '../../../src/middlewares/validation';
 import { QueueService } from '../../../src/modules/cv/queue.service';
 
 jest.mock('../../../src/middlewares/validation', () => ({
@@ -47,7 +47,9 @@ describe('QueueResolvers', () => {
   });
 
   it('fetches a single job via the service', async () => {
-    const serviceInstance = createServiceMock({ getById: jest.fn().mockResolvedValue({ id: 'job-1' }) });
+    const serviceInstance = createServiceMock({
+      getById: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    });
     QueueServiceMock.mockImplementation(() => serviceInstance as unknown as QueueService);
 
     const result = await QueueResolvers.Query.imageJob({}, { id: 'job-1' }, context);
@@ -58,7 +60,9 @@ describe('QueueResolvers', () => {
   });
 
   it('lists jobs with default limit', async () => {
-    const serviceInstance = createServiceMock({ list: jest.fn().mockResolvedValue([{ id: 'job-2' }]) });
+    const serviceInstance = createServiceMock({
+      list: jest.fn().mockResolvedValue([{ id: 'job-2' }]),
+    });
     QueueServiceMock.mockImplementation(() => serviceInstance as unknown as QueueService);
 
     const result = await QueueResolvers.Query.imageJobs({}, {}, context);
@@ -69,7 +73,9 @@ describe('QueueResolvers', () => {
 
   it('enqueues a job after validation', async () => {
     const payload = { imageId: 'img-1', jobType: 'EMBED' as any } as EnqueueImageJobDto;
-    const serviceInstance = createServiceMock({ enqueue: jest.fn().mockResolvedValue({ id: 'job-3' }) });
+    const serviceInstance = createServiceMock({
+      enqueue: jest.fn().mockResolvedValue({ id: 'job-3' }),
+    });
     QueueServiceMock.mockImplementation(() => serviceInstance as unknown as QueueService);
 
     const result = await QueueResolvers.Mutation.enqueueImageJob({}, { input: payload }, context);
@@ -86,7 +92,11 @@ describe('QueueResolvers', () => {
     });
     QueueServiceMock.mockImplementation(() => serviceInstance as unknown as QueueService);
 
-    const result = await QueueResolvers.Mutation.updateImageJobStatus({}, { input: payload }, context);
+    const result = await QueueResolvers.Mutation.updateImageJobStatus(
+      {},
+      { input: payload },
+      context,
+    );
 
     expect(validateInputMock).toHaveBeenCalledWith(payload, UpdateImageJobStatusDto);
     expect(serviceInstance.updateStatus).toHaveBeenCalledWith(payload);

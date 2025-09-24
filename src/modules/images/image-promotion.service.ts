@@ -67,11 +67,7 @@ export type GlobalCandidateScoreInput = {
   simMax: number;
 };
 
-export function scoreGlobalCandidate({
-  globalCount,
-  hiRes,
-  simMax,
-}: GlobalCandidateScoreInput) {
+export function scoreGlobalCandidate({ globalCount, hiRes, simMax }: GlobalCandidateScoreInput) {
   let s = 0;
   const reasons: string[] = [];
   if (globalCount === 0) {

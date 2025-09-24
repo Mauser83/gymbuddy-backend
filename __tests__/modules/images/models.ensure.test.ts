@@ -50,7 +50,11 @@ describe('ensureModelFile', () => {
     fs.stat.mockResolvedValue({} as any);
     fs.readFile.mockResolvedValue(contents);
 
-    await ensureModelFile('/tmp/model.onnx', { kind: 'url', url: 'https://example.com/model' }, sha);
+    await ensureModelFile(
+      '/tmp/model.onnx',
+      { kind: 'url', url: 'https://example.com/model' },
+      sha,
+    );
 
     expect(fs.rm).not.toHaveBeenCalled();
     expect(fs.writeFile).not.toHaveBeenCalled();
@@ -72,7 +76,11 @@ describe('ensureModelFile', () => {
       arrayBuffer: jest.fn().mockResolvedValue(newBytes),
     });
 
-    await ensureModelFile('/tmp/model.onnx', { kind: 'url', url: 'https://example.com/model' }, sha);
+    await ensureModelFile(
+      '/tmp/model.onnx',
+      { kind: 'url', url: 'https://example.com/model' },
+      sha,
+    );
 
     expect(fs.rm).toHaveBeenCalled();
     expect(fs.mkdir).toHaveBeenCalledWith('/tmp', { recursive: true });
@@ -95,11 +103,7 @@ describe('ensureModelFile', () => {
     });
 
     await expect(
-      ensureModelFile(
-        '/tmp/model.onnx',
-        { kind: 'r2', bucket: 'bucket', key: 'model.onnx' },
-        sha,
-      ),
+      ensureModelFile('/tmp/model.onnx', { kind: 'r2', bucket: 'bucket', key: 'model.onnx' }, sha),
     ).rejects.toThrow('Checksum mismatch');
 
     expect(fs.writeFile).toHaveBeenCalledWith('/tmp/model.onnx', expect.any(Uint8Array));

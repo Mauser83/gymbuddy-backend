@@ -30,19 +30,13 @@ describe('ip guard utilities', () => {
   });
 
   it('confirms all resolved addresses are public', async () => {
-    lookupMock.mockResolvedValue([
-      { address: '8.8.8.8' },
-      { address: '1.1.1.1' },
-    ]);
+    lookupMock.mockResolvedValue([{ address: '8.8.8.8' }, { address: '1.1.1.1' }]);
 
     await expect(allResolvedIpsArePublic('example.com')).resolves.toBe(true);
   });
 
   it('flags hosts with private addresses', async () => {
-    lookupMock.mockResolvedValue([
-      { address: '8.8.8.8' },
-      { address: '10.0.0.5' },
-    ]);
+    lookupMock.mockResolvedValue([{ address: '8.8.8.8' }, { address: '10.0.0.5' }]);
 
     await expect(allResolvedIpsArePublic('private.local')).resolves.toBe(false);
   });

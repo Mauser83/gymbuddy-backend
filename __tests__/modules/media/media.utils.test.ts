@@ -14,9 +14,7 @@ describe('media.utils', () => {
       assertSizeWithinLimit(MAX_IMAGE_BYTES + 5);
     } catch (error) {
       const gqlError = error as GraphQLError;
-      expect(gqlError.extensions).toEqual(
-        expect.objectContaining({ code: 'PAYLOAD_TOO_LARGE' }),
-      );
+      expect(gqlError.extensions).toEqual(expect.objectContaining({ code: 'PAYLOAD_TOO_LARGE' }));
     }
   });
 });

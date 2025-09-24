@@ -237,17 +237,15 @@ describe('WorkoutPlanResolvers', () => {
     test('workoutPlanById delegates to service', async () => {
       const instance = mockService({ getWorkoutPlanById: jest.fn().mockResolvedValue({ id: 1 }) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Query.workoutPlanById(
-        null as any,
-        { id: 42 },
-        ctx,
-      );
+      const res = await WorkoutPlanResolvers.Query.workoutPlanById(null as any, { id: 42 }, ctx);
       expect(instance.getWorkoutPlanById).toHaveBeenCalledWith(ctx.userId, 42);
       expect(res).toEqual({ id: 1 });
     });
 
     test('sharedWorkoutPlans delegates to service', async () => {
-      const instance = mockService({ getSharedWorkoutPlans: jest.fn().mockResolvedValue(['shared']) });
+      const instance = mockService({
+        getSharedWorkoutPlans: jest.fn().mockResolvedValue(['shared']),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Query.sharedWorkoutPlans(null as any, {}, ctx);
       expect(instance.getSharedWorkoutPlans).toHaveBeenCalledWith(ctx.userId);
@@ -296,7 +294,9 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('getWorkoutPrograms delegates to service', async () => {
-      const instance = mockService({ getWorkoutPrograms: jest.fn().mockResolvedValue(['program']) });
+      const instance = mockService({
+        getWorkoutPrograms: jest.fn().mockResolvedValue(['program']),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Query.getWorkoutPrograms(null as any, {}, ctx);
       expect(instance.getWorkoutPrograms).toHaveBeenCalledWith(ctx.userId);
@@ -307,11 +307,7 @@ describe('WorkoutPlanResolvers', () => {
       const ctx = createContext();
       ctx.prisma.experienceLevel.findUnique.mockResolvedValue({ id: 55 });
 
-      const res = await WorkoutPlanResolvers.Query.experienceLevel(
-        null as any,
-        { id: 55 },
-        ctx,
-      );
+      const res = await WorkoutPlanResolvers.Query.experienceLevel(null as any, { id: 55 }, ctx);
 
       expect(ctx.prisma.experienceLevel.findUnique).toHaveBeenCalledWith({ where: { id: 55 } });
       expect(res).toEqual({ id: 55 });
@@ -323,7 +319,9 @@ describe('WorkoutPlanResolvers', () => {
 
       const res = await WorkoutPlanResolvers.Query.getMuscleGroups(null as any, {}, ctx);
 
-      expect(ctx.prisma.muscleGroup.findMany).toHaveBeenCalledWith({ include: { bodyParts: true } });
+      expect(ctx.prisma.muscleGroup.findMany).toHaveBeenCalledWith({
+        include: { bodyParts: true },
+      });
       expect(res).toEqual([{ id: 99 }]);
     });
 
@@ -478,7 +476,11 @@ describe('WorkoutPlanResolvers', () => {
     test('deleteTrainingGoal delegates to service', async () => {
       const instance = mockService({ deleteTrainingGoal: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteTrainingGoal(null as any, { id: 4 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteTrainingGoal(
+        null as any,
+        { id: 4 },
+        ctx,
+      );
       expect(instance.deleteTrainingGoal).toHaveBeenCalledWith(ctx, 4);
       expect(res).toBe(true);
     });
@@ -514,13 +516,19 @@ describe('WorkoutPlanResolvers', () => {
     test('deleteIntensityPreset delegates to service', async () => {
       const instance = mockService({ deleteIntensityPreset: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteIntensityPreset(null as any, { id: 12 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteIntensityPreset(
+        null as any,
+        { id: 12 },
+        ctx,
+      );
       expect(instance.deleteIntensityPreset).toHaveBeenCalledWith(ctx, 12);
       expect(res).toBe(true);
     });
 
     test('createExperienceLevel delegates to service', async () => {
-      const instance = mockService({ createExperienceLevel: jest.fn().mockResolvedValue({ id: 13 }) });
+      const instance = mockService({
+        createExperienceLevel: jest.fn().mockResolvedValue({ id: 13 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createExperienceLevel(
         null as any,
@@ -532,7 +540,9 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('updateExperienceLevel delegates to service', async () => {
-      const instance = mockService({ updateExperienceLevel: jest.fn().mockResolvedValue({ id: 14 }) });
+      const instance = mockService({
+        updateExperienceLevel: jest.fn().mockResolvedValue({ id: 14 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.updateExperienceLevel(
         null as any,
@@ -546,7 +556,11 @@ describe('WorkoutPlanResolvers', () => {
     test('deleteExperienceLevel delegates to service', async () => {
       const instance = mockService({ deleteExperienceLevel: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteExperienceLevel(null as any, { id: 6 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteExperienceLevel(
+        null as any,
+        { id: 6 },
+        ctx,
+      );
       expect(instance.deleteExperienceLevel).toHaveBeenCalledWith(ctx, 6);
       expect(res).toBe(true);
     });
@@ -578,13 +592,19 @@ describe('WorkoutPlanResolvers', () => {
     test('deleteMuscleGroup delegates to service', async () => {
       const instance = mockService({ deleteMuscleGroup: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteMuscleGroup(null as any, { id: 9 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteMuscleGroup(
+        null as any,
+        { id: 9 },
+        ctx,
+      );
       expect(instance.deleteMuscleGroup).toHaveBeenCalledWith(ctx, 9);
       expect(res).toBe(true);
     });
 
     test('createTrainingMethod delegates to service', async () => {
-      const instance = mockService({ createTrainingMethod: jest.fn().mockResolvedValue({ id: 21 }) });
+      const instance = mockService({
+        createTrainingMethod: jest.fn().mockResolvedValue({ id: 21 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createTrainingMethod(
         null as any,
@@ -596,7 +616,9 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('updateTrainingMethod delegates to service', async () => {
-      const instance = mockService({ updateTrainingMethod: jest.fn().mockResolvedValue({ id: 22 }) });
+      const instance = mockService({
+        updateTrainingMethod: jest.fn().mockResolvedValue({ id: 22 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.updateTrainingMethod(
         null as any,
@@ -610,13 +632,19 @@ describe('WorkoutPlanResolvers', () => {
     test('deleteTrainingMethod delegates to service', async () => {
       const instance = mockService({ deleteTrainingMethod: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteTrainingMethod(null as any, { id: 5 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteTrainingMethod(
+        null as any,
+        { id: 5 },
+        ctx,
+      );
       expect(instance.deleteTrainingMethod).toHaveBeenCalledWith(ctx, 5);
       expect(res).toBe(true);
     });
 
     test('createWorkoutProgram delegates to service', async () => {
-      const instance = mockService({ createWorkoutProgram: jest.fn().mockResolvedValue({ id: 31 }) });
+      const instance = mockService({
+        createWorkoutProgram: jest.fn().mockResolvedValue({ id: 31 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createWorkoutProgram(
         null as any,
@@ -628,27 +656,37 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('updateWorkoutProgram delegates to service', async () => {
-      const instance = mockService({ updateWorkoutProgram: jest.fn().mockResolvedValue({ id: 32 }) });
+      const instance = mockService({
+        updateWorkoutProgram: jest.fn().mockResolvedValue({ id: 32 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.updateWorkoutProgram(
         null as any,
         { id: 8, input: { name: 'Updated Program' } },
         ctx,
       );
-      expect(instance.updateWorkoutProgram).toHaveBeenCalledWith(ctx.userId, 8, { name: 'Updated Program' });
+      expect(instance.updateWorkoutProgram).toHaveBeenCalledWith(ctx.userId, 8, {
+        name: 'Updated Program',
+      });
       expect(res).toEqual({ id: 32 });
     });
 
     test('deleteWorkoutProgram delegates to service', async () => {
       const instance = mockService({ deleteWorkoutProgram: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgram(null as any, { id: 11 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgram(
+        null as any,
+        { id: 11 },
+        ctx,
+      );
       expect(instance.deleteWorkoutProgram).toHaveBeenCalledWith(ctx.userId, 11);
       expect(res).toBe(true);
     });
 
     test('createWorkoutProgramDay delegates to service', async () => {
-      const instance = mockService({ createWorkoutProgramDay: jest.fn().mockResolvedValue({ id: 41 }) });
+      const instance = mockService({
+        createWorkoutProgramDay: jest.fn().mockResolvedValue({ id: 41 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createWorkoutProgramDay(
         null as any,
@@ -660,79 +698,113 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('updateWorkoutProgramDay delegates to service', async () => {
-      const instance = mockService({ updateWorkoutProgramDay: jest.fn().mockResolvedValue({ id: 42 }) });
+      const instance = mockService({
+        updateWorkoutProgramDay: jest.fn().mockResolvedValue({ id: 42 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.updateWorkoutProgramDay(
         null as any,
         { id: 9, input: { name: 'Day 2' } },
         ctx,
       );
-      expect(instance.updateWorkoutProgramDay).toHaveBeenCalledWith(ctx.userId, 9, { name: 'Day 2' });
+      expect(instance.updateWorkoutProgramDay).toHaveBeenCalledWith(ctx.userId, 9, {
+        name: 'Day 2',
+      });
       expect(res).toEqual({ id: 42 });
     });
 
     test('deleteWorkoutProgramDay delegates to service', async () => {
       const instance = mockService({ deleteWorkoutProgramDay: jest.fn().mockResolvedValue(true) });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramDay(null as any, { id: 12 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramDay(
+        null as any,
+        { id: 12 },
+        ctx,
+      );
       expect(instance.deleteWorkoutProgramDay).toHaveBeenCalledWith(ctx.userId, 12);
       expect(res).toBe(true);
     });
 
     test('createWorkoutProgramCooldown delegates to service', async () => {
-      const instance = mockService({ createWorkoutProgramCooldown: jest.fn().mockResolvedValue({ id: 51 }) });
+      const instance = mockService({
+        createWorkoutProgramCooldown: jest.fn().mockResolvedValue({ id: 51 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createWorkoutProgramCooldown(
         null as any,
         { input: { name: 'Cooldown' } },
         ctx,
       );
-      expect(instance.createWorkoutProgramCooldown).toHaveBeenCalledWith(ctx.userId, { name: 'Cooldown' });
+      expect(instance.createWorkoutProgramCooldown).toHaveBeenCalledWith(ctx.userId, {
+        name: 'Cooldown',
+      });
       expect(res).toEqual({ id: 51 });
     });
 
     test('deleteWorkoutProgramCooldown delegates to service', async () => {
-      const instance = mockService({ deleteWorkoutProgramCooldown: jest.fn().mockResolvedValue(true) });
+      const instance = mockService({
+        deleteWorkoutProgramCooldown: jest.fn().mockResolvedValue(true),
+      });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramCooldown(null as any, { id: 13 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramCooldown(
+        null as any,
+        { id: 13 },
+        ctx,
+      );
       expect(instance.deleteWorkoutProgramCooldown).toHaveBeenCalledWith(ctx.userId, 13);
       expect(res).toBe(true);
     });
 
     test('createWorkoutProgramAssignment delegates to service', async () => {
-      const instance = mockService({ createWorkoutProgramAssignment: jest.fn().mockResolvedValue({ id: 61 }) });
+      const instance = mockService({
+        createWorkoutProgramAssignment: jest.fn().mockResolvedValue({ id: 61 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.createWorkoutProgramAssignment(
         null as any,
         { input: { userId: 2 } },
         ctx,
       );
-      expect(instance.createWorkoutProgramAssignment).toHaveBeenCalledWith(ctx.userId, { userId: 2 });
+      expect(instance.createWorkoutProgramAssignment).toHaveBeenCalledWith(ctx.userId, {
+        userId: 2,
+      });
       expect(res).toEqual({ id: 61 });
     });
 
     test('deleteWorkoutProgramAssignment delegates to service', async () => {
-      const instance = mockService({ deleteWorkoutProgramAssignment: jest.fn().mockResolvedValue(true) });
+      const instance = mockService({
+        deleteWorkoutProgramAssignment: jest.fn().mockResolvedValue(true),
+      });
       const ctx = createContext();
-      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramAssignment(null as any, { id: 14 }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.deleteWorkoutProgramAssignment(
+        null as any,
+        { id: 14 },
+        ctx,
+      );
       expect(instance.deleteWorkoutProgramAssignment).toHaveBeenCalledWith(ctx.userId, 14);
       expect(res).toBe(true);
     });
 
     test('setUserWorkoutPreferences delegates to service', async () => {
-      const instance = mockService({ setUserWorkoutPreferences: jest.fn().mockResolvedValue({ success: true }) });
+      const instance = mockService({
+        setUserWorkoutPreferences: jest.fn().mockResolvedValue({ success: true }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.setUserWorkoutPreferences(
         null as any,
         { input: { intensity: 'high' } },
         ctx,
       );
-      expect(instance.setUserWorkoutPreferences).toHaveBeenCalledWith(ctx.userId, { intensity: 'high' });
+      expect(instance.setUserWorkoutPreferences).toHaveBeenCalledWith(ctx.userId, {
+        intensity: 'high',
+      });
       expect(res).toEqual({ success: true });
     });
 
     test('shareWorkoutProgram normalizes optional user id', async () => {
-      const instance = mockService({ shareWorkoutProgram: jest.fn().mockResolvedValue({ id: 71 }) });
+      const instance = mockService({
+        shareWorkoutProgram: jest.fn().mockResolvedValue({ id: 71 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.shareWorkoutProgram(
         null as any,
@@ -744,7 +816,9 @@ describe('WorkoutPlanResolvers', () => {
     });
 
     test('shareWorkoutProgram forwards shareWithUserId when provided', async () => {
-      const instance = mockService({ shareWorkoutProgram: jest.fn().mockResolvedValue({ id: 72 }) });
+      const instance = mockService({
+        shareWorkoutProgram: jest.fn().mockResolvedValue({ id: 72 }),
+      });
       const ctx = createContext();
       const res = await WorkoutPlanResolvers.Mutation.shareWorkoutProgram(
         null as any,
@@ -761,7 +835,11 @@ describe('WorkoutPlanResolvers', () => {
       });
       const ctx = createContext();
       const input = { methodId: 1 } as any;
-      const res = await WorkoutPlanResolvers.Mutation.updateTrainingMethodGoals(null as any, { input }, ctx);
+      const res = await WorkoutPlanResolvers.Mutation.updateTrainingMethodGoals(
+        null as any,
+        { input },
+        ctx,
+      );
       expect(instance.updateTrainingMethodGoals).toHaveBeenCalledWith(ctx, input);
       expect(res).toEqual({ updated: true });
     });

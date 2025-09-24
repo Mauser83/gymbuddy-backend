@@ -226,7 +226,10 @@ describe('MediaService', () => {
         { expiresIn: 30 },
       );
       expect(auditLogMock).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: undefined, metadata: { keyHash: expect.any(String), ttlSec: 30 } }),
+        expect.objectContaining({
+          userId: undefined,
+          metadata: { keyHash: expect.any(String), ttlSec: 30 },
+        }),
       );
       expect(result.expiresAt).toBe(new Date(5_000 + 30 * 1000).toISOString());
     } finally {
@@ -263,10 +266,12 @@ describe('MediaService', () => {
     serviceSend.mockRejectedValueOnce({ $metadata: { httpStatusCode: 404 } });
 
     try {
-      await expect(service.imageUrl('private/uploads/9/missing.jpg', 45, 11)).rejects.toMatchObject({
-        message: 'Object not found',
-        extensions: { code: 'NOT_FOUND' },
-      });
+      await expect(service.imageUrl('private/uploads/9/missing.jpg', 45, 11)).rejects.toMatchObject(
+        {
+          message: 'Object not found',
+          extensions: { code: 'NOT_FOUND' },
+        },
+      );
     } finally {
       restoreEnv();
     }
@@ -294,9 +299,7 @@ describe('MediaService', () => {
       expect(makeKeyMock).toHaveBeenCalledTimes(1);
       expect(first.alreadyUploaded).toBe(false);
       expect(first.key).toBe('private/uploads/3/2024/12/mock-key.jpg');
-      expect(first.requiredHeaders).toEqual([
-        { name: 'Content-Type', value: 'image/png' },
-      ]);
+      expect(first.requiredHeaders).toEqual([{ name: 'Content-Type', value: 'image/png' }]);
 
       const second = await service.getImageUploadUrl({
         gymId: 3,

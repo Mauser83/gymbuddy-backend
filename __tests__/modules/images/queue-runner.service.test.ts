@@ -5,8 +5,8 @@ jest.mock('../../../src/prisma', () => ({
   },
 }));
 
-import { ImageJobStatus } from '../../../src/prisma';
 import { QueueRunnerService } from '../../../src/modules/images/queue-runner.service';
+import { ImageJobStatus } from '../../../src/prisma';
 
 describe('QueueRunnerService', () => {
   const queryMock = jest.fn();
@@ -45,7 +45,12 @@ describe('QueueRunnerService', () => {
     executeMock.mockResolvedValueOnce(1);
     const renewed = await service.renewLease('worker-3', 5000);
     expect(renewed).toBe(true);
-    expect(executeMock).toHaveBeenCalledWith(expect.any(String), 'image-runner', 'worker-3', '5000');
+    expect(executeMock).toHaveBeenCalledWith(
+      expect.any(String),
+      'image-runner',
+      'worker-3',
+      '5000',
+    );
   });
 
   it('returns false when renew lease does not update rows', async () => {

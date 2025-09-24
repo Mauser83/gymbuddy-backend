@@ -32,9 +32,9 @@ describe('rootResolvers', () => {
     expect(resolvers.DateTime.parseValue(isoString)).toEqual(new Date(isoString));
     expect(resolvers.DateTime.parseValue(null)).toBeNull();
 
-    expect(
-      resolvers.DateTime.parseLiteral({ kind: Kind.STRING, value: isoString } as any),
-    ).toEqual(new Date(isoString));
+    expect(resolvers.DateTime.parseLiteral({ kind: Kind.STRING, value: isoString } as any)).toEqual(
+      new Date(isoString),
+    );
     expect(resolvers.DateTime.parseLiteral({ kind: Kind.INT, value: '1' } as any)).toBeNull();
   });
 });

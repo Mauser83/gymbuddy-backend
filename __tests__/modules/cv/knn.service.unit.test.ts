@@ -1,11 +1,17 @@
-import { knnSearchService, knnFromVectorGlobal, knnFromVectorGym } from '../../../src/modules/cv/knn.service';
+import {
+  knnSearchService,
+  knnFromVectorGlobal,
+  knnFromVectorGym,
+} from '../../../src/modules/cv/knn.service';
 import { prisma } from '../../../src/prisma';
 
 jest.mock('../../../src/prisma', () => ({
   prisma: { $queryRawUnsafe: jest.fn() },
 }));
 
-const queryRawUnsafeMock = prisma.$queryRawUnsafe as jest.MockedFunction<typeof prisma.$queryRawUnsafe>;
+const queryRawUnsafeMock = prisma.$queryRawUnsafe as jest.MockedFunction<
+  typeof prisma.$queryRawUnsafe
+>;
 
 type Row = { id: string; equipmentId: number | null; score: number; storageKey: string };
 
@@ -57,9 +63,7 @@ describe('knn.service', () => {
   it('falls back to gym search when auto results below threshold', async () => {
     const globalRows: Row[] = [{ id: 'global', equipmentId: 1, score: 0.5, storageKey: 'g/1' }];
     const gymRows: Row[] = [{ id: 'gym', equipmentId: 2, score: 0.8, storageKey: 'gym/1' }];
-    queryRawUnsafeMock
-      .mockResolvedValueOnce(globalRows)
-      .mockResolvedValueOnce(gymRows);
+    queryRawUnsafeMock.mockResolvedValueOnce(globalRows).mockResolvedValueOnce(gymRows);
 
     const result = await knnSearchService({ imageId: 'img-4', scope: 'AUTO', gymId: 7, limit: 3 });
 

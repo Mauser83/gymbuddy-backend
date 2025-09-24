@@ -22,7 +22,8 @@ describe('WorkerResolvers.runImageWorkerOnce', () => {
 
   const loadResolvers = () => {
     jest.resetModules();
-    const module = require('../../../src/modules/worker/worker.resolvers') as typeof import('../../../src/modules/worker/worker.resolvers');
+    const module =
+      require('../../../src/modules/worker/worker.resolvers') as typeof import('../../../src/modules/worker/worker.resolvers');
     refreshMocks();
     verifyRolesMock.mockReset();
     runOnceMock.mockReset().mockResolvedValue(undefined);
@@ -43,12 +44,12 @@ describe('WorkerResolvers.runImageWorkerOnce', () => {
   });
 
   it('requires privileged roles and starts the worker with the provided max', async () => {
-    const immediateSpy = jest
-      .spyOn(global, 'setImmediate')
-      .mockImplementation(((callback: (...args: unknown[]) => unknown) => {
-        callback();
-        return 0 as unknown as NodeJS.Immediate;
-      }) as typeof setImmediate);
+    const immediateSpy = jest.spyOn(global, 'setImmediate').mockImplementation(((
+      callback: (...args: unknown[]) => unknown,
+    ) => {
+      callback();
+      return 0 as unknown as NodeJS.Immediate;
+    }) as typeof setImmediate);
 
     const { WorkerResolvers } = loadResolvers();
     const ctx = { user: { id: 'user-1' } } as unknown as AuthContext;
@@ -70,12 +71,12 @@ describe('WorkerResolvers.runImageWorkerOnce', () => {
 
   it('returns already running when a job is in flight and allows a retry once finished', async () => {
     const scheduled: Array<() => Promise<void>> = [];
-    const immediateSpy = jest
-      .spyOn(global, 'setImmediate')
-      .mockImplementation(((callback: (...args: unknown[]) => unknown) => {
-        scheduled.push(callback as () => Promise<void>);
-        return 0 as unknown as NodeJS.Immediate;
-      }) as typeof setImmediate);
+    const immediateSpy = jest.spyOn(global, 'setImmediate').mockImplementation(((
+      callback: (...args: unknown[]) => unknown,
+    ) => {
+      scheduled.push(callback as () => Promise<void>);
+      return 0 as unknown as NodeJS.Immediate;
+    }) as typeof setImmediate);
 
     const { WorkerResolvers } = loadResolvers();
     const ctx = { user: { id: 'admin' } } as unknown as AuthContext;
@@ -110,12 +111,12 @@ describe('WorkerResolvers.runImageWorkerOnce', () => {
   });
 
   it('logs errors from the worker and resets state for subsequent runs', async () => {
-    const immediateSpy = jest
-      .spyOn(global, 'setImmediate')
-      .mockImplementation(((callback: (...args: unknown[]) => unknown) => {
-        void (callback as () => Promise<void>)();
-        return 0 as unknown as NodeJS.Immediate;
-      }) as typeof setImmediate);
+    const immediateSpy = jest.spyOn(global, 'setImmediate').mockImplementation(((
+      callback: (...args: unknown[]) => unknown,
+    ) => {
+      void (callback as () => Promise<void>)();
+      return 0 as unknown as NodeJS.Immediate;
+    }) as typeof setImmediate);
 
     const error = new Error('worker failed');
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);

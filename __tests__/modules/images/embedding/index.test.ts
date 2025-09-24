@@ -4,8 +4,11 @@ jest.mock('../../../../src/modules/images/embedding/local-openclip-light', () =>
   embedImage: jest.fn(() => Promise.resolve(Float32Array.from([1, 2, 3]))),
 }));
 
-import { embedImage, initLocalOpenCLIP } from '../../../../src/modules/images/embedding/local-openclip-light';
 import { createEmbeddingProvider } from '../../../../src/modules/images/embedding';
+import {
+  embedImage,
+  initLocalOpenCLIP,
+} from '../../../../src/modules/images/embedding/local-openclip-light';
 
 const mockedInit = jest.mocked(initLocalOpenCLIP);
 const mockedEmbed = jest.mocked(embedImage);

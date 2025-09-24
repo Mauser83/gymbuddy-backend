@@ -48,14 +48,22 @@ describe('ImagesResolvers', () => {
 
   it('resolves signed URLs for training candidates', async () => {
     const ctx = baseContext();
-    const url = await ImagesResolvers.TrainingCandidateRow.url({ storageKey: 'key' }, {}, ctx as any);
+    const url = await ImagesResolvers.TrainingCandidateRow.url(
+      { storageKey: 'key' },
+      {},
+      ctx as any,
+    );
     expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 300);
     expect(url).toBe('https://signed');
   });
 
   it('resolves signed URLs for global suggestion rows', async () => {
     const ctx = baseContext();
-    const url = await ImagesResolvers.GlobalSuggestionRow.url({ storageKey: 'key' }, {}, ctx as any);
+    const url = await ImagesResolvers.GlobalSuggestionRow.url(
+      { storageKey: 'key' },
+      {},
+      ctx as any,
+    );
     expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 300);
     expect(url).toBe('https://signed');
   });
@@ -110,7 +118,10 @@ describe('ImagesResolvers', () => {
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalled();
-    expect(ctx.imageIntakeService.finalizeGymImages).toHaveBeenCalledWith(expect.any(Object), ctx.userId);
+    expect(ctx.imageIntakeService.finalizeGymImages).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx.userId,
+    );
   });
 
   it('validates and forwards applyTaxonomiesToGymImages mutation', async () => {
@@ -126,7 +137,9 @@ describe('ImagesResolvers', () => {
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalled();
-    expect(ctx.imageIntakeService.applyTaxonomiesToGymImages).toHaveBeenCalledWith(expect.any(Object));
+    expect(ctx.imageIntakeService.applyTaxonomiesToGymImages).toHaveBeenCalledWith(
+      expect.any(Object),
+    );
   });
 
   it('validates and forwards promoteGymImageToGlobal mutation', async () => {
@@ -146,9 +159,16 @@ describe('ImagesResolvers', () => {
   it('routes moderation mutations through services', async () => {
     const ctx = baseContext();
     await ImagesResolvers.Mutation.approveGymImage({}, { input: { id: '1' } }, ctx as any);
-    await ImagesResolvers.Mutation.rejectGymImage({}, { input: { id: '2', reason: 'bad' } }, ctx as any);
+    await ImagesResolvers.Mutation.rejectGymImage(
+      {},
+      { input: { id: '2', reason: 'bad' } },
+      ctx as any,
+    );
     expect(mockedValidate).toHaveBeenCalledTimes(2);
-    expect(ctx.imageModerationService.approveGymImage).toHaveBeenCalledWith(expect.any(Object), ctx);
+    expect(ctx.imageModerationService.approveGymImage).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
     expect(ctx.imageModerationService.rejectGymImage).toHaveBeenCalledWith(expect.any(Object), ctx);
   });
 
@@ -165,21 +185,37 @@ describe('ImagesResolvers', () => {
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalledTimes(2);
-    expect(ctx.imagePromotionService.approveTrainingCandidate).toHaveBeenCalledWith(expect.any(Object), ctx);
-    expect(ctx.imagePromotionService.rejectTrainingCandidate).toHaveBeenCalledWith(expect.any(Object), ctx);
+    expect(ctx.imagePromotionService.approveTrainingCandidate).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
+    expect(ctx.imagePromotionService.rejectTrainingCandidate).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
   });
 
   it('routes global suggestion moderation through promotion service', async () => {
     const ctx = baseContext();
-    await ImagesResolvers.Mutation.approveGlobalSuggestion({}, { input: { id: 'global-1' } }, ctx as any);
+    await ImagesResolvers.Mutation.approveGlobalSuggestion(
+      {},
+      { input: { id: 'global-1' } },
+      ctx as any,
+    );
     await ImagesResolvers.Mutation.rejectGlobalSuggestion(
       {},
       { input: { id: 'global-2', reason: 'blurry' } },
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalledTimes(2);
-    expect(ctx.imagePromotionService.approveGlobalSuggestion).toHaveBeenCalledWith(expect.any(Object), ctx);
-    expect(ctx.imagePromotionService.rejectGlobalSuggestion).toHaveBeenCalledWith(expect.any(Object), ctx);
+    expect(ctx.imagePromotionService.approveGlobalSuggestion).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
+    expect(ctx.imagePromotionService.rejectGlobalSuggestion).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
   });
 
   it('validates and resolves listTrainingCandidates query', async () => {
@@ -190,7 +226,10 @@ describe('ImagesResolvers', () => {
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalled();
-    expect(ctx.imagePromotionService.listTrainingCandidates).toHaveBeenCalledWith(expect.any(Object), ctx);
+    expect(ctx.imagePromotionService.listTrainingCandidates).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
   });
 
   it('resolves candidateGlobalImages query', async () => {
@@ -201,17 +240,18 @@ describe('ImagesResolvers', () => {
       ctx as any,
     );
     expect(mockedValidate).toHaveBeenCalled();
-    expect(ctx.imageModerationService.candidateGlobalImages).toHaveBeenCalledWith(expect.any(Object));
+    expect(ctx.imageModerationService.candidateGlobalImages).toHaveBeenCalledWith(
+      expect.any(Object),
+    );
   });
 
   it('resolves listGlobalSuggestions query', async () => {
     const ctx = baseContext();
-    await ImagesResolvers.Query.listGlobalSuggestions(
-      {},
-      { input: { limit: 10 } },
-      ctx as any,
-    );
+    await ImagesResolvers.Query.listGlobalSuggestions({}, { input: { limit: 10 } }, ctx as any);
     expect(mockedValidate).toHaveBeenCalled();
-    expect(ctx.imagePromotionService.listGlobalSuggestions).toHaveBeenCalledWith(expect.any(Object), ctx);
+    expect(ctx.imagePromotionService.listGlobalSuggestions).toHaveBeenCalledWith(
+      expect.any(Object),
+      ctx,
+    );
   });
 });

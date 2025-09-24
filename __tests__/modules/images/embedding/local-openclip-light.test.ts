@@ -45,13 +45,7 @@ describe('local-openclip-light helpers', () => {
     it('converts common half precision values', () => {
       const input = new Uint16Array([0x0000, 0x3c00, 0xc000, 0x7c00, 0xfc00]);
       const result = fp16ToFloat32Array(input);
-      expect(Array.from(result)).toEqual([
-        0,
-        1,
-        -2,
-        Infinity,
-        -Infinity,
-      ]);
+      expect(Array.from(result)).toEqual([0, 1, -2, Infinity, -Infinity]);
     });
   });
 

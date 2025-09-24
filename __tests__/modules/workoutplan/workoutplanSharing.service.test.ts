@@ -63,7 +63,7 @@ describe('SharingService', () => {
     await expect(service.canAccessWorkoutPlan(9, 42)).resolves.toBe(false);
   });
 
-    test('shareWorkoutProgram verifies permission and updates', async () => {
+  test('shareWorkoutProgram verifies permission and updates', async () => {
     jest.spyOn(service, 'verifyProgramSharingPermission').mockResolvedValue(true);
     prisma.workoutProgram.update.mockResolvedValue({ id: 1 } as any);
     await service.shareWorkoutProgram(1, 2, 3, 'VIEW');

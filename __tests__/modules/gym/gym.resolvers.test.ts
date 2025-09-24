@@ -112,7 +112,11 @@ describe('GymResolvers', () => {
     test('thumbUrl defaults ttl and returns value', async () => {
       const ctx = createContext();
       ctx.mediaService.presignGetForKey.mockResolvedValue('signed');
-      const res = await GymResolvers.GymEquipmentImage.thumbUrl({ storageKey: 'key' } as any, {}, ctx);
+      const res = await GymResolvers.GymEquipmentImage.thumbUrl(
+        { storageKey: 'key' } as any,
+        {},
+        ctx,
+      );
       expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 300);
       expect(res).toBe('signed');
     });
@@ -120,7 +124,11 @@ describe('GymResolvers', () => {
     test('thumbUrl accepts ttl argument', async () => {
       const ctx = createContext();
       ctx.mediaService.presignGetForKey.mockResolvedValue('signed');
-      await GymResolvers.GymEquipmentImage.thumbUrl({ storageKey: 'key' } as any, { ttlSec: 120 }, ctx);
+      await GymResolvers.GymEquipmentImage.thumbUrl(
+        { storageKey: 'key' } as any,
+        { ttlSec: 120 },
+        ctx,
+      );
       expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 120);
     });
 
@@ -140,7 +148,11 @@ describe('GymResolvers', () => {
 
     test('approvedBy returns cached user when present', async () => {
       const ctx = createContext();
-      const res = await GymResolvers.GymEquipmentImage.approvedBy({ approvedByUser: { id: 1 } } as any, {}, ctx);
+      const res = await GymResolvers.GymEquipmentImage.approvedBy(
+        { approvedByUser: { id: 1 } } as any,
+        {},
+        ctx,
+      );
       expect(res).toEqual({ id: 1 });
       expect(ctx.prisma.user.findUnique).not.toHaveBeenCalled();
     });
@@ -148,7 +160,11 @@ describe('GymResolvers', () => {
     test('approvedBy looks up user when id provided', async () => {
       const ctx = createContext();
       ctx.prisma.user.findUnique.mockResolvedValue({ id: 2 });
-      const res = await GymResolvers.GymEquipmentImage.approvedBy({ approvedByUserId: 2 } as any, {}, ctx);
+      const res = await GymResolvers.GymEquipmentImage.approvedBy(
+        { approvedByUserId: 2 } as any,
+        {},
+        ctx,
+      );
       expect(ctx.prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 2 } });
       expect(res).toEqual({ id: 2 });
     });

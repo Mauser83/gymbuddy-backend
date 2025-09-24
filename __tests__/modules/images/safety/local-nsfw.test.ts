@@ -8,7 +8,10 @@ type OnnxMockModule = typeof import('onnxruntime-node') & {
 };
 
 type SharpMockModule = typeof import('sharp') & {
-  __setBufferResult: (res: { data: Buffer; info: { width: number; height: number; channels: number } }) => void;
+  __setBufferResult: (res: {
+    data: Buffer;
+    info: { width: number; height: number; channels: number };
+  }) => void;
   __chain: SharpChain;
 };
 
@@ -35,12 +38,19 @@ class MockTensor {
   }
 }
 
-type SharpBufferResult = { data: Buffer; info: { width: number; height: number; channels: number } };
+type SharpBufferResult = {
+  data: Buffer;
+  info: { width: number; height: number; channels: number };
+};
 let sharpBufferResult: SharpBufferResult | null = null;
 
-jest.mock('../../../../src/modules/images/models.ensure', (): EnsureModelFileModule => ({
-  ensureModelFile: ensureModelFileMock,
-} as unknown as EnsureModelFileModule));
+jest.mock(
+  '../../../../src/modules/images/models.ensure',
+  (): EnsureModelFileModule =>
+    ({
+      ensureModelFile: ensureModelFileMock,
+    }) as unknown as EnsureModelFileModule,
+);
 
 jest.mock('onnxruntime-node', () => ({
   InferenceSession: {
@@ -109,7 +119,8 @@ beforeAll(() => {
 
 const ortMock = require('onnxruntime-node') as OnnxMockModule;
 const sharpModule = require('sharp') as SharpMock;
-const ensureModule = require('../../../../src/modules/images/models.ensure') as EnsureModelFileModule;
+const ensureModule =
+  require('../../../../src/modules/images/models.ensure') as EnsureModelFileModule;
 
 const SIZE = 224;
 

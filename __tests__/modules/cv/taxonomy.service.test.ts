@@ -95,10 +95,7 @@ describe('TaxonomyService', () => {
 
     expect(prisma.distanceType.findMany).toHaveBeenCalledWith({
       where: {},
-      orderBy: [
-        { displayOrder: 'asc' },
-        { id: 'asc' },
-      ],
+      orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
     });
     expect(first).toEqual([
       { id: 10, label: 'Low', active: true, displayOrder: 1, kind: 'DISTANCE' },
@@ -111,10 +108,7 @@ describe('TaxonomyService', () => {
 
     expect(prisma.distanceType.findMany).toHaveBeenLastCalledWith({
       where: { active: true },
-      orderBy: [
-        { displayOrder: 'asc' },
-        { id: 'asc' },
-      ],
+      orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
     });
     expect(second).toEqual([
       { id: 10, label: 'Low', active: true, displayOrder: 1, kind: 'DISTANCE' },

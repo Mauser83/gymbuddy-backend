@@ -1,3 +1,6 @@
+import resolvers from '../../../src/graphql/rootResolvers';
+import typeDefs from '../../../src/graphql/rootSchema';
+import { setupApollo } from '../../../src/graphql/setupApollo';
 import { AppRole, GymRole, UserRole } from '../../../src/modules/auth/auth.types';
 import type { PermissionService } from '../../../src/modules/core/permission.service';
 import type { ImageIntakeService } from '../../../src/modules/images/image-intake.service';
@@ -6,9 +9,6 @@ import type { ImagePromotionService } from '../../../src/modules/images/image-pr
 import type { MediaService } from '../../../src/modules/media/media.service';
 import type { RecognitionService } from '../../../src/modules/recognition/recognition.service';
 import type { PrismaClient } from '../../../src/prisma';
-import resolvers from '../../../src/graphql/rootResolvers';
-import typeDefs from '../../../src/graphql/rootSchema';
-import { setupApollo } from '../../../src/graphql/setupApollo';
 
 const startMock = jest.fn();
 
@@ -26,13 +26,17 @@ jest.mock('../../../src/modules/auth/auth.guard', () => ({
   graphqlAuth: jest.fn(),
 }));
 
-const expressMiddlewareMock = (jest.requireMock('@apollo/server/express4') as {
-  expressMiddleware: jest.Mock;
-}).expressMiddleware;
+const expressMiddlewareMock = (
+  jest.requireMock('@apollo/server/express4') as {
+    expressMiddleware: jest.Mock;
+  }
+).expressMiddleware;
 
-const graphqlAuthMock = (jest.requireMock('../../../src/modules/auth/auth.guard') as {
-  graphqlAuth: jest.Mock;
-}).graphqlAuth;
+const graphqlAuthMock = (
+  jest.requireMock('../../../src/modules/auth/auth.guard') as {
+    graphqlAuth: jest.Mock;
+  }
+).graphqlAuth;
 
 describe('setupApollo', () => {
   beforeEach(() => {

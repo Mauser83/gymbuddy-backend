@@ -4,7 +4,9 @@
 import { jest } from '@jest/globals';
 
 const mockTransformToByteArray = jest.fn<Promise<Uint8Array>, []>();
-const mockSend = jest.fn().mockResolvedValue({ Body: { transformToByteArray: mockTransformToByteArray } });
+const mockSend = jest
+  .fn()
+  .mockResolvedValue({ Body: { transformToByteArray: mockTransformToByteArray } });
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
@@ -465,7 +467,7 @@ describe('image worker processOnce', () => {
 
 describe('image worker coordination helpers', () => {
   it('drains batches until no work remains', async () => {
-        process.env.WORKER_CONCURRENCY = '10';
+    process.env.WORKER_CONCURRENCY = '10';
 
     mockQueue.claimBatch
       .mockResolvedValueOnce([
@@ -514,14 +516,17 @@ describe('image worker coordination helpers', () => {
 
   it('acquires a lease and retries transient jobs in burst mode', async () => {
     mockQueue.claimBatch
-      .mockResolvedValueOnce([
-        { id: 55, jobType: 'unknown', storageKey: 'k', attempts: 1 } as any,
-      ])
+      .mockResolvedValueOnce([{ id: 55, jobType: 'unknown', storageKey: 'k', attempts: 1 } as any])
       .mockResolvedValueOnce([]);
 
     const worker = await importWorker();
 
-    await worker.kickBurstRunner({ idleExitMs: 0, batchSize: 1, leaseTtlMs: 1000, maxRuntimeMs: 1000 });
+    await worker.kickBurstRunner({
+      idleExitMs: 0,
+      batchSize: 1,
+      leaseTtlMs: 1000,
+      maxRuntimeMs: 1000,
+    });
 
     expect(mockQueue.tryAcquireLease).toHaveBeenCalledTimes(1);
     expect(mockQueue.markFailed).toHaveBeenCalledWith(55, expect.any(Error), 7);

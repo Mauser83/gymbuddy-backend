@@ -93,7 +93,7 @@ export default async function () {
     if (verboseLogs) {
       console.log(`Test server running on port ${port}`);
     }
-    
+
     // Clean database before any tests run
     await cleanDatabase();
 

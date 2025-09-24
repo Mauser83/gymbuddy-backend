@@ -53,7 +53,7 @@ describe('apiRouter', () => {
     expect(res.status).toBe(418);
     expect(res.text).toBe('teapot');
   });
-  
+
   test('GET /place-details returns 400 when place_id missing', async () => {
     const res = await request(app).get('/api/place-details');
     expect(res.status).toBe(400);
@@ -75,7 +75,6 @@ describe('apiRouter', () => {
     expect(res.body.error).toMatch(/place details/);
   });
 
-  
   test('GET /place-details forwards non-ok responses', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,

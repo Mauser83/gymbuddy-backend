@@ -110,7 +110,8 @@ describe('parseKey & isValidStorageKey', () => {
   });
 
   it('extracts uuid or sha fields for equipment approval keys', () => {
-    const uuidKey = 'private/global/equipment/12/quarantine/123e4567-e89b-4a12-9abc-1234567890ab.png';
+    const uuidKey =
+      'private/global/equipment/12/quarantine/123e4567-e89b-4a12-9abc-1234567890ab.png';
     const sha = 'a'.repeat(64);
     const shaKey = `private/global/equipment/12/approved/${sha}.jpg`;
 
@@ -155,7 +156,9 @@ describe('parseKey & isValidStorageKey', () => {
 
   it('rejects approval keys missing required identifiers', () => {
     expect(
-      isValidStorageKey('private/global/equipment//approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg'),
+      isValidStorageKey(
+        'private/global/equipment//approved/123e4567-e89b-4a12-9abc-1234567890ab.jpg',
+      ),
     ).toBe(false);
     expect(
       isValidStorageKey('private/gym//quarantine/123e4567-e89b-4a12-9abc-1234567890ab.jpg'),

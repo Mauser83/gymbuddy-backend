@@ -1,15 +1,18 @@
-import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { pubsub } from '../../../src/graphql/rootResolvers';
 import { validateInput } from '../../../src/middlewares/validation';
+import { GymService } from '../../../src/modules/gym/gym.service';
 import { kickBurstRunner } from '../../../src/modules/images/image-worker';
 import { priorityFromSource } from '../../../src/modules/images/queue.service';
-import { GymService } from '../../../src/modules/gym/gym.service';
+import {
+  copyObjectIfMissing,
+  deleteObjectIgnoreMissing,
+} from '../../../src/modules/media/media.service';
 import { assertSizeWithinLimit } from '../../../src/modules/media/media.utils';
-import { copyObjectIfMissing, deleteObjectIgnoreMissing } from '../../../src/modules/media/media.service';
-import { makeKey } from '../../../src/utils/makeKey';
 import { ImageJobStatus, PrismaClient } from '../../../src/prisma';
+import { makeKey } from '../../../src/utils/makeKey';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/graphql/rootResolvers', () => ({
@@ -441,10 +444,7 @@ describe('GymService', () => {
   test('listGymEquipmentImages enforces permissions and paginates', async () => {
     prisma.gymEquipment.findUnique.mockResolvedValue({ gymId: 2 } as any);
     jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
-    prisma.gymEquipmentImage.findMany.mockResolvedValue([
-      { id: 'first' },
-      { id: 'second' },
-    ] as any);
+    prisma.gymEquipmentImage.findMany.mockResolvedValue([{ id: 'first' }, { id: 'second' }] as any);
 
     const res = await service.listGymEquipmentImages(5, 10, 1);
 
@@ -499,12 +499,10 @@ describe('GymService', () => {
   test('createEquipmentTrainingUploadTicket validates access', async () => {
     jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
 
-    const result = await service.createEquipmentTrainingUploadTicket(
-      9,
-      2,
-      5,
-      { ext: 'webp', contentLength: 321 } as any,
-    );
+    const result = await service.createEquipmentTrainingUploadTicket(9, 2, 5, {
+      ext: 'webp',
+      contentLength: 321,
+    } as any);
 
     expect(mockedAssertSizeWithinLimit).toHaveBeenCalledWith(321);
     expect(mockedGetSignedUrl).toHaveBeenCalled();
@@ -527,12 +525,10 @@ describe('GymService', () => {
     prisma.imageQueue.create.mockResolvedValue({} as any);
     mockedPriorityFromSource.mockReturnValue(9);
 
-    const immediate = jest
-      .spyOn(global, 'setImmediate')
-      .mockImplementation((fn: any) => {
-        fn();
-        return {} as any;
-      });
+    const immediate = jest.spyOn(global, 'setImmediate').mockImplementation((fn: any) => {
+      fn();
+      return {} as any;
+    });
 
     const result = await service.finalizeEquipmentTrainingImage(
       10,
@@ -544,7 +540,9 @@ describe('GymService', () => {
       'private/uploads/gym/6/original-uuid.png',
       expect.stringMatching(/^private\/gym\/12\/approved\/mock-uuid\.png$/),
     );
-    expect(mockedDeleteObjectIgnoreMissing).toHaveBeenCalledWith('private/uploads/gym/6/original-uuid.png');
+    expect(mockedDeleteObjectIgnoreMissing).toHaveBeenCalledWith(
+      'private/uploads/gym/6/original-uuid.png',
+    );
     expect(prisma.trainingCandidate.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

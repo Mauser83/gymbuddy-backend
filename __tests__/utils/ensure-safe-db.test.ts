@@ -10,9 +10,9 @@ describe('ensureSafeDb', () => {
   });
 
   it('throws when NODE_ENV is not test', () => {
-    expect(() => ensureSafeDb('postgres://ci_user@demo.neon.tech/gymbuddy_test', 'development')).toThrow(
-      'NODE_ENV must be "test"',
-    );
+    expect(() =>
+      ensureSafeDb('postgres://ci_user@demo.neon.tech/gymbuddy_test', 'development'),
+    ).toThrow('NODE_ENV must be "test"');
   });
 
   it('throws when database url is missing', () => {
@@ -38,12 +38,8 @@ describe('ensureSafeDb', () => {
   });
 
   it('throws when branch provided does not look like test', () => {
-    expect(
-      () =>
-        ensureSafeDb(
-          'postgres://ci_user@demo.neon.tech/gymbuddy_test?options=proj/main',
-          'test',
-        ),
+    expect(() =>
+      ensureSafeDb('postgres://ci_user@demo.neon.tech/gymbuddy_test?options=proj/main', 'test'),
     ).toThrow('Branch');
   });
 
@@ -51,9 +47,9 @@ describe('ensureSafeDb', () => {
     process.env.CI = 'true';
     process.env.CI_TEST_DB = 'false';
 
-    expect(() =>
-      ensureSafeDb('postgres://ci_user@demo.neon.tech/gymbuddy_test', 'test'),
-    ).toThrow('CI_TEST_DB=true is required');
+    expect(() => ensureSafeDb('postgres://ci_user@demo.neon.tech/gymbuddy_test', 'test')).toThrow(
+      'CI_TEST_DB=true is required',
+    );
   });
 
   it('allows safe configuration', () => {

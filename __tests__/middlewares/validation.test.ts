@@ -54,7 +54,9 @@ describe('validateInput', () => {
 
     expect(caughtError).toBeInstanceOf(GraphQLError);
     const graphQLError = caughtError as GraphQLError;
-    expect(graphQLError.message).toBe('Validation failed: First message, Second message, Third message');
+    expect(graphQLError.message).toBe(
+      'Validation failed: First message, Second message, Third message',
+    );
     expect(graphQLError.extensions).toEqual(
       expect.objectContaining({
         code: 'BAD_USER_INPUT',

@@ -38,11 +38,7 @@ describe('MediaResolvers.Mutation.getImageUploadUrl', () => {
       ttlSec: 600,
     };
 
-    const result = await MediaResolvers.Mutation.getImageUploadUrl(
-      null,
-      { input },
-      ctx,
-    );
+    const result = await MediaResolvers.Mutation.getImageUploadUrl(null, { input }, ctx);
 
     expect(result).toEqual({
       uploadUrl: 'https://upload.example',
@@ -80,11 +76,7 @@ describe('MediaResolvers.Mutation.createUploadSession', () => {
       equipmentId: 99,
     };
 
-    const result = await MediaResolvers.Mutation.createUploadSession(
-      null,
-      { input: dto },
-      ctx,
-    );
+    const result = await MediaResolvers.Mutation.createUploadSession(null, { input: dto }, ctx);
 
     expect(result).toEqual({ sessionId: 'sess', uploads: [] });
     expect(mediaService.createUploadSession).toHaveBeenCalledWith({
@@ -161,11 +153,7 @@ describe('MediaResolvers.imageUrl', () => {
       url: 'https://public',
       expiresAt: 'future-date',
     });
-    expect(mediaService.imageUrl).toHaveBeenCalledWith(
-      'public/golden/awesome.png',
-      120,
-      5,
-    );
+    expect(mediaService.imageUrl).toHaveBeenCalledWith('public/golden/awesome.png', 120, 5);
   });
 });
 
