@@ -61,6 +61,16 @@ describe('ensureModelFile', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it('returns early when file exists and checksum is not provided', async () => {
+    fs.stat.mockResolvedValue({} as any);
+
+    await ensureModelFile('/tmp/model.onnx', { kind: 'url', url: 'https://example.com/model' });
+
+    expect(fs.readFile).not.toHaveBeenCalled();
+    expect(fs.mkdir).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('re-downloads from URL when checksum mismatches existing file', async () => {
     const newBytes = Buffer.from('new-bytes');
     const sha = createHash('sha256').update(newBytes).digest('hex');

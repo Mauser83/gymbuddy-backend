@@ -53,6 +53,22 @@ describe('AuditService', () => {
         },
       });
     });
+
+    test('omits metadata field when none provided', async () => {
+      auditLoggingTestUtils.enable();
+
+      await service.logEvent({
+        action: 'NO_METADATA',
+        entity: 'User',
+      });
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: {
+          action: 'NO_METADATA',
+          entity: 'User',
+        },
+      });
+    });
   });
 
   describe('helper methods', () => {

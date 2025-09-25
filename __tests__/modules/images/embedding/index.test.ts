@@ -19,8 +19,7 @@ describe('createEmbeddingProvider', () => {
     delete process.env.EMBED_VENDOR;
   });
 
-  it('returns a local embedding provider that lazily initializes the model', async () => {
-    process.env.EMBED_VENDOR = 'local';
+  it('defaults to the local embedding provider when EMBED_VENDOR is not set', async () => {
     const provider = createEmbeddingProvider();
     expect(provider.dim).toBe(512);
 
@@ -28,6 +27,14 @@ describe('createEmbeddingProvider', () => {
     expect(mockedInit).toHaveBeenCalledTimes(1);
     expect(mockedEmbed).toHaveBeenCalledWith(Buffer.from([1, 2, 3]));
     expect(vec).toEqual([1, 2, 3]);
+  });
+
+  it('normalizes EMBED_VENDOR casing before matching', async () => {
+    process.env.EMBED_VENDOR = 'LOCAL';
+    const provider = createEmbeddingProvider();
+
+    await provider.embed(Uint8Array.from([9, 9, 9]));
+    expect(mockedInit).toHaveBeenCalledTimes(1);
   });
 
   it('throws for unknown vendors', () => {

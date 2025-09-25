@@ -165,4 +165,26 @@ describe('setupWebSocket', () => {
       contextFactory({ connectionParams: { authorization: 'Bearer stale' } }),
     ).rejects.toThrow('Invalid or expired token');
   });
+
+  it('rejects websocket tokens whose subject is not numeric', async () => {
+    verifyMock.mockReturnValue({ sub: 'not-a-number', tokenVersion: 3 });
+
+    const { contextFactory } = initServer();
+
+    await expect(
+      contextFactory({ connectionParams: { authorization: 'Bearer weird' } }),
+    ).rejects.toThrow('Invalid user ID from token.');
+    expect(basePrisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects websocket tokens when the user lookup fails', async () => {
+    verifyMock.mockReturnValue({ sub: '77', tokenVersion: 4 });
+    basePrisma.user.findUnique.mockResolvedValue(null);
+
+    const { contextFactory } = initServer();
+
+    await expect(
+      contextFactory({ connectionParams: { authorization: 'Bearer missing' } }),
+    ).rejects.toThrow('Invalid or expired token');
+  });
 });
