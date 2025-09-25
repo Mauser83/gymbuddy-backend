@@ -19,7 +19,11 @@ jest.mock('../../../src/prisma', () => ({
   },
 }));
 
-const mockAudit = { logUserLogin: jest.fn(), logEvent: jest.fn() } as unknown as AuditService;
+const mockAuditImpl = {
+  logUserLogin: jest.fn(),
+  logEvent: jest.fn(),
+};
+const mockAudit = mockAuditImpl as unknown as AuditService;
 
 const containerInstance = {
   resolve: jest.fn().mockReturnValue(mockAudit),
@@ -31,11 +35,26 @@ const containerInstance = {
 describe('graphqlAuth', () => {
   beforeEach(() => {
     containerInstance.resolve.mockReturnValue(mockAudit);
+    jest.mocked(prisma.user.findUnique).mockClear();
     jest.mocked(prisma.user.findUnique).mockResolvedValue({ tokenVersion: 1 } as any);
+    mockAuditImpl.logUserLogin.mockClear();
+    mockAuditImpl.logEvent.mockClear();
   });
 
   test('allows login and register operations without auth', async () => {
     const result = await graphqlAuth({ req: { body: { operationName: 'Login' } } as any });
+    expect(result.userId).toBeNull();
+  });
+
+  test('allows register operation without auth', async () => {
+    const result = await graphqlAuth({ req: { body: { operationName: 'Register' } } as any });
+    expect(result.userId).toBeNull();
+  });
+
+  test('allows introspection queries without auth headers', async () => {
+    const result = await graphqlAuth({
+      req: { body: { query: 'query IntrospectionQuery { __schema { types { name } } }' } } as any,
+    });
     expect(result.userId).toBeNull();
   });
 
@@ -50,7 +69,16 @@ describe('graphqlAuth', () => {
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     const ctx = await graphqlAuth({ req });
     expect(ctx.userId).toBe(1);
-    expect(mockAudit.logUserLogin).toHaveBeenCalled();
+    expect(mockAuditImpl.logUserLogin).toHaveBeenCalled();
+  });
+
+  test('fills optional token claims with defaults when omitted', async () => {
+    const token = sign({ sub: '2', userRole: 'USER', tokenVersion: 1 }, 'testsecret');
+    const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '3.3.3.3' } as any;
+    const ctx = await graphqlAuth({ req });
+
+    expect(ctx.gymRoles).toEqual([]);
+    expect(ctx.isPremium).toBe(false);
   });
 
   test('throws for invalid token', async () => {
@@ -63,5 +91,21 @@ describe('graphqlAuth', () => {
     const token = sign({ sub: '1', userRole: 'USER', gymRoles: [], tokenVersion: 1 }, 'testsecret');
     const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '1.1.1.1' } as any;
     await expect(graphqlAuth({ req })).rejects.toThrow();
+  });
+
+  test('logs and rejects when token subject is non-numeric', async () => {
+    const token = sign(
+      { sub: 'abc', userRole: 'USER', gymRoles: [], tokenVersion: 1 },
+      'testsecret',
+    );
+    const req = { body: {}, headers: { authorization: `Bearer ${token}` }, ip: '2.2.2.2' } as any;
+
+    await expect(graphqlAuth({ req })).rejects.toThrow('Invalid or expired token');
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(mockAuditImpl.logEvent).toHaveBeenCalledWith({
+      action: 'LOGIN_FAILURE',
+      metadata: { error: 'Invalid user ID in token.', ip: '2.2.2.2' },
+    });
   });
 });

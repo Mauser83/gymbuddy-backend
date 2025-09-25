@@ -64,3 +64,31 @@ export const executeOperation = async (operation: {
 };
 
 export const { testServer, testUrl, prisma } = (global as any).__TEST_UTILS__ || {};
+
+process.env.DOTENV_CONFIG_QUIET = process.env.DOTENV_CONFIG_QUIET ?? 'true';
+
+const suppressedMethods = ['log', 'info', 'debug', 'warn'] as const;
+type SuppressedMethod = (typeof suppressedMethods)[number];
+const originalError = console.error.bind(console);
+let spies: jest.SpyInstance[] = [];
+
+beforeAll(() => {
+  spies = suppressedMethods.map((method: SuppressedMethod) =>
+    jest.spyOn(console, method).mockImplementation(() => {}),
+  );
+
+  spies.push(
+    jest.spyOn(console, 'error').mockImplementation((...args: Parameters<typeof console.error>) => {
+      if (process.env.VERBOSE_TEST_LOGS === '1') {
+        originalError(...args);
+      }
+    }),
+  );
+});
+
+afterAll(() => {
+  for (const spy of spies) {
+    spy.mockRestore();
+  }
+  spies = [];
+});

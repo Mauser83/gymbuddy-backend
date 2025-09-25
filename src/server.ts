@@ -5,6 +5,10 @@ import express, { json } from 'express';
 import http from 'http';
 import { register as promRegister } from 'prom-client';
 
+if (process.env.NODE_ENV === 'test' && !process.env.DOTENV_CONFIG_QUIET) {
+  process.env.DOTENV_CONFIG_QUIET = 'true';
+}
+
 loadEnv();
 
 import apiRouter from './api/apiRouter';

@@ -26,10 +26,22 @@ module.exports = {
   },
 
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*image-worker)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*subscription.resolvers)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*local-openclip-light)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*local-openclip-light)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*embeddingWriter)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*server)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*prisma)\\.js$': '$1.ts',
+  },
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
 
   testTimeout: 30000,
   maxWorkers: 1, // Run tests serially to avoid port conflicts
   detectOpenHandles: true,
   forceExit: true,
+  collectCoverage: true,
+  collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.d.ts'],
+  coveragePathIgnorePatterns: ['<rootDir>/src/generated/'],
 };

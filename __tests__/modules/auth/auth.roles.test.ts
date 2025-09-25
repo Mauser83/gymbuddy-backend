@@ -42,6 +42,49 @@ describe('auth.roles', () => {
     ).not.toThrow();
   });
 
+  test('verifyRoles enforces specific user roles', () => {
+    const trainerContext = {
+      ...baseContext,
+      userRole: UserRole.PERSONAL_TRAINER,
+    } as AuthContext;
+
+    expect(() =>
+      verifyRoles(trainerContext, { requireUserRole: UserRole.PERSONAL_TRAINER }),
+    ).not.toThrow();
+
+    expect(() =>
+      verifyRoles(baseContext, { requireUserRole: UserRole.PERSONAL_TRAINER }),
+    ).toThrow();
+  });
+
+  test('verifyRoles checks gym-scoped roles and gym ids', () => {
+    const ctxWithGymRoles = {
+      ...baseContext,
+      gymRoles: [
+        { gymId: 42, role: GymRole.GYM_ADMIN },
+        { gymId: 77, role: GymRole.GYM_MODERATOR },
+      ],
+    } as AuthContext;
+
+    expect(() =>
+      verifyRoles(ctxWithGymRoles, {
+        requireGymRole: { gymId: 42, role: GymRole.GYM_ADMIN },
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      verifyRoles(ctxWithGymRoles, {
+        requireGymRole: { gymId: 42, role: GymRole.GYM_MODERATOR },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      verifyRoles(ctxWithGymRoles, {
+        requireGymRole: { gymId: 99, role: GymRole.GYM_ADMIN },
+      }),
+    ).toThrow();
+  });
+
   test('verifyGymScope passes for admin', () => {
     const ctx = { ...baseContext, appRole: AppRole.ADMIN } as AuthContext;
     expect(() => verifyGymScope(ctx, permissionService as any, 1)).not.toThrow();

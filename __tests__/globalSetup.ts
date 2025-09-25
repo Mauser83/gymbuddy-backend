@@ -5,6 +5,8 @@ process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'account';
 process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || 'id';
 process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || 'secret';
 process.env.TICKET_SECRET = process.env.TICKET_SECRET || 'ticketsecret';
+process.env.NODE_ENV = 'test';
+process.env.DOTENV_CONFIG_QUIET = process.env.DOTENV_CONFIG_QUIET ?? 'true';
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
 import { getPort } from 'get-port-please';
@@ -47,6 +49,8 @@ async function cleanDatabase() {
   ]);
 }
 
+const verboseLogs = process.env.VERBOSE_TEST_LOGS === '1';
+
 export default async function () {
   try {
     ensureSafeDb();
@@ -86,7 +90,9 @@ export default async function () {
         }) as AuthContext,
     });
 
-    console.log(`Test server running on port ${port}`);
+    if (verboseLogs) {
+      console.log(`Test server running on port ${port}`);
+    }
 
     // Clean database before any tests run
     await cleanDatabase();

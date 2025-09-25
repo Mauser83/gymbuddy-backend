@@ -1,4 +1,4 @@
-jest.mock('../../../src/modules/images/image-worker', () => ({
+jest.mock('../../../src/modules/images/image-worker.js', () => ({
   // Ensure kickBurstRunner returns a Promise so calling code can attach .catch
   kickBurstRunner: jest.fn(() => Promise.resolve()),
 }));

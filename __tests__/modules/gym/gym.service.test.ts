@@ -1,17 +1,43 @@
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 import { pubsub } from '../../../src/graphql/rootResolvers';
 import { validateInput } from '../../../src/middlewares/validation';
 import { GymService } from '../../../src/modules/gym/gym.service';
-import { PrismaClient } from '../../../src/prisma';
+import { kickBurstRunner } from '../../../src/modules/images/image-worker';
+import { priorityFromSource } from '../../../src/modules/images/queue.service';
+import {
+  copyObjectIfMissing,
+  deleteObjectIgnoreMissing,
+} from '../../../src/modules/media/media.service';
+import { assertSizeWithinLimit } from '../../../src/modules/media/media.utils';
+import { ImageJobStatus, PrismaClient } from '../../../src/prisma';
+import { makeKey } from '../../../src/utils/makeKey';
 
 jest.mock('../../../src/middlewares/validation');
 jest.mock('../../../src/graphql/rootResolvers', () => ({
   pubsub: { publish: jest.fn() },
 }));
+jest.mock('../../../src/utils/makeKey');
+jest.mock('@aws-sdk/s3-request-presigner');
+jest.mock('../../../src/modules/media/media.utils');
+jest.mock('../../../src/modules/media/media.service');
+jest.mock('../../../src/modules/images/image-worker');
+jest.mock('../../../src/modules/images/queue.service');
+jest.mock('crypto', () => {
+  const actual = jest.requireActual('crypto');
+  return { ...actual, randomUUID: jest.fn(() => 'mock-uuid') };
+});
 
 const mockedValidate = jest.mocked(validateInput as any);
 const mockedPublish = jest.mocked(pubsub.publish);
+const mockedMakeKey = jest.mocked(makeKey);
+const mockedGetSignedUrl = jest.mocked(getSignedUrl);
+const mockedAssertSizeWithinLimit = jest.mocked(assertSizeWithinLimit);
+const mockedCopyObjectIfMissing = jest.mocked(copyObjectIfMissing);
+const mockedDeleteObjectIgnoreMissing = jest.mocked(deleteObjectIgnoreMissing);
+const mockedKickBurstRunner = jest.mocked(kickBurstRunner);
+const mockedPriorityFromSource = jest.mocked(priorityFromSource);
 
 describe('GymService', () => {
   let prisma: DeepMockProxy<PrismaClient>;
@@ -32,6 +58,13 @@ describe('GymService', () => {
     service = new GymService(prisma, permissionService as any);
     mockedValidate.mockResolvedValue(undefined as any);
     mockedPublish.mockClear();
+    mockedMakeKey.mockReturnValue('generated/storage/key.jpg');
+    mockedGetSignedUrl.mockResolvedValue('https://signed.example');
+    mockedAssertSizeWithinLimit.mockReturnValue(undefined);
+    mockedCopyObjectIfMissing.mockResolvedValue(undefined);
+    mockedDeleteObjectIgnoreMissing.mockResolvedValue(undefined);
+    mockedKickBurstRunner.mockResolvedValue(undefined);
+    mockedPriorityFromSource.mockReturnValue(5);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -369,5 +402,213 @@ describe('GymService', () => {
       },
     });
     expect(res).toEqual({ id: 1 });
+  });
+
+  test('getGymImagesByGymId fetches descending images', async () => {
+    prisma.gymEquipmentImage.findMany.mockResolvedValue([{ id: 'img1' }] as any);
+
+    const rows = await service.getGymImagesByGymId(7);
+
+    expect(prisma.gymEquipmentImage.findMany).toHaveBeenCalledWith({
+      where: { gymId: 7 },
+      orderBy: { capturedAt: 'desc' },
+      include: { image: true },
+    });
+    expect(rows).toEqual([{ id: 'img1' }]);
+  });
+
+  test('getGymImageById loads image relation', async () => {
+    prisma.gymEquipmentImage.findUnique.mockResolvedValue({ id: 'img1' } as any);
+
+    const row = await service.getGymImageById('img1');
+
+    expect(prisma.gymEquipmentImage.findUnique).toHaveBeenCalledWith({
+      where: { id: 'img1' },
+      include: { image: true },
+    });
+    expect(row).toEqual({ id: 'img1' });
+  });
+
+  test('getGymEquipment returns detailed equipment list', async () => {
+    prisma.gymEquipment.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    const rows = await service.getGymEquipment(9);
+
+    expect(prisma.gymEquipment.findMany).toHaveBeenCalledWith({
+      where: { gymId: 9 },
+      include: { equipment: true, images: true },
+    });
+    expect(rows).toEqual([{ id: 3 }]);
+  });
+
+  test('listGymEquipmentImages enforces permissions and paginates', async () => {
+    prisma.gymEquipment.findUnique.mockResolvedValue({ gymId: 2 } as any);
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+    prisma.gymEquipmentImage.findMany.mockResolvedValue([{ id: 'first' }, { id: 'second' }] as any);
+
+    const res = await service.listGymEquipmentImages(5, 10, 1);
+
+    expect(prisma.gymEquipmentImage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { gymEquipmentId: 10 },
+        take: 2,
+      }),
+    );
+    expect(res).toEqual({ items: [{ id: 'first' }], nextCursor: 'second' });
+  });
+
+  test('listGymEquipmentImages rejects unauthorized users', async () => {
+    prisma.gymEquipment.findUnique.mockResolvedValue({ gymId: 2 } as any);
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(false);
+
+    await expect(service.listGymEquipmentImages(5, 10)).rejects.toThrow('Unauthorized');
+  });
+
+  test('createAdminUploadTicket validates payload and builds headers', async () => {
+    const result = await service.createAdminUploadTicket({
+      gymId: 3,
+      requestedByUserId: 7,
+      ttlSec: 120,
+      upload: {
+        ext: 'JPG',
+        contentLength: 123,
+        contentType: '',
+      },
+    });
+
+    expect(mockedAssertSizeWithinLimit).toHaveBeenCalledWith(123);
+    expect(mockedMakeKey).toHaveBeenCalledWith('upload', { gymId: 3 }, { ext: 'jpg' });
+    expect(mockedGetSignedUrl).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      storageKey: 'generated/storage/key.jpg',
+      requiredHeaders: [{ name: 'Content-Type', value: 'image/jpeg' }],
+    });
+  });
+
+  test('createAdminUploadTicket rejects unsupported extension', async () => {
+    await expect(
+      service.createAdminUploadTicket({
+        gymId: 1,
+        requestedByUserId: 2,
+        ttlSec: 60,
+        upload: { ext: 'gif', contentLength: 1 },
+      }),
+    ).rejects.toThrow('Unsupported image extension');
+  });
+
+  test('createEquipmentTrainingUploadTicket validates access', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+
+    const result = await service.createEquipmentTrainingUploadTicket(9, 2, 5, {
+      ext: 'webp',
+      contentLength: 321,
+    } as any);
+
+    expect(mockedAssertSizeWithinLimit).toHaveBeenCalledWith(321);
+    expect(mockedGetSignedUrl).toHaveBeenCalled();
+    expect(result.storageKey).toMatch(/^private\/uploads\/gym\/5\/mock-uuid\.webp$/);
+  });
+
+  test('createEquipmentTrainingUploadTicket rejects unauthorized', async () => {
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(false);
+
+    await expect(
+      service.createEquipmentTrainingUploadTicket(1, 2, 3, { ext: 'png', contentLength: 1 } as any),
+    ).rejects.toThrow('Unauthorized');
+  });
+
+  test('finalizeEquipmentTrainingImage copies object, enqueues jobs, and kicks worker', async () => {
+    prisma.gymEquipment.findUnique.mockResolvedValue({ gymId: 4, equipmentId: 6 } as any);
+    jest.spyOn(service as any, 'checkGymPermission').mockResolvedValue(true);
+    prisma.gymEquipmentImage.create.mockResolvedValue({ id: 'img-1' } as any);
+    prisma.trainingCandidate.create.mockResolvedValue({} as any);
+    prisma.imageQueue.create.mockResolvedValue({} as any);
+    mockedPriorityFromSource.mockReturnValue(9);
+
+    const immediate = jest.spyOn(global, 'setImmediate').mockImplementation((fn: any) => {
+      fn();
+      return {} as any;
+    });
+
+    const result = await service.finalizeEquipmentTrainingImage(
+      10,
+      12,
+      'private/uploads/gym/6/original-uuid.png',
+    );
+
+    expect(mockedCopyObjectIfMissing).toHaveBeenCalledWith(
+      'private/uploads/gym/6/original-uuid.png',
+      expect.stringMatching(/^private\/gym\/12\/approved\/mock-uuid\.png$/),
+    );
+    expect(mockedDeleteObjectIgnoreMissing).toHaveBeenCalledWith(
+      'private/uploads/gym/6/original-uuid.png',
+    );
+    expect(prisma.trainingCandidate.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source: 'gym_equipment',
+          gymId: 4,
+          gymEquipmentId: 12,
+        }),
+      }),
+    );
+    expect(prisma.imageQueue.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        jobType: 'HASH',
+        priority: 9,
+        status: ImageJobStatus.pending,
+      }),
+    });
+    expect(mockedKickBurstRunner).toHaveBeenCalled();
+    expect(result).toEqual({ id: 'img-1' });
+    immediate.mockRestore();
+  });
+
+  test('getImageProcessingStatus returns immediate status when no job enqueued', async () => {
+    prisma.gymEquipmentImage.findUnique.mockResolvedValue({
+      status: 'APPROVED',
+      storageKey: 'key',
+    } as any);
+    prisma.imageQueue.findFirst.mockResolvedValue(null as any);
+
+    const res = await service.getImageProcessingStatus('img-1');
+
+    expect(res).toEqual({
+      status: 'APPROVED',
+      queuePosition: 0,
+      etaSeconds: 0,
+      attempts: 0,
+      scheduledAt: null,
+      priority: 0,
+    });
+  });
+
+  test('getImageProcessingStatus returns queue details when job pending', async () => {
+    prisma.gymEquipmentImage.findUnique.mockResolvedValue({
+      status: 'PENDING',
+      storageKey: 'approved-key',
+    } as any);
+    const createdAt = new Date('2023-01-01T00:00:00.000Z');
+    const scheduledAt = new Date('2023-01-02T00:00:00.000Z');
+    prisma.imageQueue.findFirst.mockResolvedValue({
+      priority: 3,
+      createdAt,
+      attempts: 2,
+      scheduledAt,
+    } as any);
+    prisma.$queryRaw.mockResolvedValue([{ totalahead: BigInt(4) }] as any);
+    process.env.THROUGHPUT_JOBS_PER_MIN = '40';
+
+    const res = await service.getImageProcessingStatus('img-2');
+
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(res).toEqual({
+      status: 'PENDING',
+      queuePosition: 4,
+      etaSeconds: Math.ceil((4 * 60) / 40),
+      attempts: 2,
+      scheduledAt: scheduledAt.toISOString(),
+      priority: 3,
+    });
   });
 });

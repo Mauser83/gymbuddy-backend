@@ -40,6 +40,7 @@ function createContext() {
     } as any,
     userId: 1,
     permissionService: new PermissionService({} as any),
+    mediaService: { presignGetForKey: jest.fn() },
   } as any;
 }
 
@@ -168,6 +169,13 @@ describe('EquipmentResolvers', () => {
       });
     });
 
+    test('equipmentSubcategories queries all when no categoryId', async () => {
+      const ctx = createContext();
+      ctx.prisma.equipmentSubcategory.findMany.mockResolvedValue([]);
+      await EquipmentResolvers.Query.equipmentSubcategories(null as any, {}, ctx);
+      expect(ctx.prisma.equipmentSubcategory.findMany).toHaveBeenCalledWith({ where: {} });
+    });
+
     test('gymEquipmentByGymId uses service', async () => {
       const serviceInstance = { getGymEquipmentByGymId: jest.fn() } as any;
       mockedService.mockImplementation(() => serviceInstance);
@@ -272,6 +280,42 @@ describe('EquipmentResolvers', () => {
       const ctx = createContext();
       await EquipmentResolvers.Mutation.deleteEquipmentSubcategory(null as any, { id: 1 }, ctx);
       expect(serviceInstance.deleteEquipmentSubcategory).toHaveBeenCalled();
+    });
+  });
+
+  describe('EquipmentImage resolvers', () => {
+    test('thumbUrl returns null when storageKey missing', async () => {
+      const ctx = createContext();
+      const result = await EquipmentResolvers.EquipmentImage.thumbUrl(
+        { storageKey: '' } as any,
+        {},
+        ctx,
+      );
+      expect(result).toBeNull();
+      expect(ctx.mediaService.presignGetForKey).not.toHaveBeenCalled();
+    });
+
+    test('thumbUrl uses default ttl when not provided', async () => {
+      const ctx = createContext();
+      ctx.mediaService.presignGetForKey.mockResolvedValue('signed');
+      const result = await EquipmentResolvers.EquipmentImage.thumbUrl(
+        { storageKey: 'key' } as any,
+        {},
+        ctx,
+      );
+      expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 300);
+      expect(result).toBe('signed');
+    });
+
+    test('thumbUrl forwards provided ttl', async () => {
+      const ctx = createContext();
+      ctx.mediaService.presignGetForKey.mockResolvedValue('signed');
+      await EquipmentResolvers.EquipmentImage.thumbUrl(
+        { storageKey: 'key' } as any,
+        { ttlSec: 120 },
+        ctx,
+      );
+      expect(ctx.mediaService.presignGetForKey).toHaveBeenCalledWith('key', 120);
     });
   });
 });

@@ -137,6 +137,27 @@ describe('EquipmentService', () => {
     });
   });
 
+  test('uploadEquipmentImage includes uploader and omits sha when not provided', async () => {
+    prisma.equipmentImage.create.mockResolvedValue({ id: '2' } as any);
+    const input: any = {
+      equipmentId: 3,
+      storageKey: 'key-2',
+    };
+
+    await service.uploadEquipmentImage(input, { userId: 10 } as any);
+
+    expect(mockedValidate).toHaveBeenCalledWith(input, UploadEquipmentImageDto);
+    expect(mockedVerify).toHaveBeenCalled();
+    expect(prisma.equipmentImage.create).toHaveBeenCalledWith({
+      data: {
+        equipmentId: 3,
+        storageKey: 'key-2',
+        sha256: undefined,
+        uploadedByUserId: 10,
+      },
+    });
+  });
+
   test('deleteEquipmentImage checks roles and deletes', async () => {
     prisma.equipmentImage.delete.mockResolvedValue({} as any);
     const res = await service.deleteEquipmentImage('2', ctx);

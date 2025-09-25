@@ -89,6 +89,32 @@ describe('ExerciseLogService', () => {
     expect(res).toEqual({ id: 1 });
   });
 
+  test('createExerciseLog converts completedAt string to Date', async () => {
+    const completedAt = '2020-01-05T10:00:00.000Z';
+    prisma.exerciseLog.create.mockResolvedValue({ id: 2 } as any);
+
+    const input: any = {
+      exerciseId: 2,
+      workoutSessionId: 3,
+      setNumber: 1,
+      metrics: { 1: 10 },
+      equipmentIds: [],
+      completedAt,
+    };
+
+    await service.createExerciseLog(input, 1);
+
+    expect(prisma.exerciseLog.create).toHaveBeenCalledWith({
+      data: {
+        exerciseId: 2,
+        workoutSessionId: 3,
+        setNumber: 1,
+        metrics: { 1: 10 },
+        completedAt: new Date(completedAt),
+      },
+    });
+  });
+
   test('updateExerciseLog updates metrics and equipment', async () => {
     prisma.exerciseLog.update.mockResolvedValue({ id: 1 } as any);
 
@@ -126,6 +152,30 @@ describe('ExerciseLogService', () => {
     });
     expect(prisma.exerciseLogEquipment.deleteMany).not.toHaveBeenCalled();
     expect(res).toEqual({ id: 1 });
+  });
+
+  test('updateExerciseLog handles completedAt nullification', async () => {
+    prisma.exerciseLog.update.mockResolvedValue({ id: 1 } as any);
+
+    await service.updateExerciseLog(1, { completedAt: null } as any);
+
+    expect(prisma.exerciseLog.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { completedAt: null },
+    });
+    expect(prisma.exerciseLogEquipment.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('updateExerciseLog converts completedAt string to Date', async () => {
+    prisma.exerciseLog.update.mockResolvedValue({ id: 1 } as any);
+
+    const completedAt = '2020-01-06T10:00:00.000Z';
+    await service.updateExerciseLog(1, { completedAt, notes: 'n' });
+
+    expect(prisma.exerciseLog.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { completedAt: new Date(completedAt), notes: 'n' },
+    });
   });
 
   test('deleteExerciseLog removes record', async () => {

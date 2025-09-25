@@ -4,10 +4,15 @@ import { createLogger, format, transports } from 'winston';
 
 import { prisma } from '../prisma';
 
+const isTest = process.env.NODE_ENV === 'test';
+
 const logger = createLogger({
   level: 'info',
   format: format.json(),
-  transports: [new transports.Console(), new transports.File({ filename: 'logs/combined.log' })],
+  transports: [
+    new transports.Console({ silent: isTest }),
+    new transports.File({ filename: 'logs/combined.log', silent: isTest }),
+  ],
 });
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {

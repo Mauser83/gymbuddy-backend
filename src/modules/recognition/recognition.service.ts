@@ -28,7 +28,7 @@ const T_HIGH = 0.85;
 
 const EXT_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic']);
 
-function inferContentType(ext: string) {
+export function inferContentType(ext: string) {
   switch (ext) {
     case 'jpg':
     case 'jpeg':
@@ -74,7 +74,7 @@ type EquipmentCandidate = {
   lowConfidence: boolean;
 };
 
-function groupTopEquipment(
+export function groupTopEquipment(
   imgs: Img[],
   options: { keepPerEq?: number; source?: string; totalImages?: number } = {},
 ): EquipmentCandidate[] {
