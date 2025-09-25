@@ -21,9 +21,9 @@ import {
   copyObjectIfMissing,
   deleteObjectIgnoreMissing,
 } from '../../../src/modules/media/media.service';
+import type { PrismaClient } from '../../../src/prisma';
 
 const burstRunnerMock = jest.mocked(kickBurstRunner);
-import type { PrismaClient } from '../../../src/prisma';
 
 // Mock the S3 client's send method so no real network calls are made during tests
 const s3SendMock = jest.spyOn(S3Client.prototype, 'send');

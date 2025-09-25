@@ -22,9 +22,10 @@ const sessionMock: any = {
   outputMetadata: { image_embeds: { dimensions: [1, 512] } },
   run: runMock,
 };
-const createMock = jest.fn<Promise<typeof sessionMock>, [string | Buffer, Record<string, unknown>?]>(
-  async () => sessionMock,
-);
+const createMock = jest.fn<
+  Promise<typeof sessionMock>,
+  [string | Buffer, Record<string, unknown>?]
+>(async () => sessionMock);
 
 type ResizeCall = { width: number; height: number };
 const sharpResizeCalls: ResizeCall[] = [];
@@ -144,7 +145,8 @@ afterAll(() => {
   Object.assign(process.env, originalEnv);
 });
 
-type LocalOpenclipModule = typeof import('../../../../src/modules/images/embedding/local-openclip-light.js');
+type LocalOpenclipModule =
+  typeof import('../../../../src/modules/images/embedding/local-openclip-light.js');
 const modulePath = '../../../../src/modules/images/embedding/local-openclip-light.js';
 const loadModule = (): LocalOpenclipModule => require(modulePath) as LocalOpenclipModule;
 
@@ -212,7 +214,7 @@ describe('initLocalOpenCLIP', () => {
     expect(ensureModelFileMock).toHaveBeenCalledWith(
       expect.stringContaining('openclip-vit-b32.onnx'),
       { kind: 'r2', bucket: 'models', key: 'clip-model' },
-      'abc123'
+      'abc123',
     );
 
     const sessionOptions = createMock.mock.calls[0]?.[1];
@@ -282,7 +284,7 @@ describe('initLocalOpenCLIP', () => {
     expect(ensureModelFileMock).toHaveBeenCalledWith(
       expect.stringContaining('openclip-vit-b32.onnx'),
       { kind: 'url', url: 'https://example.com/fallback.onnx' },
-      'def456'
+      'def456',
     );
 
     expect(runMock).toHaveBeenCalledTimes(3);
