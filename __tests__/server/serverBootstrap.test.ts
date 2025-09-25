@@ -96,9 +96,19 @@ describe('server bootstrap behaviour', () => {
     const ImageModerationService = jest.fn(() => imageModerationService);
     const RecognitionService = jest.fn(() => recognitionService);
 
-    const processOnSpy = jest
-      .spyOn(process, 'on')
-      .mockImplementation((() => process) as unknown as typeof process.on);
+    const registeredSignals: Record<string, Array<() => void>> = {};
+    const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+      event: string,
+      handler: () => void,
+    ) => {
+      registeredSignals[event] ??= [];
+      registeredSignals[event].push(handler);
+
+      return process;
+    }) as unknown as typeof process.on);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as unknown as typeof process.exit);
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     let serverModule: typeof import('../../src/server.js') | undefined;
@@ -193,6 +203,15 @@ describe('server bootstrap behaviour', () => {
     expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
     expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
     expect(consoleLogSpy).toHaveBeenCalledWith('Starting Apollo Server...');
+    expect(consoleLogSpy).toHaveBeenCalledWith('running on production stage');
+    expect(consoleLogSpy).toHaveBeenCalledWith('DB host:', 'localhost:5432');
+
+    registeredSignals['SIGTERM']?.forEach((handler) => handler());
+
+    expect(consoleLogSpy).toHaveBeenCalledWith('🔻 Shutting down...');
+    expect(closeMock).toHaveBeenCalledTimes(1);
+    expect(consoleLogSpy).toHaveBeenCalledWith('✅ Server closed');
+    expect(processExitSpy).toHaveBeenCalledWith(0);
   });
 
   test('logs and exits when startup fails', async () => {
