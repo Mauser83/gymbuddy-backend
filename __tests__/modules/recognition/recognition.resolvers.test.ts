@@ -82,6 +82,24 @@ describe('RecognitionResolvers', () => {
     });
   });
 
+  it('defaults optional confirmation values when not provided', async () => {
+    const ctx = baseContext();
+    ctx.userId = undefined as any;
+
+    await RecognitionResolvers.Mutation.confirmRecognition(
+      {},
+      { input: { attemptId: '15', selectedEquipmentId: 3 } },
+      ctx as any,
+    );
+
+    expect(ctx.recognitionService.confirmRecognition).toHaveBeenCalledWith({
+      attemptId: BigInt(15),
+      selectedEquipmentId: 3,
+      offerForTraining: false,
+      uploaderUserId: null,
+    });
+  });
+
   it('discards recognition using bigint attempt id', async () => {
     const ctx = baseContext();
     await RecognitionResolvers.Mutation.discardRecognition({}, { attemptId: '11' }, ctx as any);

@@ -109,9 +109,12 @@ describe('RecognitionService', () => {
     process.env = originalEnv;
   });
 
-  const loadService = async () => {
-    const { RecognitionService } = require('../../../src/modules/recognition/recognition.service');
-    return new RecognitionService();
+  const loadService = async (
+    setup?: (module: typeof import('../../../src/modules/recognition/recognition.service')) => void,
+  ) => {
+    const module = require('../../../src/modules/recognition/recognition.service');
+    setup?.(module);
+    return new module.RecognitionService();
   };
 
   it('creates upload tickets with inferred metadata and signature', async () => {
@@ -339,6 +342,43 @@ describe('RecognitionService', () => {
     immediateSpy.mockRestore();
   });
 
+  it('confirms recognition without training consent and skips queueing', async () => {
+    prismaMock.recognitionAttempt.findUnique.mockResolvedValue({
+      id: BigInt(111),
+      gymId: 3,
+      storageKey: 'private/recognition/3/2024/02/example.jpg',
+      bestScore: 0.42,
+      createdAt: new Date('2024-02-20T00:00:00Z'),
+    });
+    prismaMock.gymEquipment.findFirst.mockResolvedValue({ id: 55 });
+    prismaMock.recognitionAttempt.update.mockResolvedValue({});
+
+    const service = await loadService();
+    const immediateSpy = jest.spyOn(global, 'setImmediate');
+
+    const result = await service.confirmRecognition({
+      attemptId: BigInt(111),
+      selectedEquipmentId: 55,
+      offerForTraining: false,
+      uploaderUserId: null,
+    });
+
+    expect(result).toEqual({ saved: true });
+    expect(prismaMock.recognitionAttempt.update).toHaveBeenCalledWith({
+      where: { id: BigInt(111) },
+      data: {
+        consent: 'denied',
+        bestEquipmentId: 55,
+      },
+    });
+    expect(prismaMock.trainingCandidate.create).not.toHaveBeenCalled();
+    expect(prismaMock.imageQueue.create).not.toHaveBeenCalled();
+    expect(kickBurstRunnerMock).not.toHaveBeenCalled();
+    expect(immediateSpy).not.toHaveBeenCalled();
+
+    immediateSpy.mockRestore();
+  });
+
   it('fails recognition when embedding output shape is invalid', async () => {
     embedImageMock.mockResolvedValue(Float32Array.from([1, 2, 3]));
     const chunks = [Uint8Array.from([1, 2]), Buffer.from([3, 4, 5])];
@@ -400,6 +440,48 @@ describe('RecognitionService', () => {
         uploaderUserId: null,
       }),
     ).rejects.toThrow('Selected equipment is not part of this gym');
+  });
+
+  it('falls back to alternate candidates when primary source is empty but decision kept', async () => {
+    embedImageMock.mockResolvedValue(Float32Array.from({ length: 512 }, () => 0.95));
+    const globalCandidate = { id: 'glob-1', equipmentId: 77, storageKey: 'glob-1.jpg', score: 0.9 };
+    knnFromVectorGymMock.mockResolvedValue([]);
+    knnFromVectorGlobalMock.mockResolvedValue([globalCandidate]);
+    prismaMock.equipment.findMany.mockResolvedValue([]);
+    prismaMock.recognitionAttempt.create.mockImplementation(async ({ data }: { data: any }) => ({
+      id: BigInt(909),
+      createdAt: new Date('2024-03-01T00:00:00.000Z'),
+      ...data,
+    }));
+
+    const byteBody = {
+      transformToByteArray: jest.fn().mockResolvedValue(Uint8Array.from([5, 4, 3, 2])),
+    };
+    s3SendMock.mockImplementation(async (cmd) => {
+      switch ((cmd as any).__type) {
+        case 'HeadObjectCommand':
+          return {};
+        case 'GetObjectCommand':
+          return { Body: byteBody };
+        default:
+          throw new Error(`unexpected command ${(cmd as any).__type}`);
+      }
+    });
+
+    const service = await loadService();
+
+    const token = (service as any).sign({ gid: 31, key: 'private/recognition/31/fallback.jpg' });
+    const result = await service.recognizeImage(token, 1);
+
+    expect(result.attempt.decision).toBe('GLOBAL_ACCEPT');
+    expect(result.equipmentCandidates).toHaveLength(1);
+    expect(result.equipmentCandidates[0]).toMatchObject({
+      equipmentId: 77,
+      source: 'GLOBAL',
+      representative: expect.objectContaining({ storageKey: 'glob-1.jpg' }),
+    });
+    expect(result.attempt.bestEquipmentId).toBe(77);
+    expect(result.attempt.bestScore).toBeCloseTo(0.9);
   });
 
   it('discards recognition attempts and ignores missing objects', async () => {

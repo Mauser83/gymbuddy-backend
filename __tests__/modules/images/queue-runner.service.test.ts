@@ -41,6 +41,12 @@ describe('QueueRunnerService', () => {
     expect(acquired).toBe(false);
   });
 
+  it('treats non-array responses as failed lease acquisition', async () => {
+    queryMock.mockResolvedValueOnce(undefined);
+    const acquired = await service.tryAcquireLease('worker-5');
+    expect(acquired).toBe(false);
+  });
+
   it('renews lease when update count is positive', async () => {
     executeMock.mockResolvedValueOnce(1);
     const renewed = await service.renewLease('worker-3', 5000);

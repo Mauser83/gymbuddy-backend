@@ -155,6 +155,32 @@ describe('MediaResolvers.imageUrl', () => {
     });
     expect(mediaService.imageUrl).toHaveBeenCalledWith('public/golden/awesome.png', 120, 5);
   });
+
+  it('passes undefined user id through to the media service when not authenticated', async () => {
+    const mediaService = {
+      imageUrl: jest.fn().mockResolvedValue({ url: 'https://anon', expiresAt: 'soon' }),
+    };
+
+    const ctx: AuthContext = {
+      ...(baseCtx as any),
+      userId: undefined,
+      gymRoles: [],
+      mediaService: mediaService as any,
+    } as AuthContext;
+
+    const result = await MediaResolvers.Query.imageUrl(
+      null,
+      { storageKey: 'public/golden/anon.png', ttlSec: 45 },
+      ctx,
+    );
+
+    expect(mediaService.imageUrl).toHaveBeenCalledWith('public/golden/anon.png', 45, undefined);
+    expect(result).toEqual({
+      storageKey: 'public/golden/anon.png',
+      url: 'https://anon',
+      expiresAt: 'soon',
+    });
+  });
 });
 
 describe('MediaResolvers.imageUrlMany', () => {

@@ -180,6 +180,98 @@ describe('local person safety detector', () => {
     await expect(hasPerson(Buffer.from([4, 5, 6]))).resolves.toBe(false);
   });
 
+  it('rejects detections outside the supported aspect ratio bounds', async () => {
+    configureSharp();
+    const logits = new Float32Array(85);
+    logits[2] = 0.5; // narrow width
+    logits[3] = 10; // very tall height → aspect ratio >> ASP_MAX
+    logits[4] = 4; // confident object logit
+    logits[5] = 4; // confident class logit
+
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ preds: { data: Float32Array } }>>();
+    run.mockResolvedValue({ preds: { data: logits } });
+
+    const session = {
+      inputNames: ['images'],
+      outputNames: ['preds'],
+      outputMetadata: { preds: { dimensions: [1, 85] } },
+      run,
+    };
+
+    mockCreate.mockResolvedValue(session);
+
+    const { hasPerson } = loadModule();
+    await expect(hasPerson(Buffer.from([3, 2, 1]))).resolves.toBe(false);
+  });
+
+  it('reads tensor dims when metadata is unavailable', async () => {
+    configureSharp();
+    const logits = new Float32Array(85);
+    logits[2] = 3;
+    logits[3] = 3;
+    logits[4] = 2; // sigmoid ≈ 0.88
+    logits[5] = 2; // sigmoid ≈ 0.88
+
+    const tensor = { data: logits, dims: [1, 3, 3, 85] } as any;
+    const run = createMock<(feeds: Record<string, unknown>) => Promise<{ preds: typeof tensor }>>();
+    run.mockResolvedValue({ preds: tensor });
+
+    const session = {
+      inputNames: ['images'],
+      outputNames: ['preds'],
+      outputMetadata: {}, // force fallback to tensor.dims
+      run,
+    };
+
+    mockCreate.mockResolvedValue(session);
+
+    const { hasPerson } = loadModule();
+    await expect(hasPerson(Buffer.from([6, 5, 4]))).resolves.toBe(true);
+  });
+
+  it('detects a person when NMS outputs include a batch column', async () => {
+    configureSharp();
+    const outputs = new Float32Array([0, 0, 2, 4, 0.95, 0, 0.42]);
+
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ nms: { data: Float32Array } }>>();
+    run.mockResolvedValue({ nms: { data: outputs } });
+
+    const session = {
+      inputNames: ['images'],
+      outputNames: ['nms'],
+      outputMetadata: { nms: { dimensions: [1, 7] } },
+      run,
+    };
+
+    mockCreate.mockResolvedValue(session);
+
+    const { hasPerson } = loadModule();
+    await expect(hasPerson(Buffer.from([7, 7, 7]))).resolves.toBe(true);
+  });
+
+  it('returns false for unsupported output shapes', async () => {
+    configureSharp();
+    const weird = new Float32Array(10); // not divisible by 85 and not NMS shaped
+
+    const run =
+      createMock<(feeds: Record<string, unknown>) => Promise<{ weird: { data: Float32Array } }>>();
+    run.mockResolvedValue({ weird: { data: weird } });
+
+    const session = {
+      inputNames: ['images'],
+      outputNames: ['weird'],
+      outputMetadata: { weird: { dimensions: [1, 10] } },
+      run,
+    };
+
+    mockCreate.mockResolvedValue(session);
+
+    const { hasPerson } = loadModule();
+    await expect(hasPerson(Buffer.from([0, 1, 2]))).resolves.toBe(false);
+  });
+
   it('downloads the model from R2 only once and reuses the cached session', async () => {
     process.env.PERSON_MODEL_R2_KEY = 'yolo.onnx';
     process.env.R2_BUCKET = 'bucket';
