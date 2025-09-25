@@ -1,8 +1,18 @@
 import { PrismaClient } from '../../prisma';
 import type { JsonObject } from '../../prisma';
 
-// Toggle to enable/disable audit logging
-const AUDIT_LOGGING_ENABLED = false;
+// Toggle to enable/disable audit logging. Using a mutable reference makes it
+// possible to flip the flag in tests without affecting production behavior.
+let auditLoggingEnabled = false;
+
+export const auditLoggingTestUtils = {
+  enable() {
+    auditLoggingEnabled = true;
+  },
+  disable() {
+    auditLoggingEnabled = false;
+  },
+};
 
 function toJsonObject(data: unknown): JsonObject {
   if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
@@ -25,7 +35,7 @@ export class AuditService {
     userId?: number;
     metadata?: unknown;
   }): Promise<void> {
-    if (!AUDIT_LOGGING_ENABLED) {
+    if (!auditLoggingEnabled) {
       // Logging disabled; exit early
       return;
     }

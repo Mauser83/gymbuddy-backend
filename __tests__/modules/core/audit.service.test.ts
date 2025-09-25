@@ -1,6 +1,6 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-import { AuditService } from '../../../src/modules/core/audit.service';
+import { AuditService, auditLoggingTestUtils } from '../../../src/modules/core/audit.service';
 import { PrismaClient } from '../../../src/prisma';
 
 describe('AuditService', () => {
@@ -10,6 +10,12 @@ describe('AuditService', () => {
   beforeEach(() => {
     prisma = mockDeep<PrismaClient>();
     service = new AuditService(prisma);
+    auditLoggingTestUtils.disable();
+  });
+
+  afterEach(() => {
+    auditLoggingTestUtils.disable();
+    jest.resetAllMocks();
   });
 
   describe('logEvent', () => {
@@ -24,6 +30,28 @@ describe('AuditService', () => {
 
       expect(res).toBeUndefined();
       expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    });
+
+    test('persists audit entry when logging enabled', async () => {
+      auditLoggingTestUtils.enable();
+
+      await service.logEvent({
+        action: 'TEST',
+        entity: 'User',
+        entityId: 5,
+        userId: 7,
+        metadata: 'unexpected metadata',
+      });
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: {
+          action: 'TEST',
+          entity: 'User',
+          entityId: 5,
+          userId: 7,
+          metadata: {},
+        },
+      });
     });
   });
 
@@ -72,6 +100,27 @@ describe('AuditService', () => {
         entityId: 2,
         userId: 1,
         metadata: { changes: { b: 2 } },
+      });
+    });
+
+    test('logDataUpdate converts non-object changes to empty metadata when enabled', async () => {
+      auditLoggingTestUtils.enable();
+
+      await service.logDataUpdate({
+        userId: 11,
+        entity: 'User',
+        entityId: 22,
+        changes: ['unexpected', 'array'] as unknown as Record<string, unknown>,
+      });
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: {
+          action: 'DATA_UPDATE',
+          entity: 'User',
+          entityId: 22,
+          userId: 11,
+          metadata: { changes: {} },
+        },
       });
     });
   });
