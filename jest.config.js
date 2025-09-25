@@ -32,6 +32,7 @@ module.exports = {
     '^(\\.{1,2}/.*local-openclip-light)\\.js$': '$1.ts',
     '^(\\.{1,2}/.*local-openclip-light)\\.js$': '$1.ts',
     '^(\\.{1,2}/.*embeddingWriter)\\.js$': '$1.ts',
+    '^(\\.{1,2}/.*server)\\.js$': '$1.ts',
   },
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
 
