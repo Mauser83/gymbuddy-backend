@@ -7,6 +7,7 @@ import {
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 
+import { maybeSuggestGlobalFromGymImage, parsePgvectorText } from './global-suggestions.helper';
 import { kickBurstRunner } from './image-worker';
 import {
   PromoteGymImageDto,
@@ -31,70 +32,6 @@ const EMBED_VERSION = process.env.EMBED_VERSION || '1.0';
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 if (!BUCKET || !ACCOUNT_ID) throw new Error('R2_BUCKET/R2_ACCOUNT_ID must be set');
-
-// helper: parse pgvector text like "[0.12, -0.34, 0.56]" → number[]
-export function parsePgvectorText(v: string | null | undefined): number[] | null {
-  if (!v) return null;
-  const s = v.trim();
-  if (s.length < 2 || s[0] !== '[' || s[s.length - 1] !== ']') return null;
-  const parts = s.slice(1, -1).split(',');
-  const out: number[] = [];
-  for (const p of parts) {
-    const n = Number(p);
-    if (!Number.isFinite(n)) return null;
-    out.push(n);
-  }
-  return out;
-}
-
-export function cosine(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0,
-    na = 0,
-    nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  if (!na || !nb) return 0;
-  return dot / Math.sqrt(na * nb);
-}
-
-export type GlobalCandidateScoreInput = {
-  globalCount: number;
-  hiRes: boolean;
-  simMax: number;
-};
-
-export function scoreGlobalCandidate({ globalCount, hiRes, simMax }: GlobalCandidateScoreInput) {
-  let s = 0;
-  const reasons: string[] = [];
-  if (globalCount === 0) {
-    s += 0.6;
-    reasons.push('NO_GLOBAL');
-  } else if (globalCount < 3) {
-    s += 0.3;
-    reasons.push('LOW_COVERAGE');
-  } else if (globalCount < 15) {
-    s += 0.15;
-    reasons.push('GROWTH');
-  }
-  if (hiRes) {
-    s += 0.1;
-    reasons.push('HI_RES');
-  }
-  s += 0.05;
-  reasons.push('FRESH');
-  if (simMax >= 0.995) {
-    s -= 0.5;
-    reasons.push('NEAR_DUP_STRONG');
-  } else if (simMax >= 0.985) {
-    s -= 0.25;
-    reasons.push('NEAR_DUP');
-  }
-  return { score: Math.max(0, Math.min(1, s)), reasons };
-}
 
 export class ImagePromotionService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -152,85 +89,6 @@ export class ImagePromotionService {
         ACL: 'private',
       }),
     );
-  }
-
-  private async maybeCreateGlobalSuggestion(params: {
-    equipmentId: number;
-    gymImageId: string;
-    storageKey: string;
-    sha256: string;
-    vector: number[];
-  }) {
-    const { equipmentId, gymImageId, storageKey, sha256, vector } = params;
-    if (!sha256 || !vector || vector.length === 0) return;
-
-    const dup = await this.prisma.equipmentImage.findFirst({
-      where: { sha256 },
-      select: { id: true },
-    });
-    if (dup) return;
-
-    const globalCount = await this.prisma.equipmentImage.count({
-      where: { equipmentId },
-    });
-    if (globalCount >= 15) return;
-
-    const ext = fileExtFrom(storageKey);
-    const globalCandKey = `private/global/candidates/${equipmentId}/${sha256}.${ext}`;
-    await this.s3CopyIfMissing(storageKey, globalCandKey);
-
-    const rows = await this.prisma.$queryRawUnsafe<{ id: string; v: string }[]>(
-      `SELECT id, embedding::text AS v FROM "EquipmentImage" WHERE "equipmentId" = $1 LIMIT 200`,
-      equipmentId,
-    );
-    let simMax = 0;
-    let nearDupId: string | null = null;
-    for (const row of rows) {
-      const vec = parsePgvectorText(row.v);
-      if (!vec) continue;
-      const c = cosine(vector, vec);
-      if (c > simMax) {
-        simMax = c;
-        nearDupId = row.id;
-      }
-    }
-
-    let hiRes = false;
-    try {
-      const head = await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
-      hiRes = (head.ContentLength ?? 0) >= 300 * 1024;
-    } catch (err) {
-      if ((err as any)?.$metadata?.httpStatusCode !== 404) {
-        console.warn('Failed to determine image resolution from storage key', err);
-      }
-    }
-
-    const { score, reasons } = scoreGlobalCandidate({
-      globalCount,
-      hiRes,
-      simMax,
-    });
-
-    await this.prisma.globalImageSuggestion.upsert({
-      where: { sha256 },
-      update: {
-        storageKey: globalCandKey,
-        usefulnessScore: score,
-        reasonCodes: reasons,
-        status: 'PENDING',
-        nearDupImageId: simMax >= 0.985 ? nearDupId : null,
-      },
-      create: {
-        equipmentId,
-        gymImageId,
-        storageKey: globalCandKey,
-        sha256,
-        usefulnessScore: score,
-        reasonCodes: reasons,
-        status: 'PENDING',
-        nearDupImageId: simMax >= 0.985 ? nearDupId : null,
-      },
-    });
   }
 
   async promoteGymImageToGlobal(input: PromoteGymImageDto, ctx: AuthContext) {
@@ -635,13 +493,16 @@ export class ImagePromotionService {
     });
 
     if (candidateVector && result.sha256) {
-      await this.maybeCreateGlobalSuggestion({
-        equipmentId: result.equipmentId,
-        gymImageId: result.imageId,
-        storageKey: result.storageKey,
-        sha256: result.sha256,
-        vector: candidateVector,
-      });
+      await maybeSuggestGlobalFromGymImage(
+        { prisma: this.prisma, s3: this.s3, bucket: BUCKET },
+        {
+          equipmentId: result.equipmentId,
+          gymImageId: result.imageId,
+          storageKey: result.storageKey,
+          sha256: result.sha256,
+          vector: candidateVector,
+        },
+      );
     }
 
     return {

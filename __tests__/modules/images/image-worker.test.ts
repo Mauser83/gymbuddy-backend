@@ -89,6 +89,7 @@ function buildPrismaMocks() {
     gymEquipmentImage: {
       updateMany: jest.fn<(args: unknown) => Promise<void>>(),
       findFirst: jest.fn<(args: unknown) => Promise<unknown | null>>(),
+      findUnique: jest.fn<(args: unknown) => Promise<unknown | null>>(),
     },
     trainingCandidate: {
       updateMany: jest.fn<(args: unknown) => Promise<void>>(),
@@ -98,10 +99,14 @@ function buildPrismaMocks() {
     equipmentImage: {
       findFirst: jest.fn<(args: unknown) => Promise<unknown | null>>(),
       findUnique: jest.fn<(args: unknown) => Promise<unknown | null>>(),
+      count: jest.fn<(args: unknown) => Promise<number>>(),
     },
     imageQueue: {
       create: jest.fn<(args: unknown) => Promise<void>>(),
       update: jest.fn<(args: unknown) => Promise<void>>(),
+    },
+    globalImageSuggestion: {
+      upsert: jest.fn<(args: unknown) => Promise<void>>(),
     },
     gym: {
       findUnique: jest.fn<(args: unknown) => Promise<unknown | null>>(),
@@ -141,26 +146,32 @@ const ORIGINAL_ENV = process.env;
 function resetPrismaMocks() {
   prismaMocks.gymEquipmentImage.updateMany.mockReset();
   prismaMocks.gymEquipmentImage.findFirst.mockReset();
+  prismaMocks.gymEquipmentImage.findUnique.mockReset();
   prismaMocks.trainingCandidate.updateMany.mockReset();
   prismaMocks.trainingCandidate.findFirst.mockReset();
   prismaMocks.trainingCandidate.update.mockReset();
   prismaMocks.equipmentImage.findFirst.mockReset();
   prismaMocks.equipmentImage.findUnique.mockReset();
+  prismaMocks.equipmentImage.count.mockReset();
   prismaMocks.imageQueue.create.mockReset();
   prismaMocks.imageQueue.update.mockReset();
   prismaMocks.gym.findUnique.mockReset();
+  prismaMocks.globalImageSuggestion.upsert.mockReset();
   prismaMocks.$executeRawUnsafe.mockReset();
 
   prismaMocks.gymEquipmentImage.updateMany.mockResolvedValue(undefined);
   prismaMocks.gymEquipmentImage.findFirst.mockResolvedValue(null);
+  prismaMocks.gymEquipmentImage.findUnique.mockResolvedValue(null);
   prismaMocks.trainingCandidate.updateMany.mockResolvedValue(undefined);
   prismaMocks.trainingCandidate.findFirst.mockResolvedValue(null);
   prismaMocks.trainingCandidate.update.mockResolvedValue(undefined);
   prismaMocks.equipmentImage.findFirst.mockResolvedValue(null);
   prismaMocks.equipmentImage.findUnique.mockResolvedValue(null);
+  prismaMocks.equipmentImage.count.mockResolvedValue(0);
   prismaMocks.imageQueue.create.mockResolvedValue(undefined);
   prismaMocks.imageQueue.update.mockResolvedValue(undefined);
   prismaMocks.gym.findUnique.mockResolvedValue(null);
+  prismaMocks.globalImageSuggestion.upsert.mockResolvedValue(undefined);
   prismaMocks.$executeRawUnsafe.mockResolvedValue(undefined);
 }
 
