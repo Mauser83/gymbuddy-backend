@@ -1,3 +1,6 @@
+import 'reflect-metadata';
+
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsNotEmpty,
@@ -10,7 +13,6 @@ import {
   ArrayNotEmpty,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 import {
   EquipmentSuggestionStatus as PrismaEquipmentSuggestionStatusEnum,

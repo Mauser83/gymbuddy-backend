@@ -1,12 +1,7 @@
-import {
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GraphQLError } from 'graphql';
 
-import { validateInput } from '../../middlewares/validation';
 import {
   ApproveEquipmentSuggestionDto,
   CreateEquipmentSuggestionDto,
@@ -26,13 +21,14 @@ import type {
   ListEquipmentSuggestionsInput,
   RejectEquipmentSuggestionInput,
 } from './equipment.types';
-import type { AuthContext } from '../auth/auth.types';
-import { verifyGymScope, verifyRoles } from '../auth/auth.roles';
-import type { PermissionService } from '../core/permission.service';
-import { assertSizeWithinLimit } from '../media/media.utils';
-import { copyObjectIfMissing } from '../media/media.service';
-import { fileExtFrom } from '../../utils/makeKey';
+import { validateInput } from '../../middlewares/validation';
 import type { PrismaClient } from '../../prisma';
+import { fileExtFrom } from '../../utils/makeKey';
+import { verifyGymScope, verifyRoles } from '../auth/auth.roles';
+import type { AuthContext } from '../auth/auth.types';
+import type { PermissionService } from '../core/permission.service';
+import { copyObjectIfMissing } from '../media/media.service';
+import { assertSizeWithinLimit } from '../media/media.utils';
 
 const BUCKET = process.env.R2_BUCKET!;
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
@@ -168,10 +164,7 @@ export class EquipmentSuggestionService {
     return { items, nextCursor: nextCursor ?? null };
   }
 
-  async createUploadTicket(
-    input: EquipmentSuggestionUploadTicketInput,
-    context: AuthContext,
-  ) {
+  async createUploadTicket(input: EquipmentSuggestionUploadTicketInput, context: AuthContext) {
     ensureAuthenticated(context);
     const dto = Object.assign(new CreateEquipmentSuggestionUploadTicketDto(), input);
     await validateInput(dto, CreateEquipmentSuggestionUploadTicketDto);
@@ -214,10 +207,7 @@ export class EquipmentSuggestionService {
     return { putUrl, storageKey };
   }
 
-  async finalizeImages(
-    input: FinalizeEquipmentSuggestionImagesInput,
-    context: AuthContext,
-  ) {
+  async finalizeImages(input: FinalizeEquipmentSuggestionImagesInput, context: AuthContext) {
     ensureAuthenticated(context);
     const dto = Object.assign(new FinalizeEquipmentSuggestionImagesDto(), input);
     await validateInput(dto, FinalizeEquipmentSuggestionImagesDto);
@@ -249,9 +239,7 @@ export class EquipmentSuggestionService {
       const sha = parseSuggestionSha(storageKey);
       if (!sha) throw new Error('Invalid storage key');
 
-      const head = await this.s3.send(
-        new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }),
-      );
+      const head = await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
       const contentLength = Number(head.ContentLength ?? 0);
 
       const row = await this.prisma.equipmentSuggestionImage.upsert({
@@ -270,10 +258,7 @@ export class EquipmentSuggestionService {
     return results;
   }
 
-  async approve(
-    input: ApproveEquipmentSuggestionInput,
-    context: AuthContext,
-  ) {
+  async approve(input: ApproveEquipmentSuggestionInput, context: AuthContext) {
     const dto = Object.assign(new ApproveEquipmentSuggestionDto(), input);
     await validateInput(dto, ApproveEquipmentSuggestionDto);
     verifyRoles(context, {
@@ -392,10 +377,7 @@ export class EquipmentSuggestionService {
     return { approved: true, equipmentId };
   }
 
-  async reject(
-    input: RejectEquipmentSuggestionInput,
-    context: AuthContext,
-  ) {
+  async reject(input: RejectEquipmentSuggestionInput, context: AuthContext) {
     const dto = Object.assign(new RejectEquipmentSuggestionDto(), input);
     await validateInput(dto, RejectEquipmentSuggestionDto);
     verifyRoles(context, {
