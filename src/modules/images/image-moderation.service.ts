@@ -1,5 +1,6 @@
 import { S3Client, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 
+import { maybeSuggestGlobalFromGymImage, parsePgvectorText } from './global-suggestions.helper';
 import { kickBurstRunner } from './image-worker';
 import { ApproveGymImageDto, RejectGymImageDto, CandidateGlobalImagesDto } from './images.dto';
 import type { Prisma } from '../../prisma';
@@ -43,17 +44,22 @@ export class ImageModerationService {
       select: {
         id: true,
         gymId: true,
+        equipmentId: true,
         storageKey: true,
         status: true,
         isSafe: true,
+        sha256: true,
       },
     });
     this.assertModerationPermission(ctx, gymImg.gymId);
     this.guardSafetyUnlessForce(gymImg, input.force);
 
-    const embedRows = await this.prisma.$queryRaw<{ has: boolean }[]>`
-      SELECT embedding IS NOT NULL AS has FROM "GymEquipmentImage" WHERE id = ${input.id}`;
+    const embedRows = await this.prisma.$queryRaw<
+      { has: boolean; embedding_text: string | null }[]
+    >`
+      SELECT embedding IS NOT NULL AS has, embedding::text AS embedding_text FROM "GymEquipmentImage" WHERE id = ${input.id}`;
     const hasEmbedding = embedRows?.[0]?.has ?? false;
+    const embeddingText = embedRows?.[0]?.embedding_text ?? null;
 
     if (!gymImg.storageKey) throw new Error('Gym image missing storageKey');
     const ext = fileExtFrom(gymImg.storageKey);
@@ -92,6 +98,22 @@ export class ImageModerationService {
       setImmediate(() => {
         kickBurstRunner().catch((e) => console.error('burst runner error', e));
       });
+    }
+
+    if (hasEmbedding && embeddingText && gymImg.equipmentId && gymImg.sha256) {
+      const vector = parsePgvectorText(embeddingText);
+      if (vector && vector.length > 0) {
+        await maybeSuggestGlobalFromGymImage(
+          { prisma: this.prisma, s3: this.s3, bucket: BUCKET },
+          {
+            equipmentId: gymImg.equipmentId,
+            gymImageId: gymImg.id,
+            storageKey: dstKey,
+            sha256: gymImg.sha256,
+            vector,
+          },
+        );
+      }
     }
 
     return { gymImage: updated };

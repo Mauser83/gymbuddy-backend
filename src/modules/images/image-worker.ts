@@ -2,6 +2,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { createHash } from 'crypto';
 
 import { initLocalOpenCLIP, embedImage } from './embedding/local-openclip-light';
+import { maybeSuggestGlobalFromGymImage } from './global-suggestions.helper';
 import { QueueRunnerService, type QueueJob } from './queue-runner.service';
 import { createSafetyProvider } from './safety';
 import { hasPerson } from './safety/local-person';
@@ -216,7 +217,7 @@ async function handleEMBED(job: QueueJob) {
 
   const gymImg = await prisma.gymEquipmentImage.findFirst({
     where: { storageKey },
-    select: { id: true, gymId: true },
+    select: { id: true, gymId: true, equipmentId: true, sha256: true },
   });
   if (gymImg) {
     const vec = await embedFromStorageKey(storageKey);
@@ -255,6 +256,23 @@ async function handleEMBED(job: QueueJob) {
           },
         });
       }
+    }
+
+    const latest = await prisma.gymEquipmentImage.findUnique({
+      where: { id: gymImg.id },
+      select: { id: true, equipmentId: true, sha256: true, status: true },
+    });
+    if (latest?.status === 'APPROVED' && latest.equipmentId && latest.sha256) {
+      await maybeSuggestGlobalFromGymImage(
+        { prisma, s3, bucket: BUCKET },
+        {
+          equipmentId: latest.equipmentId,
+          gymImageId: latest.id,
+          storageKey,
+          sha256: latest.sha256,
+          vector: vec,
+        },
+      );
     }
     return;
   }

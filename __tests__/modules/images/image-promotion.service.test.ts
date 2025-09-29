@@ -16,14 +16,16 @@ import {
 
 import { AppRole, AuthContext, UserRole } from '../../../src/modules/auth/auth.types';
 import { writeImageEmbedding } from '../../../src/modules/cv/embeddingWriter';
-import {
-  GlobalCandidateScoreInput,
-  ImagePromotionService,
-  cosine,
-  parsePgvectorText,
-  scoreGlobalCandidate,
-} from '../../../src/modules/images/image-promotion.service';
+import * as GlobalSuggestions from '../../../src/modules/images/global-suggestions.helper';
+import { ImagePromotionService } from '../../../src/modules/images/image-promotion.service';
 import { PrismaClient } from '../../../src/prisma';
+
+process.env.R2_BUCKET = process.env.R2_BUCKET || 'bucket';
+process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'acc';
+
+const { cosine, parsePgvectorText, scoreGlobalCandidate, maybeSuggestGlobalFromGymImage } =
+  GlobalSuggestions;
+type GlobalCandidateScoreInput = GlobalSuggestions.GlobalCandidateScoreInput;
 
 process.env.EMBED_VENDOR = 'local';
 process.env.EMBED_MODEL = 'openclip-vit-b32';
@@ -138,19 +140,7 @@ describe('helper utilities', () => {
   });
 });
 
-describe('maybeCreateGlobalSuggestion', () => {
-  function setup(overrides?: Partial<ReturnType<typeof createSuggestionPrismaMock>>) {
-    const base = createSuggestionPrismaMock();
-    const prisma = {
-      ...base,
-      ...(overrides ?? {}),
-    } as ReturnType<typeof createSuggestionPrismaMock>;
-    const svc = new ImagePromotionService(prisma as unknown as PrismaClient);
-    (svc as any).s3 = { send: jest.fn().mockResolvedValue({ ContentLength: 400 * 1024 }) };
-    jest.spyOn(svc as any, 's3CopyIfMissing').mockResolvedValue(undefined);
-    return { svc, prisma };
-  }
-
+describe('maybeSuggestGlobalFromGymImage', () => {
   function createSuggestionPrismaMock() {
     return {
       equipmentImage: {
@@ -162,9 +152,37 @@ describe('maybeCreateGlobalSuggestion', () => {
     } as any;
   }
 
+  function createDeps(overrides?: Partial<ReturnType<typeof createSuggestionPrismaMock>>) {
+    const base = createSuggestionPrismaMock();
+    const prisma = {
+      ...base,
+      ...(overrides ?? {}),
+    } as ReturnType<typeof createSuggestionPrismaMock>;
+    const send = jest.fn(async (cmd: any) => {
+      if (cmd instanceof HeadObjectCommand) {
+        const commandInput = (cmd as { input?: { Key?: string } }).input;
+        const key = String(commandInput?.Key ?? '');
+        if (key.includes('private/global/candidates')) {
+          const err: any = new Error('not found');
+          err.$metadata = { httpStatusCode: 404 };
+          throw err;
+        }
+        return { ContentLength: 400 * 1024 } as any;
+      }
+      if (cmd instanceof CopyObjectCommand) return {} as any;
+      return {} as any;
+    });
+    const s3 = { send } as unknown as S3Client;
+    return {
+      prisma,
+      deps: { prisma: prisma as unknown as PrismaClient, s3, bucket: 'bucket' },
+      send,
+    };
+  }
+
   test('skips when vector or checksum missing', async () => {
-    const { svc, prisma } = setup();
-    await (svc as any).maybeCreateGlobalSuggestion({
+    const { prisma, deps } = createDeps();
+    await maybeSuggestGlobalFromGymImage(deps, {
       equipmentId: 1,
       gymImageId: 'g1',
       storageKey: 'key',
@@ -175,8 +193,8 @@ describe('maybeCreateGlobalSuggestion', () => {
   });
 
   test('persists suggestion with scoring metadata', async () => {
-    const { svc, prisma } = setup();
-    await (svc as any).maybeCreateGlobalSuggestion({
+    const { prisma, deps, send } = createDeps();
+    await maybeSuggestGlobalFromGymImage(deps, {
       equipmentId: 2,
       gymImageId: 'g1',
       storageKey: 'private/uploads/img.jpg',
@@ -184,10 +202,9 @@ describe('maybeCreateGlobalSuggestion', () => {
       vector: [1, 1],
     });
 
-    expect((svc as any).s3CopyIfMissing).toHaveBeenCalledWith(
-      'private/uploads/img.jpg',
-      expect.stringContaining('private/global/candidates/2/abc.'),
-    );
+    const copyCall = send.mock.calls.find(([cmd]) => cmd instanceof CopyObjectCommand);
+    expect(copyCall).toBeDefined();
+    expect(copyCall?.[0].input?.Key).toContain('private/global/candidates/2/abc');
 
     expect(prisma.globalImageSuggestion.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -206,14 +223,14 @@ describe('maybeCreateGlobalSuggestion', () => {
   });
 
   test('stops when duplicate global image already exists', async () => {
-    const { svc, prisma } = setup({
+    const { prisma, deps } = createDeps({
       equipmentImage: {
         findFirst: jest.fn().mockResolvedValue({ id: 'existing' }),
         count: jest.fn().mockResolvedValue(0),
       },
     });
 
-    await (svc as any).maybeCreateGlobalSuggestion({
+    await maybeSuggestGlobalFromGymImage(deps, {
       equipmentId: 2,
       gymImageId: 'g1',
       storageKey: 'key',
@@ -225,14 +242,14 @@ describe('maybeCreateGlobalSuggestion', () => {
   });
 
   test('skips when equipment already has ample coverage', async () => {
-    const { svc, prisma } = setup({
+    const { prisma, deps } = createDeps({
       equipmentImage: {
         findFirst: jest.fn().mockResolvedValue(null),
         count: jest.fn().mockResolvedValue(20),
       },
     });
 
-    await (svc as any).maybeCreateGlobalSuggestion({
+    await maybeSuggestGlobalFromGymImage(deps, {
       equipmentId: 2,
       gymImageId: 'g1',
       storageKey: 'key',
@@ -588,7 +605,7 @@ describe('approveTrainingCandidate', () => {
     const { prisma, tx } = createApprovePrisma();
     const svc = new ImagePromotionService(prisma);
     const suggestionSpy = jest
-      .spyOn(svc as any, 'maybeCreateGlobalSuggestion')
+      .spyOn(GlobalSuggestions, 'maybeSuggestGlobalFromGymImage')
       .mockResolvedValue(undefined);
 
     const result = await svc.approveTrainingCandidate({ id: 'cand-1' } as any, ctx);
@@ -608,13 +625,16 @@ describe('approveTrainingCandidate', () => {
     expect(writeImageEmbeddingMock).toHaveBeenCalledWith(
       expect.objectContaining({ target: 'GYM', imageId: 'img-1', gymId: 11 }),
     );
-    expect(suggestionSpy).toHaveBeenCalledWith({
-      equipmentId: 33,
-      gymImageId: 'img-1',
-      storageKey: 'private/gym/22/approved/sha-1.jpg',
-      sha256: 'sha-1',
-      vector: [0.1, 0.2],
-    });
+    expect(suggestionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ prisma, s3: expect.any(Object) }),
+      {
+        equipmentId: 33,
+        gymImageId: 'img-1',
+        storageKey: 'private/gym/22/approved/sha-1.jpg',
+        sha256: 'sha-1',
+        vector: [0.1, 0.2],
+      },
+    );
     expect(result).toEqual({
       approved: true,
       imageId: 'img-1',
