@@ -100,7 +100,8 @@ export class MediaService {
         storageKey.startsWith('private/uploads/global/') ||
         storageKey.startsWith('private/gym/') ||
         storageKey.startsWith('private/global/') ||
-        storageKey.startsWith('private/recognition/')
+        storageKey.startsWith('private/recognition/') ||
+        storageKey.startsWith('private/suggestions/')
       )
     ) {
       throw new Error('Invalid storage key prefix');

@@ -50,6 +50,12 @@ enum EmbeddingScopeType {
   GYM
 }
 
+enum EquipmentSuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // --- Models ---
 
 model User {
@@ -92,6 +98,7 @@ model User {
   capturedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageCapturedBy")
   approvedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageApprovedBy")
   trainingCandidates        TrainingCandidate[] @relation("UserTrainingCandidates")
+  equipmentSuggestions      EquipmentSuggestion[] @relation("EquipmentSuggestionsManager")
 }
 
 model WorkoutPlan {
@@ -367,6 +374,7 @@ model Equipment {
   images            EquipmentImage[]
   gyms              GymEquipment[]
   GymEquipmentImage GymEquipmentImage[]
+  approvedSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsApprovedEquipment")
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -379,6 +387,7 @@ model EquipmentCategory {
   slug          String                 @unique // URL-friendly version: "free-weights"
   subcategories EquipmentSubcategory[]
   equipments    Equipment[]
+  equipmentSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsCategory")
 }
 
 model EquipmentSubcategory {
@@ -388,6 +397,7 @@ model EquipmentSubcategory {
   category   EquipmentCategory @relation(fields: [categoryId], references: [id])
   categoryId Int
   equipments Equipment[]
+  equipmentSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsSubcategory")
 
   exerciseOptions ExerciseEquipmentOption[]
 }
@@ -430,6 +440,7 @@ model Gym {
   GymEquipmentImage GymEquipmentImage[]
   imageEmbeddings   ImageEmbedding[]
   trainingCandidates TrainingCandidate[] @relation("GymTrainingCandidates")
+  equipmentSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsGym")
   
   @@index([name])
   @@index([city])
@@ -726,6 +737,47 @@ model EquipmentImage {
   @@index([splitId])
   @@index([angleId, heightId, lightingId])
   @@index([cdnUrl])
+}
+
+model EquipmentSuggestion {
+  id                 String                    @id @default(cuid())
+  gymId              Int?
+  managerUserId      Int
+  name               String
+  description        String?
+  brand              String
+  manualUrl          String?
+  categoryId         Int
+  subcategoryId      Int?
+  addToGymOnApprove  Boolean                   @default(true)
+  status             EquipmentSuggestionStatus @default(PENDING)
+  rejectedReason     String?
+  approvedEquipmentId Int?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  manager   User      @relation("EquipmentSuggestionsManager", fields: [managerUserId], references: [id])
+  gym       Gym?      @relation("EquipmentSuggestionsGym", fields: [gymId], references: [id])
+  category  EquipmentCategory @relation("EquipmentSuggestionsCategory", fields: [categoryId], references: [id])
+  subcategory EquipmentSubcategory? @relation("EquipmentSuggestionsSubcategory", fields: [subcategoryId], references: [id])
+  approvedEquipment Equipment? @relation("EquipmentSuggestionsApprovedEquipment", fields: [approvedEquipmentId], references: [id])
+  images    EquipmentSuggestionImage[]
+
+  @@index([status, categoryId])
+  @@index([status, gymId])
+}
+
+model EquipmentSuggestionImage {
+  id            String            @id @default(cuid())
+  suggestionId  String
+  storageKey    String            @unique
+  sha256        String            @unique
+  contentLength Int
+  createdAt     DateTime          @default(now())
+
+  suggestion EquipmentSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@index([suggestionId])
 }
 
 // Image ↔ Gym+Equipment join (what gym this image was captured at)

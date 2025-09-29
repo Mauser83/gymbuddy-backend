@@ -41,6 +41,24 @@ export class CreateUploadSessionDto {
   @IsOptional() @IsInt() equipmentId?: number;
 }
 
+export class UploadTicketDto {
+  @IsString()
+  ext!: string;
+
+  @IsOptional()
+  @IsString()
+  contentType?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  contentLength?: number;
+
+  @IsOptional()
+  @IsString()
+  sha256?: string;
+}
+
 export class ImageUrlManyDto {
   @IsArray()
   @ArrayMinSize(1)

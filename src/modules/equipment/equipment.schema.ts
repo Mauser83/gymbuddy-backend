@@ -29,6 +29,51 @@ export const equipmentTypeDefs = `
     thumbUrl(ttlSec: Int = 300): String
   }
 
+  type EquipmentSuggestionImage {
+    id: ID!
+    suggestionId: ID!
+    storageKey: String!
+    sha256: String!
+    contentLength: Int!
+    createdAt: String!
+    thumbUrl(ttlSec: Int = 300): String
+  }
+
+  enum EquipmentSuggestionStatus {
+    PENDING
+    APPROVED
+    REJECTED
+  }
+
+  type EquipmentSuggestion {
+    id: ID!
+    gymId: Int
+    gym: Gym
+    managerUserId: Int!
+    manager: User!
+    name: String!
+    description: String
+    brand: String!
+    manualUrl: String
+    categoryId: Int!
+    category: EquipmentCategory!
+    subcategoryId: Int
+    subcategory: EquipmentSubcategory
+    addToGymOnApprove: Boolean!
+    status: EquipmentSuggestionStatus!
+    rejectedReason: String
+    approvedEquipmentId: Int
+    approvedEquipment: Equipment
+    images: [EquipmentSuggestionImage!]!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type EquipmentSuggestionConnection {
+    items: [EquipmentSuggestion!]!
+    nextCursor: ID
+  }
+
   type EquipmentCategory {
     id: Int!
     name: String!
@@ -53,6 +98,17 @@ export const equipmentTypeDefs = `
     manualUrl: String
   }
 
+  input CreateEquipmentSuggestionInput {
+    name: String!
+    description: String
+    categoryId: Int!
+    subcategoryId: Int
+    brand: String!
+    manualUrl: String
+    gymId: Int
+    addToGymOnApprove: Boolean = true
+  }
+
   input UpdateEquipmentInput {
     name: String
     description: String
@@ -60,6 +116,49 @@ export const equipmentTypeDefs = `
     subcategoryId: Int
     brand: String
     manualUrl: String
+  }
+
+  input ListEquipmentSuggestionsInput {
+    status: EquipmentSuggestionStatus!
+    gymId: Int
+    categoryId: Int
+    subcategoryId: Int
+    limit: Int = 50
+    cursor: ID
+  }
+
+  input EquipmentSuggestionUploadTicketInput {
+    suggestionId: ID!
+    upload: UploadTicketInput!
+  }
+
+  input FinalizeEquipmentSuggestionImagesInput {
+    suggestionId: ID!
+    storageKeys: [String!]!
+  }
+
+  input ApproveEquipmentSuggestionInput {
+    id: ID!
+    mergeIntoEquipmentId: Int
+  }
+
+  input RejectEquipmentSuggestionInput {
+    id: ID!
+    reason: String
+  }
+
+  type CreateEquipmentSuggestionPayload {
+    suggestion: EquipmentSuggestion!
+    nearMatches: [Equipment!]!
+  }
+
+  type ApproveEquipmentSuggestionPayload {
+    approved: Boolean!
+    equipmentId: Int!
+  }
+
+  type RejectEquipmentSuggestionPayload {
+    rejected: Boolean!
   }
 
   input UploadEquipmentImageInput {
@@ -98,6 +197,8 @@ export const equipmentTypeDefs = `
     gymEquipmentByGymId(gymId: Int!): [GymEquipment!]!
     equipmentImagesByEquipmentId(equipmentId: Int!): [EquipmentImage!]!
     equipmentImage(id: ID!): EquipmentImage
+
+    listEquipmentSuggestions(input: ListEquipmentSuggestionsInput!): EquipmentSuggestionConnection!
   }
 
   extend type Mutation {
@@ -115,5 +216,11 @@ export const equipmentTypeDefs = `
     createEquipmentSubcategory(input: CreateEquipmentSubcategoryInput!): EquipmentSubcategory!
     updateEquipmentSubcategory(id: Int!, input: UpdateEquipmentSubcategoryInput!): EquipmentSubcategory!
     deleteEquipmentSubcategory(id: Int!): Boolean!
+
+    createEquipmentSuggestion(input: CreateEquipmentSuggestionInput!): CreateEquipmentSuggestionPayload!
+    createEquipmentSuggestionUploadTicket(input: EquipmentSuggestionUploadTicketInput!): UploadTicket!
+    finalizeEquipmentSuggestionImages(input: FinalizeEquipmentSuggestionImagesInput!): [EquipmentSuggestionImage!]!
+    approveEquipmentSuggestion(input: ApproveEquipmentSuggestionInput!): ApproveEquipmentSuggestionPayload!
+    rejectEquipmentSuggestion(input: RejectEquipmentSuggestionInput!): RejectEquipmentSuggestionPayload!
   }
 `;

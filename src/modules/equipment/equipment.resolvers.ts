@@ -1,3 +1,4 @@
+import { EquipmentSuggestionService } from './equipment-suggestion.service';
 import { EquipmentService } from './equipment.service';
 import type { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';
@@ -40,6 +41,47 @@ export const EquipmentResolvers = {
           },
         },
       });
+    },
+  },
+
+  EquipmentSuggestion: {
+    gym: (parent: any, _: any, context: AuthContext) => {
+      if (!parent.gymId) return null;
+      return context.prisma.gym.findUnique({ where: { id: parent.gymId } });
+    },
+    manager: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.user.findUnique({ where: { id: parent.managerUserId } });
+    },
+    category: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.equipmentCategory.findUnique({ where: { id: parent.categoryId } });
+    },
+    subcategory: (parent: any, _: any, context: AuthContext) => {
+      if (!parent.subcategoryId) return null;
+      return context.prisma.equipmentSubcategory.findUnique({
+        where: { id: parent.subcategoryId },
+      });
+    },
+    approvedEquipment: (parent: any, _: any, context: AuthContext) => {
+      if (!parent.approvedEquipmentId) return null;
+      return context.prisma.equipment.findUnique({ where: { id: parent.approvedEquipmentId } });
+    },
+    images: (parent: any, _: any, context: AuthContext) => {
+      if (parent.images) return parent.images;
+      return context.prisma.equipmentSuggestionImage.findMany({
+        where: { suggestionId: parent.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
+  },
+
+  EquipmentSuggestionImage: {
+    thumbUrl: async (
+      src: { storageKey: string },
+      args: { ttlSec?: number },
+      context: AuthContext,
+    ) => {
+      if (!src.storageKey) return null;
+      return context.mediaService.presignGetForKey(src.storageKey, args.ttlSec ?? 300);
     },
   },
 
@@ -109,6 +151,14 @@ export const EquipmentResolvers = {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
       return service.getEquipmentImageById(args.id);
     },
+
+    listEquipmentSuggestions: async (_: unknown, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.listSuggestions(args.input, context);
+    },
   },
 
   Mutation: {
@@ -173,6 +223,54 @@ export const EquipmentResolvers = {
     deleteEquipmentSubcategory: async (_: any, args: { id: number }, context: AuthContext) => {
       const service = new EquipmentService(context.prisma, new PermissionService(context.prisma));
       return service.deleteEquipmentSubcategory(args.id, context);
+    },
+
+    createEquipmentSuggestion: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.createSuggestion(args.input, context);
+    },
+
+    createEquipmentSuggestionUploadTicket: async (
+      _: any,
+      args: { input: any },
+      context: AuthContext,
+    ) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.createUploadTicket(args.input, context);
+    },
+
+    finalizeEquipmentSuggestionImages: async (
+      _: any,
+      args: { input: any },
+      context: AuthContext,
+    ) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.finalizeImages(args.input, context);
+    },
+
+    approveEquipmentSuggestion: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.approve(args.input, context);
+    },
+
+    rejectEquipmentSuggestion: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentSuggestionService(
+        context.prisma,
+        new PermissionService(context.prisma),
+      );
+      return service.reject(args.input, context);
     },
   },
 };
