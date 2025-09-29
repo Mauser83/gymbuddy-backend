@@ -62,6 +62,7 @@ export const recognitionTypeDefs = `
   extend type Mutation {
     createRecognitionUploadTicket(gymId: Int!, input: UploadTicketInput!): RecognitionUploadTicket!
     recognizeImage(ticketToken: String!, limit: Int = 5): RecognizeImagePayload!
+    recognizeCatalogEquipment(ticketToken: String!, limit: Int = 5): RecognizeImagePayload!
     confirmRecognition(input: ConfirmRecognitionInput!): ConfirmRecognitionPayload!
     discardRecognition(attemptId: ID!): Boolean!
   }

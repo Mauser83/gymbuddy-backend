@@ -74,6 +74,8 @@ type EquipmentCandidate = {
   lowConfidence: boolean;
 };
 
+type RecognitionDecision = 'GYM_ACCEPT' | 'GLOBAL_ACCEPT' | 'REJECT';
+
 export function groupTopEquipment(
   imgs: Img[],
   options: { keepPerEq?: number; source?: string; totalImages?: number } = {},
@@ -160,6 +162,86 @@ export class RecognitionService {
     return out;
   }
 
+  private async prepareVectorForTicket(token: string) {
+    const { gid: gymId, key: storageKey } = this.verify(token);
+    await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })).catch(() => {
+      throw new Error('Uploaded object not found');
+    });
+
+    await this.embedInit;
+    const bytes = await this.downloadBytes(storageKey);
+    const vecF32 = await embedImage(Buffer.from(bytes));
+    const vector = Array.from(vecF32);
+    if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIM) {
+      throw new Error('Embedding failed');
+    }
+
+    const vecBuf = Buffer.from(vecF32.buffer);
+    const vectorHash = createHash('sha256').update(vecBuf).digest('hex').slice(0, 16);
+
+    return { gymId, storageKey, vector, vectorHash };
+  }
+
+  private mapRowsToCandidates(
+    rows: { id: string; equipmentId: number | null; storageKey: string; score: number }[],
+    options: { gymId: number | null },
+  ): CandidateImage[] {
+    const { gymId } = options;
+    return rows
+      .filter((r) => r.equipmentId != null)
+      .map((r) => ({
+        imageId: r.id,
+        equipmentId: r.equipmentId!,
+        gymId,
+        storageKey: r.storageKey,
+        score: r.score,
+      }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  private async hydrateEquipmentNames(candidates: EquipmentCandidate[]) {
+    if (!candidates.length) return;
+    const ids = Array.from(new Set(candidates.map((c) => c.equipmentId)));
+    if (!ids.length) return;
+    const eqMap = await prisma.equipment
+      .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+      .then((rows) => new Map(rows.map((r) => [r.id, r.name])));
+    candidates.forEach((c) => {
+      c.equipmentName = eqMap.get(c.equipmentId) ?? null;
+    });
+  }
+
+  private async createAttemptRecord(params: {
+    gymId: number;
+    storageKey: string;
+    vectorHash: string;
+    decision: RecognitionDecision;
+    bestEquipmentId: number | null;
+    bestScore: number;
+  }) {
+    const attempt = await prisma.recognitionAttempt.create({
+      data: {
+        gymId: params.gymId,
+        storageKey: params.storageKey,
+        vectorHash: params.vectorHash,
+        bestEquipmentId: params.bestEquipmentId,
+        bestScore: params.bestScore,
+        decision: params.decision,
+        consent: 'unknown',
+      },
+    });
+
+    return {
+      attemptId: String(attempt.id),
+      storageKey: attempt.storageKey,
+      vectorHash: attempt.vectorHash,
+      bestEquipmentId: attempt.bestEquipmentId,
+      bestScore: attempt.bestScore,
+      createdAt: attempt.createdAt,
+      decision: attempt.decision,
+    };
+  }
+
   async createUploadTicket(gymId: number, upload: UploadTicketInput) {
     assertSizeWithinLimit(upload.contentLength);
     const ext = upload.ext.trim().toLowerCase();
@@ -192,21 +274,7 @@ export class RecognitionService {
   }
 
   async recognizeImage(token: string, limit = 3) {
-    const { gid: gymId, key: storageKey } = this.verify(token);
-    await this.s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })).catch(() => {
-      throw new Error('Uploaded object not found');
-    });
-
-    await this.embedInit;
-    const bytes = await this.downloadBytes(storageKey);
-    const vecF32 = await embedImage(Buffer.from(bytes));
-    const vector = Array.from(vecF32);
-    if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIM) {
-      throw new Error('Embedding failed');
-    }
-
-    const vecBuf = Buffer.from(vecF32.buffer);
-    const vectorHash = createHash('sha256').update(vecBuf).digest('hex').slice(0, 16);
+    const { gymId, storageKey, vector, vectorHash } = await this.prepareVectorForTicket(token);
 
     const N = Math.max(1, Math.min(limit ?? 3, 10));
     const searchTopK = Math.min(SEARCH_TOPK_MAX, N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR);
@@ -216,28 +284,13 @@ export class RecognitionService {
       knnFromVectorGlobal({ vector, limit: searchTopK, gymId }),
     ]);
 
-    const mapRow = (r: any, gym: boolean): CandidateImage => ({
-      imageId: r.id,
-      equipmentId: r.equipmentId!,
-      gymId: gym ? gymId : null,
-      storageKey: r.storageKey,
-      score: r.score,
-    });
-
-    const gymImages: CandidateImage[] = gymRows
-      .filter((r) => r.equipmentId != null)
-      .map((r) => mapRow(r, true))
-      .sort((a, b) => b.score - a.score);
-
-    const globalImages: CandidateImage[] = globalRows
-      .filter((r) => r.equipmentId != null)
-      .map((r) => mapRow(r, false))
-      .sort((a, b) => b.score - a.score);
+    const gymImages = this.mapRowsToCandidates(gymRows, { gymId });
+    const globalImages = this.mapRowsToCandidates(globalRows, { gymId: null });
 
     const gymTop = gymImages[0];
     const globalTop = globalImages[0];
 
-    let decision: 'GYM_ACCEPT' | 'GLOBAL_ACCEPT' | 'REJECT' = 'REJECT';
+    let decision: RecognitionDecision = 'REJECT';
     if (gymTop && (!globalTop || gymTop.score >= globalTop.score) && gymTop.score >= T_HIGH) {
       decision = 'GYM_ACCEPT';
     } else if (globalTop && globalTop.score >= T_HIGH) {
@@ -300,26 +353,15 @@ export class RecognitionService {
       }
     }
 
-    if (equipmentCandidates.length) {
-      const ids = equipmentCandidates.map((c) => c.equipmentId);
-      const eqMap = await prisma.equipment
-        .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
-        .then((rows) => new Map(rows.map((r) => [r.id, r.name])));
-      equipmentCandidates.forEach((c) => {
-        c.equipmentName = eqMap.get(c.equipmentId) ?? null;
-      });
-    }
+    await this.hydrateEquipmentNames(equipmentCandidates);
 
-    const attempt = await prisma.recognitionAttempt.create({
-      data: {
-        gymId,
-        storageKey,
-        vectorHash,
-        bestEquipmentId,
-        bestScore,
-        decision,
-        consent: 'unknown',
-      },
+    const attempt = await this.createAttemptRecord({
+      gymId,
+      storageKey,
+      vectorHash,
+      decision,
+      bestEquipmentId,
+      bestScore,
     });
 
     console.log('recognizeImage:', {
@@ -336,17 +378,60 @@ export class RecognitionService {
     });
 
     return {
-      attempt: {
-        attemptId: String(attempt.id), // ← stringify
-        storageKey: attempt.storageKey,
-        vectorHash: attempt.vectorHash,
-        bestEquipmentId: attempt.bestEquipmentId,
-        bestScore: attempt.bestScore,
-        createdAt: attempt.createdAt,
-        decision,
-      },
+      attempt,
       gymCandidates: gymImages,
       globalCandidates: globalImages,
+      equipmentCandidates,
+    };
+  }
+
+  async recognizeCatalogEquipmentByTicket(ticketToken: string, limit = 5) {
+    const { gymId, storageKey, vector, vectorHash } =
+      await this.prepareVectorForTicket(ticketToken);
+
+    const N = Math.max(1, Math.min(limit ?? 5, 10));
+    const searchTopK = Math.min(SEARCH_TOPK_MAX, N * PER_EQUIPMENT_IMAGES * OVERSAMPLE_FACTOR);
+
+    const globalRows = await knnFromVectorGlobal({ vector, limit: searchTopK });
+    const globalImages = this.mapRowsToCandidates(globalRows, { gymId: null });
+
+    const equipmentCandidates = groupTopEquipment(globalImages, {
+      source: 'GLOBAL',
+      totalImages: globalImages.length,
+    }).slice(0, N);
+
+    let decision: RecognitionDecision = 'REJECT';
+    let bestEquipmentId: number | null = null;
+    let bestScore = 0;
+
+    if (equipmentCandidates.length) {
+      decision = 'GLOBAL_ACCEPT';
+      bestEquipmentId = equipmentCandidates[0].equipmentId ?? null;
+      bestScore = equipmentCandidates[0].topScore ?? 0;
+    }
+
+    await this.hydrateEquipmentNames(equipmentCandidates);
+
+    const attempt = await this.createAttemptRecord({
+      gymId,
+      storageKey,
+      vectorHash,
+      decision,
+      bestEquipmentId,
+      bestScore,
+    });
+
+    console.log('recognizeCatalogEquipmentByTicket:', {
+      decision,
+      best: { equipmentId: bestEquipmentId, score: bestScore },
+      totalCandidates: equipmentCandidates.length,
+      totalImages: globalImages.length,
+    });
+
+    return {
+      attempt,
+      globalCandidates: globalImages,
+      gymCandidates: [],
       equipmentCandidates,
     };
   }
