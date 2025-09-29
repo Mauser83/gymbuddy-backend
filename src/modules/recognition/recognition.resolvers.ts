@@ -25,6 +25,24 @@ export const RecognitionResolvers = {
         equipmentCandidates: res.equipmentCandidates ?? [],
       };
     },
+    recognizeCatalogEquipment: async (
+      _: unknown,
+      args: { ticketToken: string; limit?: number },
+      ctx: AuthContext,
+    ) => {
+      const rawLimit = args.limit ?? 5;
+      const limit = Math.min(Math.max(rawLimit, 1), 10);
+      const res = await ctx.recognitionService.recognizeCatalogEquipmentByTicket(
+        args.ticketToken,
+        limit,
+      );
+      return {
+        ...res,
+        gymCandidates: res.gymCandidates ?? [],
+        globalCandidates: res.globalCandidates ?? [],
+        equipmentCandidates: res.equipmentCandidates ?? [],
+      };
+    },
     confirmRecognition: async (
       _: unknown,
       {
