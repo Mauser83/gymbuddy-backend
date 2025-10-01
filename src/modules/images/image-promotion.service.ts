@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 
 import { maybeSuggestGlobalFromGymImage, parsePgvectorText } from './global-suggestions.helper';
+import { queueImageProcessingForStorageKey } from './image-queue.helpers';
 import { kickBurstRunner } from './image-worker';
 import {
   PromoteGymImageDto,
@@ -597,6 +598,22 @@ export class ImagePromotionService {
     });
     if (!suggestion) throw new Error('Suggestion not found');
     if (suggestion.status !== 'PENDING') throw new Error('Suggestion not pending');
+
+    if (suggestion.gymImage?.storageKey) {
+      const needsProcessing =
+        !suggestion.gymImage.sha256 ||
+        suggestion.gymImage.nsfwScore == null ||
+        !suggestion.gymImage.modelVendor ||
+        !suggestion.gymImage.modelName ||
+        !suggestion.gymImage.modelVersion;
+      if (needsProcessing) {
+        await queueImageProcessingForStorageKey({
+          prisma: this.prisma,
+          storageKey: suggestion.gymImage.storageKey,
+          source: 'gym_manager',
+        });
+      }
+    }
 
     const existing = await this.prisma.equipmentImage.findFirst({
       where: { sha256: suggestion.sha256 },
