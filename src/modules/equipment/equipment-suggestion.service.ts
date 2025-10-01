@@ -1,5 +1,6 @@
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID } from 'crypto';
 import { GraphQLError } from 'graphql';
 
 import {
@@ -320,22 +321,26 @@ export class EquipmentSuggestionService {
       await copyObjectIfMissing(image.storageKey, dstKey);
 
       let gymImageId: string | null = null;
-      if (suggestion.gymId) {
+      if (suggestion.gymId && gymEquipmentId) {
+        const gymStorageKey = `private/gym/${gymEquipmentId}/approved/${randomUUID()}.${ext}`;
+        await copyObjectIfMissing(image.storageKey, gymStorageKey);
+
         const gymImage = await this.prisma.gymEquipmentImage.upsert({
           where: { sha256: sha },
           update: {
-            storageKey: dstKey,
+            storageKey: gymStorageKey,
             equipmentId,
             gymId: suggestion.gymId,
             gymEquipmentId: gymEquipmentId,
+            candidateForGlobal: false,
           },
           create: {
             gymEquipmentId: gymEquipmentId,
             gymId: suggestion.gymId,
             equipmentId,
-            storageKey: dstKey,
+            storageKey: gymStorageKey,
             status: 'PENDING',
-            candidateForGlobal: true,
+            candidateForGlobal: false,
             capturedAt: new Date(),
             capturedByUserId: suggestion.managerUserId,
             sha256: sha,
@@ -350,7 +355,7 @@ export class EquipmentSuggestionService {
         if (needsProcessing) {
           await queueImageProcessingForStorageKey({
             prisma: this.prisma,
-            storageKey: gymImage.storageKey ?? dstKey,
+            storageKey: gymImage.storageKey ?? gymStorageKey,
             source: 'gym_manager',
           });
         }
