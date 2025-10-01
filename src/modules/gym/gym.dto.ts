@@ -193,9 +193,11 @@ export class UpdateGymEquipmentDto {
 
 export enum GymImageStatusDto {
   PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   QUARANTINED = 'QUARANTINED',
+  FAILED = 'FAILED',
 }
 
 export class UploadGymImageDto {
@@ -214,7 +216,7 @@ export class UploadGymImageDto {
 
   @IsOptional()
   @IsEnum(GymImageStatusDto, {
-    message: 'status must be PENDING | APPROVED | REJECTED | QUARANTINED',
+    message: 'status must be PENDING | PROCESSING | APPROVED | REJECTED | QUARANTINED | FAILED',
   })
   status?: GymImageStatusDto;
 }

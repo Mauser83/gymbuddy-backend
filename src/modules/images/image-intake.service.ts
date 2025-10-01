@@ -199,6 +199,7 @@ export class ImageIntakeService {
             status: ImageJobStatus.pending,
             priority,
             storageKey: approvedKey,
+            gymImageId: image.id,
           },
         ];
     if (jobs.length) {
@@ -450,6 +451,7 @@ export class ImageIntakeService {
               status: ImageJobStatus.pending,
               priority,
               storageKey: approvedKey,
+              gymImageId: image.id,
             },
           ];
       if (jobs.length) {

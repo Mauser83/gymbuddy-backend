@@ -40,9 +40,11 @@ enum ImageJobStatus {
 
 enum GymImageStatus {
   PENDING
+  PROCESSING
   APPROVED
   REJECTED
   QUARANTINED
+  FAILED
 }
 
 enum EmbeddingScopeType {
@@ -832,6 +834,7 @@ model GymEquipmentImage {
   embeddings     ImageEmbedding[]
   trainingCandidates TrainingCandidate[] @relation("ImageTrainingCandidates")
   globalSuggestions GlobalImageSuggestion[]
+  queueJobs        ImageQueue[]
 
   @@unique([gymId, equipmentId, imageId])
   @@index([gymId, equipmentId])
@@ -885,6 +888,7 @@ model ImageEmbedding {
 model ImageQueue {
   id          String         @id @default(cuid())
   imageId     String?        // for GLOBAL jobs (promotion)
+  gymImageId  String?
   storageKey  String?        // for GYM jobs (finalize)
   jobType     String
   status      ImageJobStatus @default(pending)
@@ -897,13 +901,15 @@ model ImageQueue {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  image EquipmentImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  image     EquipmentImage?    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  gymImage  GymEquipmentImage? @relation(fields: [gymImageId], references: [id], onDelete: Cascade)
 
   @@index([finishedAt, status])
   @@index([status, priority, scheduledAt])
   @@index([jobType, status])
   @@index([imageId])
   @@index([storageKey])
+  @@index([gymImageId])
 }
 
 // Single-row lease table to coordinate burst workers

@@ -64,6 +64,18 @@ export const GymResolvers = {
       src.capturedAt ?? src.updatedAt ?? new Date(0).toISOString(),
     createdAt: (src: { capturedAt?: string; updatedAt?: string }) =>
       src.capturedAt ?? src.updatedAt ?? new Date(0).toISOString(),
+    status: (src: any) => {
+      if (
+        src.status === 'PENDING' &&
+        src.nsfwScore != null &&
+        src.modelVendor &&
+        src.modelName &&
+        src.modelVersion
+      ) {
+        return 'APPROVED';
+      }
+      return src.status;
+    },
     thumbUrl: async (
       src: { storageKey: string },
       args: { ttlSec?: number },

@@ -356,7 +356,25 @@ export class EquipmentSuggestionService {
           await queueImageProcessingForStorageKey({
             prisma: this.prisma,
             storageKey: gymImage.storageKey ?? gymStorageKey,
+            gymImageId: gymImage.id,
             source: 'gym_manager',
+          });
+          await this.prisma.gymEquipmentImage.update({
+            where: { id: gymImage.id },
+            data: { status: 'PROCESSING' },
+          });
+        } else {
+          await this.prisma.gymEquipmentImage.update({
+            where: { id: gymImage.id },
+            data: {
+              status: 'APPROVED',
+              approvedAt: gymImage.approvedAt ?? new Date(),
+              ...(gymImage.approvedByUserId
+                ? {}
+                : suggestion.managerUserId
+                  ? { approvedByUserId: suggestion.managerUserId }
+                  : {}),
+            },
           });
         }
         gymImageId = gymImage.id;

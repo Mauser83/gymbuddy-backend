@@ -610,6 +610,7 @@ export class ImagePromotionService {
         await queueImageProcessingForStorageKey({
           prisma: this.prisma,
           storageKey: suggestion.gymImage.storageKey,
+          gymImageId: suggestion.gymImageId ?? undefined,
           source: 'gym_manager',
         });
       }
