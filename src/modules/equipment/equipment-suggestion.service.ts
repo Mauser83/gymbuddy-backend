@@ -27,6 +27,7 @@ import { fileExtFrom } from '../../utils/makeKey';
 import { verifyGymScope, verifyRoles } from '../auth/auth.roles';
 import type { AuthContext } from '../auth/auth.types';
 import type { PermissionService } from '../core/permission.service';
+import { queueImageProcessingForStorageKey } from '../images/image-queue.helpers';
 import { copyObjectIfMissing } from '../media/media.service';
 import { assertSizeWithinLimit } from '../media/media.utils';
 
@@ -340,6 +341,19 @@ export class EquipmentSuggestionService {
             sha256: sha,
           },
         });
+        const needsProcessing =
+          !gymImage.sha256 ||
+          gymImage.nsfwScore == null ||
+          !gymImage.modelVendor ||
+          !gymImage.modelName ||
+          !gymImage.modelVersion;
+        if (needsProcessing) {
+          await queueImageProcessingForStorageKey({
+            prisma: this.prisma,
+            storageKey: gymImage.storageKey ?? dstKey,
+            source: 'gym_manager',
+          });
+        }
         gymImageId = gymImage.id;
       }
 
