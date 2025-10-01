@@ -75,14 +75,11 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
 }
 
 // --- HASH handler ---
-async function handleHASH(storageKey: string) {
+async function handleHASH(job: QueueJob & { storageKey: string }) {
+  const storageKey = job.storageKey;
   const bytes = await downloadBytes(storageKey);
   const sha = createHash('sha256').update(bytes).digest('hex');
-  // Write sha256 only if missing/empty for the image by storageKey
-  await prisma.gymEquipmentImage.updateMany({
-    where: { storageKey, OR: [{ sha256: null }, { sha256: '' }] },
-    data: { sha256: sha },
-  });
+  const gymUpdate: Record<string, unknown> = { sha256: sha };
 
   let finalKey = storageKey;
   if (storageKey.startsWith('private/gym/') && storageKey.includes('/candidates/')) {
@@ -96,6 +93,7 @@ async function handleHASH(storageKey: string) {
       await deleteObjectIgnoreMissing(storageKey);
       finalKey = newKey;
     }
+    gymUpdate.storageKey = finalKey;
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
       data: { storageKey: finalKey, hash: sha, updatedAt: new Date() } as any,
@@ -104,6 +102,18 @@ async function handleHASH(storageKey: string) {
     await prisma.trainingCandidate.updateMany({
       where: { storageKey, OR: [{ hash: null }, { hash: '' }] },
       data: { hash: sha },
+    });
+  }
+
+  if (job.gymImageId) {
+    await prisma.gymEquipmentImage.update({
+      where: { id: job.gymImageId },
+      data: gymUpdate,
+    });
+  } else {
+    await prisma.gymEquipmentImage.updateMany({
+      where: { storageKey },
+      data: gymUpdate,
     });
   }
 
@@ -119,19 +129,28 @@ async function runDetectors(storageKey: string) {
 }
 
 // --- SAFETY ---
-async function handleSAFETY(storageKey: string) {
+async function handleSAFETY(job: QueueJob & { storageKey: string }) {
+  const storageKey = job.storageKey;
   const { nsfwScore, hasPerson } = await runDetectors(storageKey);
   const decision = decideSafety(nsfwScore, hasPerson);
 
-  await prisma.gymEquipmentImage.updateMany({
-    where: { storageKey },
-    data: {
-      isSafe: decision.isSafe,
-      nsfwScore: decision.nsfwScore,
-      hasPerson: decision.hasPerson,
-      safetyReasons: decision.reasons,
-    },
-  });
+  const gymUpdate: any = {
+    isSafe: decision.isSafe,
+    nsfwScore: decision.nsfwScore,
+    hasPerson: decision.hasPerson,
+    safetyReasons: decision.reasons,
+  };
+  if (job.gymImageId) {
+    await prisma.gymEquipmentImage.update({
+      where: { id: job.gymImageId },
+      data: gymUpdate,
+    });
+  } else {
+    await prisma.gymEquipmentImage.updateMany({
+      where: { storageKey },
+      data: gymUpdate,
+    });
+  }
   const tcData: any = {
     isSafe: decision.isSafe,
     nsfwScore: decision.nsfwScore,
@@ -157,17 +176,32 @@ async function handleSAFETY(storageKey: string) {
     const qKey = `private/gym/${gymEqId}/quarantine/${baseName}.${ext}`;
     await copyObjectIfMissing(storageKey, qKey);
     await deleteObjectIgnoreMissing(storageKey);
-    try {
-      await prisma.gymEquipmentImage.updateMany({
-        where: { storageKey },
-        data: { storageKey: qKey, status: 'QUARANTINED' },
-      });
-    } catch (e) {
-      console.error('Failed to set QUARANTINED; falling back to REJECTED', e);
-      await prisma.gymEquipmentImage.updateMany({
-        where: { storageKey },
-        data: { storageKey: qKey, status: 'REJECTED' },
-      });
+    if (job.gymImageId) {
+      try {
+        await prisma.gymEquipmentImage.update({
+          where: { id: job.gymImageId },
+          data: { storageKey: qKey, status: 'QUARANTINED' },
+        });
+      } catch (e) {
+        console.error('Failed to set QUARANTINED; falling back to REJECTED', e);
+        await prisma.gymEquipmentImage.update({
+          where: { id: job.gymImageId },
+          data: { storageKey: qKey, status: 'REJECTED' },
+        });
+      }
+    } else {
+      try {
+        await prisma.gymEquipmentImage.updateMany({
+          where: { storageKey },
+          data: { storageKey: qKey, status: 'QUARANTINED' },
+        });
+      } catch (e) {
+        console.error('Failed to set QUARANTINED; falling back to REJECTED', e);
+        await prisma.gymEquipmentImage.updateMany({
+          where: { storageKey },
+          data: { storageKey: qKey, status: 'REJECTED' },
+        });
+      }
     }
     await prisma.trainingCandidate.updateMany({
       where: { storageKey },
@@ -194,9 +228,8 @@ async function embedFromStorageKey(storageKey: string): Promise<number[]> {
   return Array.from(vecNorm);
 }
 
-async function handleEMBED(job: QueueJob) {
+async function handleEMBED(job: QueueJob & { storageKey: string }) {
   const storageKey = job.storageKey;
-  if (!storageKey) throw new Error('EMBED job missing storageKey');
 
   const candidate = await prisma.trainingCandidate.findFirst({
     where: { storageKey },
@@ -215,10 +248,33 @@ async function handleEMBED(job: QueueJob) {
     return;
   }
 
-  const gymImg = await prisma.gymEquipmentImage.findFirst({
-    where: { storageKey },
-    select: { id: true, gymId: true, equipmentId: true, sha256: true },
-  });
+  const gymImg = job.gymImageId
+    ? await prisma.gymEquipmentImage.findUnique({
+        where: { id: job.gymImageId },
+        select: {
+          id: true,
+          gymId: true,
+          equipmentId: true,
+          sha256: true,
+          storageKey: true,
+          status: true,
+          approvedAt: true,
+          approvedByUserId: true,
+        },
+      })
+    : await prisma.gymEquipmentImage.findFirst({
+        where: { storageKey },
+        select: {
+          id: true,
+          gymId: true,
+          equipmentId: true,
+          sha256: true,
+          storageKey: true,
+          status: true,
+          approvedAt: true,
+          approvedByUserId: true,
+        },
+      });
   if (gymImg) {
     const vec = await embedFromStorageKey(storageKey);
     await writeImageEmbedding({
@@ -256,6 +312,17 @@ async function handleEMBED(job: QueueJob) {
           },
         });
       }
+    }
+
+    if (!['QUARANTINED', 'REJECTED', 'FAILED'].includes(gymImg.status ?? '')) {
+      const now = new Date();
+      await prisma.gymEquipmentImage.updateMany({
+        where: { id: gymImg.id },
+        data: {
+          status: 'APPROVED',
+          approvedAt: gymImg.approvedAt ?? now,
+        },
+      });
     }
 
     const latest = await prisma.gymEquipmentImage.findUnique({
@@ -299,6 +366,13 @@ async function handleEMBED(job: QueueJob) {
 
 async function processJob(job: QueueJob) {
   let key = job.storageKey;
+  if (!key && job.gymImageId) {
+    const img = await prisma.gymEquipmentImage.findUnique({
+      where: { id: job.gymImageId },
+      select: { storageKey: true },
+    });
+    key = img?.storageKey || null;
+  }
   if (!key && job.imageId) {
     const img = await prisma.equipmentImage.findUnique({
       where: { id: job.imageId },
@@ -313,19 +387,20 @@ async function processJob(job: QueueJob) {
   const type = (job.jobType ?? '').trim().toUpperCase();
   switch (type) {
     case 'HASH': {
-      const { storageKey: nextKey } = await handleHASH(key);
+      const { storageKey: nextKey } = await handleHASH(jobWithStorage);
       await prisma.imageQueue.create({
         data: {
           jobType: 'SAFETY',
           status: ImageJobStatus.pending,
           priority: job.priority ?? 0,
           storageKey: nextKey,
+          gymImageId: job.gymImageId ?? undefined,
         },
       });
       break;
     }
     case 'SAFETY': {
-      const { safe, storageKey: nextKey } = await handleSAFETY(key);
+      const { safe, storageKey: nextKey } = await handleSAFETY(jobWithStorage);
       if (safe) {
         await prisma.imageQueue.create({
           data: {
@@ -333,6 +408,7 @@ async function processJob(job: QueueJob) {
             status: ImageJobStatus.pending,
             priority: job.priority ?? 0,
             storageKey: nextKey,
+            gymImageId: job.gymImageId ?? undefined,
           },
         });
       }
@@ -367,6 +443,16 @@ export async function processOnce(limit = Number(process.env.WORKER_CONCURRENCY 
             lastError: msg.slice(0, 3000),
           },
         });
+        if (job.gymImageId) {
+          await prisma.gymEquipmentImage.update({
+            where: { id: job.gymImageId },
+            data: {
+              status: 'FAILED',
+              isSafe: null,
+              safetyReasons: { set: ['PROCESSING_ERROR'] },
+            },
+          });
+        }
       } else {
         await queue.markFailed(job.id, err, 30);
       }

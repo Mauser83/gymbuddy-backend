@@ -1,5 +1,5 @@
 export const gymTypeDefs = `
-  enum GymImageStatus { PENDING APPROVED REJECTED QUARANTINED }
+  enum GymImageStatus { PENDING PROCESSING APPROVED REJECTED QUARANTINED FAILED }
 
   type Gym {
     id: Int!

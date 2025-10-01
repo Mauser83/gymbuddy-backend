@@ -75,16 +75,20 @@ export class ImageModerationService {
       }),
     );
 
+    const approvedAt = new Date();
+    const approvalData = {
+      status: 'APPROVED' as const,
+      approvedAt,
+      approvedByUserId: ctx.userId ?? null,
+      storageKey: dstKey,
+      candidateForGlobal: false,
+    };
+
     const updated = await this.prisma.gymEquipmentImage.update({
       where: { id: gymImg.id },
-      data: {
-        status: 'APPROVED',
-        approvedAt: new Date(),
-        approvedByUserId: ctx.userId ?? null,
-        storageKey: dstKey,
-      },
-      include: { approvedByUser: true },
+      data: approvalData,
     });
+    const finalImage = updated ?? { ...gymImg, ...approvalData };
 
     if (!hasEmbedding) {
       await this.prisma.imageQueue.create({
@@ -93,6 +97,7 @@ export class ImageModerationService {
           status: ImageJobStatus.pending,
           priority: 0,
           storageKey: dstKey,
+          gymImageId: finalImage.id ?? gymImg.id,
         },
       });
       setImmediate(() => {
@@ -100,14 +105,15 @@ export class ImageModerationService {
       });
     }
 
-    if (hasEmbedding && embeddingText && gymImg.equipmentId && gymImg.sha256) {
+    const equipmentId = finalImage.equipmentId ?? gymImg.equipmentId;
+    if (hasEmbedding && embeddingText && equipmentId && gymImg.sha256) {
       const vector = parsePgvectorText(embeddingText);
       if (vector && vector.length > 0) {
         await maybeSuggestGlobalFromGymImage(
           { prisma: this.prisma, s3: this.s3, bucket: BUCKET },
           {
-            equipmentId: gymImg.equipmentId,
-            gymImageId: gymImg.id,
+            equipmentId,
+            gymImageId: finalImage.id ?? gymImg.id,
             storageKey: dstKey,
             sha256: gymImg.sha256,
             vector,
@@ -116,7 +122,7 @@ export class ImageModerationService {
       }
     }
 
-    return { gymImage: updated };
+    return { gymImage: finalImage };
   }
 
   async rejectGymImage(input: RejectGymImageDto, ctx: AuthContext) {

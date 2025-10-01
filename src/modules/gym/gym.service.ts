@@ -569,6 +569,7 @@ export class GymService {
         status: ImageJobStatus.pending,
         priority,
         storageKey: approvedKey,
+        gymImageId: image.id,
       },
     });
 
