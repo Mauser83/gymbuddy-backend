@@ -16,6 +16,7 @@ const mockedVerifyGymScope = jest.mocked(verifyGymScope);
 function createContext() {
   return {
     prisma: {
+      gymEquipment: { findUniqueOrThrow: jest.fn() },
       exerciseEquipmentSlot: { findMany: jest.fn() },
       workoutPlanExercise: { findMany: jest.fn() },
       exercise: { findUnique: jest.fn() },
@@ -175,6 +176,50 @@ describe('ExerciseResolvers', () => {
       const ctx = createContext();
       await ExerciseResolvers.Query.exercisesAvailableAtGym(null as any, { gymId: 1 }, ctx);
       expect(instance.getExercisesAvailableAtGym).toHaveBeenCalledWith(1);
+    });
+
+    test('exercisesForEquipment loads equipment and delegates to service', async () => {
+      const instance = { exercisesForEquipment: jest.fn().mockResolvedValue(['ok']) } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      ctx.prisma.gymEquipment.findUniqueOrThrow.mockResolvedValue({
+        equipment: { deletedAt: null, subcategoryId: 3 },
+      });
+
+      const result = await ExerciseResolvers.Query.exercisesForEquipment(
+        null as any,
+        { equipmentId: 10 },
+        ctx,
+      );
+
+      expect(ctx.prisma.gymEquipment.findUniqueOrThrow).toHaveBeenCalledWith({
+        where: { id: 10 },
+        select: {
+          equipment: {
+            select: {
+              subcategoryId: true,
+              deletedAt: true,
+            },
+          },
+        },
+      });
+      expect(instance.exercisesForEquipment).toHaveBeenCalledWith(10);
+      expect(result).toEqual(['ok']);
+    });
+
+    test('exercisesForEquipment throws when equipment is archived', async () => {
+      const instance = { exercisesForEquipment: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      ctx.prisma.gymEquipment.findUniqueOrThrow.mockResolvedValue({
+        equipment: { deletedAt: new Date(), subcategoryId: 3 },
+      });
+
+      await expect(
+        ExerciseResolvers.Query.exercisesForEquipment(null as any, { equipmentId: 5 }, ctx),
+      ).rejects.toThrow('Equipment is archived');
+
+      expect(instance.exercisesForEquipment).not.toHaveBeenCalled();
     });
 
     test('allMetrics queries prisma', async () => {

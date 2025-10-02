@@ -133,6 +133,32 @@ export const ExerciseResolvers = {
       return service.getExercisesAvailableAtGym(args.gymId);
     },
 
+    exercisesForEquipment: async (
+      _: unknown,
+      { equipmentId }: { equipmentId: number },
+      context: AuthContext,
+    ) => {
+      const permissionService = new PermissionService(context.prisma);
+      const gymEquipment = await context.prisma.gymEquipment.findUniqueOrThrow({
+        where: { id: equipmentId },
+        select: {
+          equipment: {
+            select: {
+              subcategoryId: true,
+              deletedAt: true,
+            },
+          },
+        },
+      });
+
+      if (gymEquipment.equipment?.deletedAt) {
+        throw new Error('Equipment is archived');
+      }
+
+      const service = new ExerciseService(context.prisma, permissionService);
+      return service.exercisesForEquipment(equipmentId);
+    },
+
     allMetrics: (_: any, __: any, context: AuthContext) => {
       return context.prisma.metric.findMany();
     },

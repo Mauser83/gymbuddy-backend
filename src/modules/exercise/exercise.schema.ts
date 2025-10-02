@@ -291,6 +291,9 @@ export const exerciseTypeDefs = `
 
     exercisesAvailableAtGym(gymId: Int!, search: String): [Exercise!]!
 
+    # Returns exercises that are doable on the given equipment, based on subcategory mapping.
+    exercisesForEquipment(equipmentId: Int!): [Exercise!]!
+    
     allMetrics: [Metric!]!
     metricById(id: Int!): Metric
     listExerciseSuggestions(input: ListExerciseSuggestionsInput!): ListExerciseSuggestionsPayload!

@@ -71,6 +71,68 @@ describe('ExerciseService', () => {
     expect(res).toEqual({ id: 1 });
   });
 
+  describe('exercisesForEquipment', () => {
+    test('returns exercises matching the equipment subcategory', async () => {
+      prisma.gymEquipment.findUniqueOrThrow.mockResolvedValue({
+        equipment: { subcategoryId: 12 },
+      } as any);
+      const exercises = [{ id: 1 }, { id: 2 }];
+      prisma.exercise.findMany.mockResolvedValue(exercises as any);
+
+      const result = await service.exercisesForEquipment(7);
+
+      expect(prisma.gymEquipment.findUniqueOrThrow).toHaveBeenCalledWith({
+        where: { id: 7 },
+        select: {
+          id: true,
+          equipment: {
+            select: {
+              subcategoryId: true,
+            },
+          },
+        },
+      });
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: {
+          deletedAt: null,
+          equipmentSlots: {
+            some: {
+              options: {
+                some: {
+                  subcategoryId: 12,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          videoUrl: true,
+          exerciseTypeId: true,
+          difficultyId: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      expect(result).toBe(exercises);
+    });
+
+    test('returns empty array when equipment has no subcategory', async () => {
+      prisma.gymEquipment.findUniqueOrThrow.mockResolvedValue({
+        equipment: { subcategoryId: null },
+      } as any);
+
+      const result = await service.exercisesForEquipment(9);
+
+      expect(result).toEqual([]);
+      expect(prisma.exercise.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   test('createExercise propagates verifyRoles error', async () => {
     mockedVerify.mockImplementation(() => {
       throw new Error('no');

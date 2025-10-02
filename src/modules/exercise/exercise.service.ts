@@ -514,6 +514,52 @@ export class ExerciseService {
     });
   }
 
+  async exercisesForEquipment(equipmentId: number) {
+    const gymEquipment = await this.prisma.gymEquipment.findUniqueOrThrow({
+      where: { id: equipmentId },
+      select: {
+        id: true,
+        equipment: {
+          select: {
+            subcategoryId: true,
+          },
+        },
+      },
+    });
+
+    const subcategoryId = gymEquipment.equipment?.subcategoryId;
+    if (!subcategoryId) {
+      return [];
+    }
+
+    return this.prisma.exercise.findMany({
+      where: {
+        deletedAt: null,
+        equipmentSlots: {
+          some: {
+            options: {
+              some: {
+                subcategoryId,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ name: 'asc' as const }, { id: 'asc' as const }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        videoUrl: true,
+        exerciseTypeId: true,
+        difficultyId: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async updateExercise(id: number, input: UpdateExerciseInput, userId: number) {
     await this.verifyOwnership(userId, id);
     await validateInput(input, UpdateExerciseDto);
