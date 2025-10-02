@@ -172,6 +172,42 @@ export interface CreateExerciseSlotOptionInput {
 }
 
 // ---------------------
+// 📝 Exercise Suggestions
+// ---------------------
+
+export type ExerciseSuggestionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ExerciseSuggestionSlotOption {
+  subcategoryId: number;
+}
+
+export interface ExerciseSuggestionSlot {
+  slotIndex: number;
+  isRequired: boolean;
+  comment?: string | null;
+  options: ExerciseSuggestionSlotOption[];
+}
+
+export interface ExerciseSuggestion {
+  id: string;
+  managerUserId: number;
+  gymId?: number | null;
+  name: string;
+  description?: string | null;
+  videoUrl?: string | null;
+  difficultyId: number;
+  exerciseTypeId: number;
+  primaryMuscleIds: number[];
+  secondaryMuscleIds?: number[] | null;
+  equipmentSlots: ExerciseSuggestionSlot[];
+  status: ExerciseSuggestionStatus;
+  approvedExerciseId?: number | null;
+  rejectedReason?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ---------------------
 // Other
 // ---------------------
 

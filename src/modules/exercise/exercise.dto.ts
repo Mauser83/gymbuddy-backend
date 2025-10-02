@@ -9,8 +9,18 @@ import {
   IsUrl,
   ValidateNested,
   IsBoolean,
+  IsEnum,
 } from 'class-validator';
 import 'reflect-metadata';
+
+import type { ExerciseSuggestion } from './exercise.types';
+import {
+  ExerciseSuggestionStatus as PrismaExerciseSuggestionStatusEnum,
+  type ExerciseSuggestionStatus as PrismaExerciseSuggestionStatus,
+} from '../../prisma';
+
+export const ExerciseSuggestionStatusDto = PrismaExerciseSuggestionStatusEnum;
+export type ExerciseSuggestionStatusDto = PrismaExerciseSuggestionStatus;
 
 export class CreateExerciseDto {
   @IsString()
@@ -112,6 +122,53 @@ export class CreateExerciseSlotDto {
 export class CreateExerciseSlotOptionDto {
   @IsInt()
   subcategoryId!: number;
+}
+
+// ----------------------
+// ✨ Suggestion DTOs
+// ----------------------
+
+export class ExerciseSuggestionSlotOptionDto extends CreateExerciseSlotOptionDto {}
+
+export class ExerciseSuggestionSlotDto extends CreateExerciseSlotDto {}
+
+export class ExerciseSuggestionCreateDto extends CreateExerciseDto {}
+
+export class CreateExerciseSuggestionDto {
+  @ValidateNested()
+  @Type(() => ExerciseSuggestionCreateDto)
+  exercise!: ExerciseSuggestionCreateDto;
+
+  @IsOptional()
+  @IsInt()
+  gymId?: number | null;
+}
+
+export class ApproveExerciseSuggestionDto {
+  @IsString()
+  id!: string;
+}
+
+export class RejectExerciseSuggestionDto {
+  @IsString()
+  id!: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string | null;
+}
+
+export class ListExerciseSuggestionsDto {
+  @IsEnum(ExerciseSuggestionStatusDto, { message: 'Invalid status' })
+  status!: ExerciseSuggestionStatusDto;
+
+  @IsOptional()
+  @IsInt()
+  limit?: number | null;
+
+  @IsOptional()
+  @IsString()
+  cursor?: string | null;
 }
 
 // ----------------------
@@ -228,4 +285,69 @@ export class UpdateMetricDto {
   @IsOptional()
   @IsBoolean()
   minOnly?: boolean;
+}
+
+// ----------------------
+// ✨ Suggestion Interfaces
+// ----------------------
+
+export interface ExerciseSuggestionSlotOptionInput {
+  subcategoryId: number;
+}
+
+export interface ExerciseSuggestionSlotInput {
+  slotIndex: number;
+  isRequired: boolean;
+  comment?: string;
+  options: ExerciseSuggestionSlotOptionInput[];
+}
+
+export interface ExerciseSuggestionCreateInput {
+  name: string;
+  description?: string;
+  videoUrl?: string;
+  difficultyId: number;
+  exerciseTypeId: number;
+  primaryMuscleIds: number[];
+  secondaryMuscleIds?: number[];
+  equipmentSlots: ExerciseSuggestionSlotInput[];
+}
+
+export interface CreateExerciseSuggestionInput {
+  exercise: ExerciseSuggestionCreateInput;
+  gymId?: number | null;
+}
+
+export interface CreateExerciseSuggestionPayload {
+  id: string;
+  status: ExerciseSuggestionStatusDto;
+}
+
+export interface ApproveExerciseSuggestionInput {
+  id: string;
+}
+
+export interface ApproveExerciseSuggestionPayload {
+  approved: boolean;
+  exerciseId: number;
+}
+
+export interface RejectExerciseSuggestionInput {
+  id: string;
+  reason?: string | null;
+}
+
+export interface RejectExerciseSuggestionPayload {
+  rejected: boolean;
+}
+
+export interface ListExerciseSuggestionsInput {
+  status: ExerciseSuggestionStatusDto;
+  limit?: number | null;
+  cursor?: string | null;
+}
+
+export interface ListExerciseSuggestionsPayload {
+  items: ExerciseSuggestion[];
+  nextCursor?: string | null;
 }
