@@ -58,6 +58,12 @@ enum EquipmentSuggestionStatus {
   REJECTED
 }
 
+enum ExerciseSuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // --- Models ---
 
 model User {
@@ -101,6 +107,7 @@ model User {
   approvedGymEquipmentImages GymEquipmentImage[] @relation("GymEquipmentImageApprovedBy")
   trainingCandidates        TrainingCandidate[] @relation("UserTrainingCandidates")
   equipmentSuggestions      EquipmentSuggestion[] @relation("EquipmentSuggestionsManager")
+  exerciseSuggestions       ExerciseSuggestion[] @relation("ExerciseSuggestionsManager")
 }
 
 model WorkoutPlan {
@@ -203,6 +210,7 @@ model Exercise {
   workoutPlanEntries WorkoutPlanExercise[]
   exerciseLogs       ExerciseLog[]
   equipmentSlots     ExerciseEquipmentSlot[]
+  approvedSuggestions ExerciseSuggestion[] @relation("ApprovedExerciseSuggestion")
 
   @@index([userId])
 }
@@ -233,6 +241,34 @@ model ExerciseEquipmentOption {
   @@index([subcategoryId])
 }
 
+model ExerciseSuggestion {
+  id                 String                   @id @default(cuid())
+  managerUser        User                     @relation("ExerciseSuggestionsManager", fields: [managerUserId], references: [id])
+  managerUserId      Int
+  gym                Gym?                     @relation(fields: [gymId], references: [id])
+  gymId              Int?
+  name               String                   @db.VarChar(50)
+  description        String?                  @db.VarChar(500)
+  videoUrl           String?                  @db.VarChar(300)
+  difficulty         ExerciseDifficulty       @relation(fields: [difficultyId], references: [id])
+  difficultyId       Int
+  exerciseType       ExerciseType             @relation(fields: [exerciseTypeId], references: [id])
+  exerciseTypeId     Int
+  primaryMuscleIds   Int[]
+  secondaryMuscleIds Int[] @default([])
+  equipmentSlots     Json
+  status             ExerciseSuggestionStatus @default(PENDING)
+  approvedExercise   Exercise?                @relation("ApprovedExerciseSuggestion", fields: [approvedExerciseId], references: [id])
+  approvedExerciseId Int?
+  rejectedReason     String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([gymId, status])
+  @@index([managerUserId, status])
+}
+
 model BodyPart {
   id           Int           @id @default(autoincrement())
   name         String        @unique
@@ -257,6 +293,7 @@ model ExerciseType {
   name      String               @unique
   exercises Exercise[]
   metrics   ExerciseTypeMetric[]
+  exerciseSuggestions ExerciseSuggestion[]
 
   @@index([name])
 }
@@ -265,6 +302,7 @@ model ExerciseDifficulty {
   id        Int        @id @default(autoincrement())
   level     String     @unique // e.g. "Beginner", "Intermediate", "Advanced"
   exercises Exercise[]
+  exerciseSuggestions ExerciseSuggestion[]
 
   @@index([level])
 }
@@ -443,6 +481,7 @@ model Gym {
   imageEmbeddings   ImageEmbedding[]
   trainingCandidates TrainingCandidate[] @relation("GymTrainingCandidates")
   equipmentSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsGym")
+  exerciseSuggestions ExerciseSuggestion[]
   
   @@index([name])
   @@index([city])

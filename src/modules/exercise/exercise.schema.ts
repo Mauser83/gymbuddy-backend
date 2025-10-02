@@ -31,6 +31,103 @@ export const exerciseTypeDefs = `
     subcategory: EquipmentSubcategory!
   }
 
+  enum ExerciseSuggestionStatus {
+    PENDING
+    APPROVED
+    REJECTED
+  }
+
+  input ExerciseSuggestionSlotOptionInput {
+    subcategoryId: Int!
+  }
+
+  input ExerciseSuggestionSlotInput {
+    slotIndex: Int!
+    isRequired: Boolean!
+    comment: String
+    options: [ExerciseSuggestionSlotOptionInput!]!
+  }
+
+  input ExerciseSuggestionCreateInput {
+    name: String!
+    description: String
+    videoUrl: String
+    difficultyId: Int!
+    exerciseTypeId: Int!
+    primaryMuscleIds: [Int!]!
+    secondaryMuscleIds: [Int!]
+    equipmentSlots: [ExerciseSuggestionSlotInput!]!
+  }
+
+  input CreateExerciseSuggestionInput {
+    exercise: ExerciseSuggestionCreateInput!
+    gymId: Int
+  }
+
+  type ExerciseSuggestionEquipmentOption {
+    subcategoryId: Int!
+  }
+
+  type ExerciseSuggestionEquipmentSlot {
+    slotIndex: Int!
+    isRequired: Boolean!
+    comment: String
+    options: [ExerciseSuggestionEquipmentOption!]!
+  }
+
+  type ExerciseSuggestion {
+    id: ID!
+    managerUserId: ID!
+    gymId: Int
+    name: String!
+    description: String
+    videoUrl: String
+    difficultyId: Int!
+    exerciseTypeId: Int!
+    primaryMuscleIds: [Int!]!
+    secondaryMuscleIds: [Int!]
+    equipmentSlots: [ExerciseSuggestionEquipmentSlot!]!
+    status: ExerciseSuggestionStatus!
+    approvedExerciseId: Int
+    rejectedReason: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input ApproveExerciseSuggestionInput {
+    id: ID!
+  }
+
+  input RejectExerciseSuggestionInput {
+    id: ID!
+    reason: String
+  }
+
+  input ListExerciseSuggestionsInput {
+    status: ExerciseSuggestionStatus!
+    limit: Int
+    cursor: String
+  }
+
+  type CreateExerciseSuggestionPayload {
+    id: ID!
+    status: ExerciseSuggestionStatus!
+  }
+
+  type ApproveExerciseSuggestionPayload {
+    approved: Boolean!
+    exerciseId: Int!
+  }
+
+  type RejectExerciseSuggestionPayload {
+    rejected: Boolean!
+  }
+
+  type ListExerciseSuggestionsPayload {
+    items: [ExerciseSuggestion!]!
+    nextCursor: String
+  }
+
   type EquipmentSubcategory {
     id: Int!
     name: String!
@@ -196,6 +293,7 @@ export const exerciseTypeDefs = `
 
     allMetrics: [Metric!]!
     metricById(id: Int!): Metric
+    listExerciseSuggestions(input: ListExerciseSuggestionsInput!): ListExerciseSuggestionsPayload!
   }
 
   extend type Mutation {
@@ -222,5 +320,9 @@ export const exerciseTypeDefs = `
     createMetric(input: CreateMetricInput!): Metric!
     updateMetric(id: Int!, input: UpdateMetricInput!): Metric!
     deleteMetric(id: Int!): Boolean!
+
+    createExerciseSuggestion(input: CreateExerciseSuggestionInput!): CreateExerciseSuggestionPayload!
+    approveExerciseSuggestion(input: ApproveExerciseSuggestionInput!): ApproveExerciseSuggestionPayload!
+    rejectExerciseSuggestion(input: RejectExerciseSuggestionInput!): RejectExerciseSuggestionPayload!
   }
 `;

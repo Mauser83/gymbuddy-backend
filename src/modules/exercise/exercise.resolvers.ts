@@ -1,6 +1,14 @@
-import { CreateExerciseTypeDto, UpdateExerciseTypeDto } from './exercise.dto';
+import {
+  CreateExerciseTypeDto,
+  UpdateExerciseTypeDto,
+  type CreateExerciseSuggestionInput,
+  type ApproveExerciseSuggestionInput,
+  type RejectExerciseSuggestionInput,
+  type ListExerciseSuggestionsInput,
+} from './exercise.dto';
 import { ExerciseService } from './exercise.service';
 import { ExerciseQueryFilters } from './exercise.types';
+import { verifyGymScope, verifyRoles } from '../auth/auth.roles';
 import type { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';
 
@@ -50,6 +58,11 @@ export const ExerciseResolvers = {
         .findUnique({ where: { id: parent.id } })
         .secondaryMuscles({ include: { bodyPart: true } });
     },
+  },
+
+  ExerciseSuggestion: {
+    equipmentSlots: (parent: any) => parent.equipmentSlots ?? [],
+    secondaryMuscleIds: (parent: any) => parent.secondaryMuscleIds ?? [],
   },
 
   ExerciseType: {
@@ -126,6 +139,15 @@ export const ExerciseResolvers = {
 
     metricById: (_: any, args: { id: number }, context: AuthContext) => {
       return context.prisma.metric.findUnique({ where: { id: args.id } });
+    },
+    listExerciseSuggestions: async (
+      _: any,
+      { input }: { input: ListExerciseSuggestionsInput },
+      context: AuthContext,
+    ) => {
+      verifyRoles(context, { or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }] });
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
+      return service.listExerciseSuggestions(input);
     },
   },
 
@@ -225,6 +247,40 @@ export const ExerciseResolvers = {
 
     deleteMetric: (_: any, args: { id: number }, context: AuthContext) => {
       return context.prisma.metric.delete({ where: { id: args.id } }).then(() => true);
+    },
+
+    createExerciseSuggestion: async (
+      _: any,
+      { input }: { input: CreateExerciseSuggestionInput },
+      context: AuthContext,
+    ) => {
+      if (!context.userId) throw new Error('Unauthorized');
+      const permissionService = new PermissionService(context.prisma);
+      if (input.gymId) {
+        verifyGymScope(context, permissionService, input.gymId);
+      }
+      const service = new ExerciseService(context.prisma, permissionService);
+      return service.createExerciseSuggestion(Number(context.userId), input);
+    },
+
+    approveExerciseSuggestion: async (
+      _: any,
+      { input }: { input: ApproveExerciseSuggestionInput },
+      context: AuthContext,
+    ) => {
+      verifyRoles(context, { or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }] });
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
+      return service.approveExerciseSuggestion(context, input);
+    },
+
+    rejectExerciseSuggestion: async (
+      _: any,
+      { input }: { input: RejectExerciseSuggestionInput },
+      context: AuthContext,
+    ) => {
+      verifyRoles(context, { or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }] });
+      const service = new ExerciseService(context.prisma, new PermissionService(context.prisma));
+      return service.rejectExerciseSuggestion(input);
     },
   },
 };

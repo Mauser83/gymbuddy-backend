@@ -11,6 +11,18 @@ import {
   UpdateMuscleDto,
   CreateMetricDto,
   UpdateMetricDto,
+  CreateExerciseSuggestionDto,
+  ApproveExerciseSuggestionDto,
+  RejectExerciseSuggestionDto,
+  ListExerciseSuggestionsDto,
+  type CreateExerciseSuggestionInput,
+  type CreateExerciseSuggestionPayload,
+  type ApproveExerciseSuggestionInput,
+  type ApproveExerciseSuggestionPayload,
+  type RejectExerciseSuggestionInput,
+  type RejectExerciseSuggestionPayload,
+  type ListExerciseSuggestionsInput,
+  type ListExerciseSuggestionsPayload,
 } from './exercise.dto';
 import {
   ExerciseQueryFilters,
@@ -26,9 +38,11 @@ import {
   UpdateMuscleInput,
   CreateMetricInput,
   UpdateMetricInput,
+  type CreateExerciseSlotInput,
+  type ExerciseSuggestion,
 } from './exercise.types';
 import { validateInput } from '../../middlewares/validation';
-import { PrismaClient } from '../../prisma';
+import { PrismaClient, Prisma } from '../../prisma';
 import { verifyRoles } from '../auth/auth.roles';
 import { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';
@@ -40,6 +54,26 @@ export class ExerciseService {
   constructor(prisma: PrismaClient, permissionService: PermissionService) {
     this.prisma = prisma;
     this.permissionService = permissionService;
+  }
+
+  private validateSuggestionEquipmentSlots(slots: CreateExerciseSlotInput[]) {
+    if (slots.length > 5) {
+      throw new Error('A maximum of 5 equipment slots is allowed');
+    }
+
+    const seen = new Set<number>();
+    for (const slot of slots) {
+      if (!slot.options.length) {
+        throw new Error('Each equipment slot must include at least one option');
+      }
+
+      for (const option of slot.options) {
+        if (seen.has(option.subcategoryId)) {
+          throw new Error('Duplicate equipment subcategory in suggestion');
+        }
+        seen.add(option.subcategoryId);
+      }
+    }
   }
 
   // ---------- EXERCISE CORE ----------
@@ -106,6 +140,148 @@ export class ExerciseService {
     }
 
     return createdExercise;
+  }
+
+  // ---------- EXERCISE SUGGESTIONS ----------
+
+  async createExerciseSuggestion(
+    managerUserId: number,
+    input: CreateExerciseSuggestionInput,
+  ): Promise<CreateExerciseSuggestionPayload> {
+    await validateInput(input, CreateExerciseSuggestionDto);
+
+    const slots = input.exercise.equipmentSlots as unknown as CreateExerciseSlotInput[];
+    this.validateSuggestionEquipmentSlots(slots);
+
+    const suggestion = await this.prisma.exerciseSuggestion.create({
+      data: {
+        managerUserId,
+        gymId: input.gymId ?? null,
+        name: input.exercise.name,
+        description: input.exercise.description ?? null,
+        videoUrl: input.exercise.videoUrl ?? null,
+        difficultyId: input.exercise.difficultyId,
+        exerciseTypeId: input.exercise.exerciseTypeId,
+        primaryMuscleIds: input.exercise.primaryMuscleIds,
+        secondaryMuscleIds: input.exercise.secondaryMuscleIds ?? [],
+        equipmentSlots: slots as unknown as Prisma.InputJsonValue,
+        status: 'PENDING',
+      },
+      select: { id: true, status: true },
+    });
+
+    return suggestion;
+  }
+
+  async approveExerciseSuggestion(
+    context: AuthContext,
+    input: ApproveExerciseSuggestionInput,
+  ): Promise<ApproveExerciseSuggestionPayload> {
+    await validateInput(input, ApproveExerciseSuggestionDto);
+
+    const suggestion = await this.prisma.exerciseSuggestion.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!suggestion) {
+      throw new Error('Suggestion not found');
+    }
+
+    if (suggestion.status !== 'PENDING') {
+      throw new Error('Suggestion is not pending');
+    }
+
+    const equipmentSlots =
+      suggestion.equipmentSlots as Prisma.JsonValue as unknown as CreateExerciseSlotInput[];
+    this.validateSuggestionEquipmentSlots(equipmentSlots);
+
+    const createdExercise = await this.createExercise(
+      context,
+      {
+        name: suggestion.name,
+        description: suggestion.description ?? undefined,
+        videoUrl: suggestion.videoUrl ?? undefined,
+        difficultyId: suggestion.difficultyId,
+        exerciseTypeId: suggestion.exerciseTypeId,
+        primaryMuscleIds: suggestion.primaryMuscleIds,
+        secondaryMuscleIds: suggestion.secondaryMuscleIds ?? [],
+        equipmentSlots,
+      },
+      suggestion.managerUserId,
+    );
+
+    await this.prisma.exerciseSuggestion.update({
+      where: { id: suggestion.id },
+      data: {
+        status: 'APPROVED',
+        approvedExerciseId: createdExercise.id,
+        rejectedReason: null,
+      },
+    });
+
+    return { approved: true, exerciseId: createdExercise.id };
+  }
+
+  async rejectExerciseSuggestion(
+    input: RejectExerciseSuggestionInput,
+  ): Promise<RejectExerciseSuggestionPayload> {
+    await validateInput(input, RejectExerciseSuggestionDto);
+
+    const suggestion = await this.prisma.exerciseSuggestion.findUnique({
+      where: { id: input.id },
+      select: { status: true },
+    });
+
+    if (!suggestion) {
+      throw new Error('Suggestion not found');
+    }
+
+    if (suggestion.status !== 'PENDING') {
+      throw new Error('Suggestion is not pending');
+    }
+
+    const reason = input.reason?.trim();
+
+    await this.prisma.exerciseSuggestion.update({
+      where: { id: input.id },
+      data: {
+        status: 'REJECTED',
+        rejectedReason: reason && reason.length > 0 ? reason : 'Rejected',
+        approvedExerciseId: null,
+      },
+    });
+
+    return { rejected: true };
+  }
+
+  async listExerciseSuggestions(
+    input: ListExerciseSuggestionsInput,
+  ): Promise<ListExerciseSuggestionsPayload> {
+    await validateInput(input, ListExerciseSuggestionsDto);
+
+    const take = Math.min(input.limit ?? 25, 50);
+
+    const rows = await this.prisma.exerciseSuggestion.findMany({
+      where: { status: input.status },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: take + 1,
+      ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
+    });
+
+    const sliced = rows.slice(0, take);
+    const items = sliced.map((row) => {
+      const equipmentSlots =
+        row.equipmentSlots as Prisma.JsonValue as unknown as ExerciseSuggestion['equipmentSlots'];
+      return {
+        ...row,
+        equipmentSlots,
+        secondaryMuscleIds: row.secondaryMuscleIds ?? [],
+      } as ExerciseSuggestion;
+    });
+
+    const nextCursor = rows.length > take && items.length > 0 ? items[items.length - 1].id : null;
+
+    return { items, nextCursor };
   }
 
   async getExercises(search?: string, filters?: ExerciseQueryFilters) {

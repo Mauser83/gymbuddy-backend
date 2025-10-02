@@ -1,10 +1,17 @@
+import { verifyRoles, verifyGymScope } from '../../../src/modules/auth/auth.roles';
 import { PermissionService } from '../../../src/modules/core/permission.service';
 import { ExerciseResolvers } from '../../../src/modules/exercise/exercise.resolvers';
 import { ExerciseService } from '../../../src/modules/exercise/exercise.service';
 
 jest.mock('../../../src/modules/exercise/exercise.service');
+jest.mock('../../../src/modules/auth/auth.roles', () => ({
+  verifyRoles: jest.fn(),
+  verifyGymScope: jest.fn(),
+}));
 
 const mockedService = jest.mocked(ExerciseService);
+const mockedVerifyRoles = jest.mocked(verifyRoles);
+const mockedVerifyGymScope = jest.mocked(verifyGymScope);
 
 function createContext() {
   return {
@@ -38,6 +45,8 @@ function createContext() {
 describe('ExerciseResolvers', () => {
   beforeEach(() => {
     mockedService.mockClear();
+    mockedVerifyRoles.mockClear();
+    mockedVerifyGymScope.mockClear();
   });
 
   describe('field resolvers', () => {
@@ -181,6 +190,20 @@ describe('ExerciseResolvers', () => {
       await ExerciseResolvers.Query.metricById(null as any, { id: 3 }, ctx);
       expect(ctx.prisma.metric.findUnique).toHaveBeenCalledWith({ where: { id: 3 } });
     });
+
+    test('listExerciseSuggestions requires roles and uses service', async () => {
+      const instance = { listExerciseSuggestions: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      const input = { status: 'PENDING' } as any;
+
+      await ExerciseResolvers.Query.listExerciseSuggestions(null as any, { input }, ctx);
+
+      expect(mockedVerifyRoles).toHaveBeenCalledWith(ctx, {
+        or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      });
+      expect(instance.listExerciseSuggestions).toHaveBeenCalledWith(input);
+    });
   });
 
   describe('Mutation resolvers', () => {
@@ -198,6 +221,41 @@ describe('ExerciseResolvers', () => {
       await expect(
         ExerciseResolvers.Mutation.createExercise(null as any, { input: {} }, ctx),
       ).rejects.toThrow('Unauthorized');
+    });
+
+    test('createExerciseSuggestion throws when unauthorized', async () => {
+      const ctx = createContext();
+      ctx.userId = undefined as any;
+
+      await expect(
+        ExerciseResolvers.Mutation.createExerciseSuggestion(null as any, { input: {} as any }, ctx),
+      ).rejects.toThrow('Unauthorized');
+    });
+
+    test('createExerciseSuggestion uses service', async () => {
+      const instance = { createExerciseSuggestion: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      ctx.userId = 42;
+      const input = { exercise: { name: 'x' } } as any;
+
+      await ExerciseResolvers.Mutation.createExerciseSuggestion(null as any, { input }, ctx);
+
+      expect(mockedVerifyGymScope).not.toHaveBeenCalled();
+      expect(instance.createExerciseSuggestion).toHaveBeenCalledWith(42, input);
+    });
+
+    test('createExerciseSuggestion checks gym scope when gymId provided', async () => {
+      const instance = { createExerciseSuggestion: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      ctx.userId = 7;
+      const input = { gymId: 55, exercise: { name: 'y' } } as any;
+
+      await ExerciseResolvers.Mutation.createExerciseSuggestion(null as any, { input }, ctx);
+
+      expect(mockedVerifyGymScope).toHaveBeenCalledWith(ctx, expect.any(PermissionService), 55);
+      expect(instance.createExerciseSuggestion).toHaveBeenCalledWith(7, input);
     });
 
     test('updateExercise uses service', async () => {
@@ -230,6 +288,34 @@ describe('ExerciseResolvers', () => {
       await expect(
         ExerciseResolvers.Mutation.deleteExercise(null as any, { id: 1 }, ctx),
       ).rejects.toThrow('Unauthorized');
+    });
+
+    test('approveExerciseSuggestion requires roles and uses service', async () => {
+      const instance = { approveExerciseSuggestion: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      const input = { id: 's1' } as any;
+
+      await ExerciseResolvers.Mutation.approveExerciseSuggestion(null as any, { input }, ctx);
+
+      expect(mockedVerifyRoles).toHaveBeenCalledWith(ctx, {
+        or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      });
+      expect(instance.approveExerciseSuggestion).toHaveBeenCalledWith(ctx, input);
+    });
+
+    test('rejectExerciseSuggestion requires roles and uses service', async () => {
+      const instance = { rejectExerciseSuggestion: jest.fn() } as any;
+      mockedService.mockImplementation(() => instance);
+      const ctx = createContext();
+      const input = { id: 's1' } as any;
+
+      await ExerciseResolvers.Mutation.rejectExerciseSuggestion(null as any, { input }, ctx);
+
+      expect(mockedVerifyRoles).toHaveBeenCalledWith(ctx, {
+        or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+      });
+      expect(instance.rejectExerciseSuggestion).toHaveBeenCalledWith(input);
     });
 
     test('createExerciseType uses service', async () => {
