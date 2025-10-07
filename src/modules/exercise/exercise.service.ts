@@ -482,33 +482,62 @@ export class ExerciseService {
       .map((e) => e.equipment.subcategoryId)
       .filter((id): id is number => !!id);
 
-    if (subcategoryIds.length === 0) return [];
-
-    const options = await this.prisma.exerciseEquipmentOption.findMany({
-      where: {
-        subcategoryId: { in: subcategoryIds },
-      },
-      select: {
-        slot: {
-          select: {
-            exerciseId: true,
-          },
+    const baseWhere: Prisma.ExerciseWhereInput = {
+      deletedAt: null,
+      ...(search && {
+        name: {
+          contains: search,
+          mode: 'insensitive',
         },
+      }),
+    };
+
+    const optionalExercises = await this.prisma.exercise.findMany({
+      where: {
+        ...baseWhere,
+        equipmentSlots: { none: { isRequired: true } },
       },
+      select: { id: true },
     });
 
-    const exerciseIds = [...new Set(options.map((o) => o.slot.exerciseId))];
+    let requiredExercises: { id: number }[] = [];
+    if (subcategoryIds.length) {
+      requiredExercises = await this.prisma.exercise.findMany({
+        where: {
+          ...baseWhere,
+          equipmentSlots: {
+            some: { isRequired: true },
+            every: {
+              OR: [
+                { isRequired: false },
+                {
+                  isRequired: true,
+                  options: {
+                    some: {
+                      subcategoryId: { in: subcategoryIds },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        select: { id: true },
+      });
+    }
+
+    const exerciseIds = [
+      ...new Set([...optionalExercises, ...requiredExercises].map((exercise) => exercise.id)),
+    ];
+
+    if (!exerciseIds.length) {
+      return [];
+    }
 
     return this.prisma.exercise.findMany({
       where: {
+        ...baseWhere,
         id: { in: exerciseIds },
-        ...(search && {
-          name: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        }),
-        deletedAt: null,
       },
       orderBy: { name: 'asc' },
     });
