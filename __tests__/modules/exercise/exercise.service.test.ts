@@ -378,20 +378,122 @@ describe('ExerciseService', () => {
     expect(res).toBeNull();
   });
 
-  test('getExercisesAvailableAtGym returns empty when no equipment', async () => {
+  test('getExercisesAvailableAtGym returns optional exercises when gym has no equipment', async () => {
     prisma.gymEquipment.findMany.mockResolvedValue([] as any);
+    prisma.exercise.findMany
+      .mockResolvedValueOnce([{ id: 1 }] as any)
+      .mockResolvedValueOnce([{ id: 1, name: 'Bodyweight' }] as any);
+
     const res = await service.getExercisesAvailableAtGym(1);
-    expect(res).toEqual([]);
-    expect(prisma.exerciseEquipmentOption.findMany).not.toHaveBeenCalled();
+
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          equipmentSlots: { none: { isRequired: true } },
+        }),
+        select: { id: true },
+      }),
+    );
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          id: { in: [1] },
+        }),
+        orderBy: { name: 'asc' },
+      }),
+    );
+    expect(res).toEqual([{ id: 1, name: 'Bodyweight' }]);
   });
 
-  test('getExercisesAvailableAtGym queries exercises when equipment exists', async () => {
+  test('getExercisesAvailableAtGym merges optional and required exercises when equipment exists', async () => {
     prisma.gymEquipment.findMany.mockResolvedValue([{ equipment: { subcategoryId: 5 } }] as any);
-    prisma.exerciseEquipmentOption.findMany.mockResolvedValue([{ slot: { exerciseId: 2 } }] as any);
-    prisma.exercise.findMany.mockResolvedValue([{ id: 2 }] as any);
+    prisma.exercise.findMany
+      .mockResolvedValueOnce([{ id: 1 }] as any)
+      .mockResolvedValueOnce([{ id: 2 }] as any)
+      .mockResolvedValueOnce([{ id: 1 }, { id: 2 }] as any);
+
     const res = await service.getExercisesAvailableAtGym(1, 'a');
-    expect(prisma.exercise.findMany).toHaveBeenCalled();
-    expect(res).toEqual([{ id: 2 }]);
+
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          equipmentSlots: { none: { isRequired: true } },
+          name: { contains: 'a', mode: 'insensitive' },
+        }),
+        select: { id: true },
+      }),
+    );
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          name: { contains: 'a', mode: 'insensitive' },
+          equipmentSlots: {
+            some: { isRequired: true },
+            every: {
+              OR: [
+                { isRequired: false },
+                {
+                  isRequired: true,
+                  options: { some: { subcategoryId: { in: [5] } } },
+                },
+              ],
+            },
+          },
+        }),
+        select: { id: true },
+      }),
+    );
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          name: { contains: 'a', mode: 'insensitive' },
+          id: { in: [1, 2] },
+        }),
+        orderBy: { name: 'asc' },
+      }),
+    );
+    expect(res).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
+  test('getExercisesAvailableAtGym returns empty when no exercises match gym equipment', async () => {
+    prisma.gymEquipment.findMany.mockResolvedValue([{ equipment: { subcategoryId: 5 } }] as any);
+    prisma.exercise.findMany.mockResolvedValueOnce([] as any).mockResolvedValueOnce([] as any);
+
+    const res = await service.getExercisesAvailableAtGym(1);
+
+    expect(prisma.exercise.findMany).toHaveBeenCalledTimes(2);
+    expect(prisma.exercise.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          equipmentSlots: {
+            some: { isRequired: true },
+            every: {
+              OR: [
+                { isRequired: false },
+                {
+                  isRequired: true,
+                  options: { some: { subcategoryId: { in: [5] } } },
+                },
+              ],
+            },
+          },
+        }),
+        select: { id: true },
+      }),
+    );
+    expect(res).toEqual([]);
   });
 
   test('updateExercise updates basic fields', async () => {
