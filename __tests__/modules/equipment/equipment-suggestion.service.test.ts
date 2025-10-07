@@ -218,6 +218,68 @@ describe('EquipmentSuggestionService', () => {
     expect(res).toEqual([{ id: 'img-1' }]);
   });
 
+  it('approves suggestion by updating existing equipment when merge provided', async () => {
+    prisma.equipmentSuggestion.findUnique.mockResolvedValue({
+      id: 's-1',
+      status: 'PENDING',
+      name: 'Trap Bar',
+      description: null,
+      brand: 'Rogue',
+      manualUrl: 'http://manual',
+      categoryId: 11,
+      subcategoryId: 22,
+      gymId: 8,
+      addToGymOnApprove: true,
+      managerUserId: 'manager-1',
+      images: [
+        {
+          storageKey: 'private/suggestions/candidates/s-1/sha1.jpg',
+          sha256: 'sha1',
+        },
+      ],
+    } as any);
+    prisma.equipment.findUnique.mockResolvedValue({ id: 55 } as any);
+    prisma.gymEquipment.upsert.mockResolvedValue({ id: 91 } as any);
+    prisma.gymEquipmentImage.upsert.mockResolvedValue({
+      id: 'gym-img-1',
+      storageKey: 'existing',
+      sha256: null,
+      nsfwScore: null,
+      modelVendor: null,
+      modelName: null,
+      modelVersion: null,
+    } as any);
+    prisma.gymEquipmentImage.update.mockResolvedValue({} as any);
+    prisma.globalImageSuggestion.upsert.mockResolvedValue({} as any);
+    prisma.equipmentSuggestion.update.mockResolvedValue({} as any);
+
+    const result = await service.approve(
+      { id: 's-1', mergeIntoEquipmentId: 55 } as any,
+      { appRole: 'ADMIN' } as any,
+    );
+
+    expect(prisma.equipment.findUnique).toHaveBeenCalledWith({ where: { id: 55 } });
+    expect(prisma.equipment.update).toHaveBeenCalledWith({
+      where: { id: 55 },
+      data: {
+        name: 'Trap Bar',
+        brand: 'Rogue',
+        manualUrl: 'http://manual',
+      },
+    });
+    expect(prisma.equipment.create).not.toHaveBeenCalled();
+    expect(prisma.gymEquipment.upsert).toHaveBeenCalledWith({
+      where: { gymId_equipmentId: { gymId: 8, equipmentId: 55 } },
+      update: {},
+      create: { gymId: 8, equipmentId: 55, quantity: 1 },
+    });
+    expect(prisma.equipmentSuggestion.update).toHaveBeenCalledWith({
+      where: { id: 's-1' },
+      data: expect.objectContaining({ approvedEquipmentId: 55, status: 'APPROVED' }),
+    });
+    expect(result).toEqual({ approved: true, equipmentId: 55 });
+  });
+
   it('approves suggestion by creating equipment and syncing images', async () => {
     prisma.equipmentSuggestion.findUnique.mockResolvedValue({
       id: 's-1',
@@ -292,6 +354,39 @@ describe('EquipmentSuggestionService', () => {
       }),
     });
     expect(result).toEqual({ approved: true, equipmentId: 55 });
+  });
+
+  it('sets manual URL to null when suggestion omits it during merge', async () => {
+    prisma.equipmentSuggestion.findUnique.mockResolvedValue({
+      id: 's-2',
+      status: 'PENDING',
+      name: 'Trap Bar',
+      description: null,
+      brand: 'Rogue',
+      manualUrl: null,
+      categoryId: 11,
+      subcategoryId: 22,
+      gymId: null,
+      addToGymOnApprove: false,
+      managerUserId: 'manager-1',
+      images: [],
+    } as any);
+    prisma.equipment.findUnique.mockResolvedValue({ id: 56 } as any);
+    prisma.equipmentSuggestion.update.mockResolvedValue({} as any);
+
+    await service.approve(
+      { id: 's-2', mergeIntoEquipmentId: 56 } as any,
+      { appRole: 'ADMIN' } as any,
+    );
+
+    expect(prisma.equipment.update).toHaveBeenCalledWith({
+      where: { id: 56 },
+      data: {
+        name: 'Trap Bar',
+        brand: 'Rogue',
+        manualUrl: null,
+      },
+    });
   });
 
   it('rejects suggestion with provided reason', async () => {

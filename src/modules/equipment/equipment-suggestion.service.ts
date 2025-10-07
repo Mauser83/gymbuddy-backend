@@ -280,6 +280,17 @@ export class EquipmentSuggestionService {
     if (equipmentId) {
       const exists = await this.prisma.equipment.findUnique({ where: { id: equipmentId } });
       if (!exists) throw new Error('Equipment to merge not found');
+
+      const manualUrl = suggestion.manualUrl ?? null;
+
+      await this.prisma.equipment.update({
+        where: { id: equipmentId },
+        data: {
+          name: suggestion.name,
+          brand: suggestion.brand,
+          manualUrl,
+        },
+      });
     } else {
       const created = await this.prisma.equipment.create({
         data: {
