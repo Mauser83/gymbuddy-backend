@@ -100,6 +100,12 @@ export interface ListEquipmentSuggestionsInput {
   cursor?: string;
 }
 
+export interface ListEquipmentUpdateSuggestionsInput {
+  status?: EquipmentSuggestionStatus;
+  limit?: number;
+  cursor?: string;
+}
+
 export interface CreateEquipmentSuggestionPayload {
   suggestion: EquipmentSuggestion;
   nearMatches: Equipment[];
@@ -107,6 +113,11 @@ export interface CreateEquipmentSuggestionPayload {
 
 export interface EquipmentSuggestionConnection {
   items: EquipmentSuggestion[];
+  nextCursor?: string | null;
+}
+
+export interface EquipmentUpdateSuggestionConnection {
+  items: EquipmentUpdateSuggestion[];
   nextCursor?: string | null;
 }
 

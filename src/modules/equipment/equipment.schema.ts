@@ -84,10 +84,15 @@ export const equipmentTypeDefs = `
     createdAt: String!
     updatedAt: String!
   }
-    
+
   type EquipmentSuggestionConnection {
     items: [EquipmentSuggestion!]!
     nextCursor: ID
+  }
+
+  type EquipmentUpdateSuggestionConnection {
+    items: [EquipmentUpdateSuggestion!]!
+    nextCursor: String
   }
 
   type EquipmentCategory {
@@ -141,6 +146,12 @@ export const equipmentTypeDefs = `
     subcategoryId: Int
     limit: Int = 50
     cursor: ID
+  }
+
+  input ListEquipmentUpdateSuggestionsInput {
+    status: EquipmentSuggestionStatus = PENDING
+    limit: Int = 25
+    cursor: String
   }
 
   input EquipmentSuggestionUploadTicketInput {
@@ -244,6 +255,9 @@ export const equipmentTypeDefs = `
     equipmentImage(id: ID!): EquipmentImage
 
     listEquipmentSuggestions(input: ListEquipmentSuggestionsInput!): EquipmentSuggestionConnection!
+    listEquipmentUpdateSuggestions(
+      input: ListEquipmentUpdateSuggestionsInput!
+    ): EquipmentUpdateSuggestionConnection!
   }
 
   extend type Mutation {

@@ -3,6 +3,7 @@ import { GraphQLError } from 'graphql';
 import {
   ApproveEquipmentUpdateSuggestionDto,
   CreateEquipmentUpdateSuggestionDto,
+  ListEquipmentUpdateSuggestionsDto,
   RejectEquipmentUpdateSuggestionDto,
 } from './equipment.dto';
 import type {
@@ -10,6 +11,8 @@ import type {
   ApproveEquipmentUpdateSuggestionPayload,
   CreateEquipmentUpdateSuggestionInput,
   CreateEquipmentUpdateSuggestionPayload,
+  EquipmentUpdateSuggestionConnection,
+  ListEquipmentUpdateSuggestionsInput,
   RejectEquipmentUpdateSuggestionInput,
   RejectEquipmentUpdateSuggestionPayload,
 } from './equipment.types';
@@ -28,6 +31,34 @@ function ensureAuthenticated(context: AuthContext) {
 
 export class EquipmentUpdateSuggestionService {
   constructor(private prisma: PrismaClient) {}
+
+  async listSuggestions(
+    input: ListEquipmentUpdateSuggestionsInput,
+    context: AuthContext,
+  ): Promise<EquipmentUpdateSuggestionConnection> {
+    verifyRoles(context, {
+      or: [{ requireAppRole: 'ADMIN' }, { requireAppRole: 'MODERATOR' }],
+    });
+
+    const dto = Object.assign(new ListEquipmentUpdateSuggestionsDto(), input);
+    await validateInput(dto, ListEquipmentUpdateSuggestionsDto);
+
+    const take = Math.min(dto.limit ?? 25, 100);
+    const status = dto.status ?? 'PENDING';
+
+    const rows = await this.prisma.equipmentUpdateSuggestion.findMany({
+      where: { status },
+      orderBy: { createdAt: 'desc' },
+      take: take + 1,
+      ...(dto.cursor ? { cursor: { id: dto.cursor }, skip: 1 } : {}),
+      include: { equipment: true },
+    });
+
+    const items = rows.slice(0, take);
+    const nextCursor = rows.length > take ? rows[take].id : null;
+
+    return { items, nextCursor: nextCursor ?? null };
+  }
 
   async create(
     input: CreateEquipmentUpdateSuggestionInput,
