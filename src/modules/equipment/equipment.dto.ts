@@ -212,6 +212,21 @@ export class ListEquipmentSuggestionsDto {
   cursor?: string;
 }
 
+export class ListEquipmentUpdateSuggestionsDto {
+  @IsOptional()
+  @IsEnum(EquipmentSuggestionStatusDto, { message: 'Invalid status' })
+  status?: EquipmentSuggestionStatusDto;
+
+  @IsOptional()
+  @IsInt({ message: 'Limit must be an integer' })
+  @Min(1, { message: 'Limit must be positive' })
+  limit?: number;
+
+  @IsOptional()
+  @IsString({ message: 'Cursor must be a string' })
+  cursor?: string;
+}
+
 export class CreateEquipmentSuggestionUploadTicketDto {
   @IsString({ message: 'suggestionId must be a string' })
   suggestionId!: string;

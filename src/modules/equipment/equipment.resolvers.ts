@@ -166,6 +166,15 @@ export const EquipmentResolvers = {
       );
       return service.listSuggestions(args.input, context);
     },
+
+    listEquipmentUpdateSuggestions: async (
+      _: unknown,
+      args: { input: any },
+      context: AuthContext,
+    ) => {
+      const service = new EquipmentUpdateSuggestionService(context.prisma);
+      return service.listSuggestions(args.input, context);
+    },
   },
 
   Mutation: {

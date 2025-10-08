@@ -4,6 +4,7 @@ import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { validateInput } from '../../../src/middlewares/validation';
 import { verifyRoles } from '../../../src/modules/auth/auth.roles';
 import { EquipmentUpdateSuggestionService } from '../../../src/modules/equipment/equipment-update-suggestion.service';
+import { ListEquipmentUpdateSuggestionsDto } from '../../../src/modules/equipment/equipment.dto';
 import { PrismaClient } from '../../../src/prisma';
 
 jest.mock('../../../src/middlewares/validation');
@@ -28,6 +29,42 @@ describe('EquipmentUpdateSuggestionService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('lists suggestions with pagination metadata', async () => {
+    const rows = [
+      { id: 'u1', equipmentId: 1 } as any,
+      { id: 'u2', equipmentId: 1 } as any,
+      { id: 'u3', equipmentId: 1 } as any,
+    ];
+    prisma.equipmentUpdateSuggestion.findMany.mockResolvedValue(rows);
+
+    const result = await service.listSuggestions(
+      {
+        status: 'APPROVED' as any,
+        limit: 2,
+        cursor: 'u0',
+      },
+      { appRole: 'ADMIN' } as any,
+    );
+
+    expect(mockedValidate).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'APPROVED', limit: 2, cursor: 'u0' }),
+      ListEquipmentUpdateSuggestionsDto,
+    );
+    expect(mockedVerifyRoles).toHaveBeenCalledWith(
+      { appRole: 'ADMIN' },
+      expect.objectContaining({ or: expect.any(Array) }),
+    );
+    expect(prisma.equipmentUpdateSuggestion.findMany).toHaveBeenCalledWith({
+      where: { status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      cursor: { id: 'u0' },
+      skip: 1,
+      include: { equipment: true },
+    });
+    expect(result).toEqual({ items: rows.slice(0, 2), nextCursor: 'u3' });
   });
 
   it('requires authentication when creating a suggestion', async () => {
