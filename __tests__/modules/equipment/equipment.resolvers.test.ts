@@ -1,10 +1,13 @@
 import { PermissionService } from '../../../src/modules/core/permission.service';
+import { EquipmentUpdateSuggestionService } from '../../../src/modules/equipment/equipment-update-suggestion.service';
 import { EquipmentResolvers } from '../../../src/modules/equipment/equipment.resolvers';
 import { EquipmentService } from '../../../src/modules/equipment/equipment.service';
 
 jest.mock('../../../src/modules/equipment/equipment.service');
+jest.mock('../../../src/modules/equipment/equipment-update-suggestion.service');
 
 const mockedService = jest.mocked(EquipmentService);
+const mockedUpdateSuggestionService = jest.mocked(EquipmentUpdateSuggestionService);
 
 function createContext() {
   return {
@@ -47,6 +50,7 @@ function createContext() {
 describe('EquipmentResolvers', () => {
   beforeEach(() => {
     mockedService.mockClear();
+    mockedUpdateSuggestionService.mockClear();
   });
 
   describe('field resolvers', () => {
@@ -81,6 +85,18 @@ describe('EquipmentResolvers', () => {
         where: { equipmentId: 3 },
       });
       expect(res).toEqual([{ id: 1 }]);
+    });
+
+    test('EquipmentUpdateSuggestion.equipment fetches equipment', async () => {
+      const ctx = createContext();
+      ctx.prisma.equipment.findUnique.mockResolvedValue({ id: 9 });
+      const res = await EquipmentResolvers.EquipmentUpdateSuggestion.equipment(
+        { equipmentId: 9 },
+        {},
+        ctx,
+      );
+      expect(ctx.prisma.equipment.findUnique).toHaveBeenCalledWith({ where: { id: 9 } });
+      expect(res).toEqual({ id: 9 });
     });
 
     test('Equipment.compatibleExercises empty when no subcategory', async () => {
@@ -280,6 +296,42 @@ describe('EquipmentResolvers', () => {
       const ctx = createContext();
       await EquipmentResolvers.Mutation.deleteEquipmentSubcategory(null as any, { id: 1 }, ctx);
       expect(serviceInstance.deleteEquipmentSubcategory).toHaveBeenCalled();
+    });
+
+    test('createEquipmentUpdateSuggestion uses update suggestion service', async () => {
+      const serviceInstance = { create: jest.fn() } as any;
+      mockedUpdateSuggestionService.mockImplementation(() => serviceInstance);
+      const ctx = createContext();
+      await EquipmentResolvers.Mutation.createEquipmentUpdateSuggestion(
+        null as any,
+        { input: { equipmentId: 1 } },
+        ctx,
+      );
+      expect(serviceInstance.create).toHaveBeenCalledWith({ equipmentId: 1 }, ctx);
+    });
+
+    test('approveEquipmentUpdateSuggestion uses update suggestion service', async () => {
+      const serviceInstance = { approve: jest.fn() } as any;
+      mockedUpdateSuggestionService.mockImplementation(() => serviceInstance);
+      const ctx = createContext();
+      await EquipmentResolvers.Mutation.approveEquipmentUpdateSuggestion(
+        null as any,
+        { input: { id: 's-1' } },
+        ctx,
+      );
+      expect(serviceInstance.approve).toHaveBeenCalledWith({ id: 's-1' }, ctx);
+    });
+
+    test('rejectEquipmentUpdateSuggestion uses update suggestion service', async () => {
+      const serviceInstance = { reject: jest.fn() } as any;
+      mockedUpdateSuggestionService.mockImplementation(() => serviceInstance);
+      const ctx = createContext();
+      await EquipmentResolvers.Mutation.rejectEquipmentUpdateSuggestion(
+        null as any,
+        { input: { id: 's-1' } },
+        ctx,
+      );
+      expect(serviceInstance.reject).toHaveBeenCalledWith({ id: 's-1' }, ctx);
     });
   });
 

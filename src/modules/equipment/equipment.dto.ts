@@ -249,3 +249,35 @@ export class RejectEquipmentSuggestionDto {
   @IsString({ message: 'reason must be a string' })
   reason?: string;
 }
+
+export class CreateEquipmentUpdateSuggestionDto {
+  @IsInt({ message: 'equipmentId must be an integer' })
+  @Min(1, { message: 'equipmentId must be a positive number' })
+  equipmentId!: number;
+
+  @IsString({ message: 'proposedName must be a string' })
+  @IsNotEmpty({ message: 'proposedName is required' })
+  proposedName!: string;
+
+  @IsString({ message: 'proposedBrand must be a string' })
+  @IsNotEmpty({ message: 'proposedBrand is required' })
+  proposedBrand!: string;
+
+  @IsOptional()
+  @IsString({ message: 'proposedManualUrl must be a string' })
+  proposedManualUrl?: string;
+}
+
+export class ApproveEquipmentUpdateSuggestionDto {
+  @IsString({ message: 'id must be a string' })
+  id!: string;
+}
+
+export class RejectEquipmentUpdateSuggestionDto {
+  @IsString({ message: 'id must be a string' })
+  id!: string;
+
+  @IsOptional()
+  @IsString({ message: 'reason must be a string' })
+  reason?: string;
+}

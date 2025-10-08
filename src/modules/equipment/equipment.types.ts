@@ -69,6 +69,23 @@ export interface EquipmentSuggestion {
   [key: string]: unknown;
 }
 
+export interface EquipmentUpdateSuggestion {
+  id: string;
+  equipmentId: number;
+  equipment?: Equipment;
+  proposedName: string;
+  proposedBrand: string;
+  proposedManualUrl?: string | null;
+  status: EquipmentSuggestionStatus;
+  rejectedReason?: string | null;
+  submittedByUserId: number;
+  approvedByUserId?: number | null;
+  approvedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  [key: string]: unknown;
+}
+
 export interface CreateEquipmentSuggestionInput extends CreateEquipmentInput {
   gymId?: number;
   addToGymOnApprove?: boolean;
@@ -116,6 +133,35 @@ export interface ApproveEquipmentSuggestionInput {
 export interface RejectEquipmentSuggestionInput {
   id: string;
   reason?: string;
+}
+
+export interface CreateEquipmentUpdateSuggestionInput {
+  equipmentId: number;
+  proposedName: string;
+  proposedBrand: string;
+  proposedManualUrl?: string;
+}
+
+export interface CreateEquipmentUpdateSuggestionPayload {
+  suggestion: EquipmentUpdateSuggestion;
+}
+
+export interface ApproveEquipmentUpdateSuggestionInput {
+  id: string;
+}
+
+export interface ApproveEquipmentUpdateSuggestionPayload {
+  approved: boolean;
+  equipmentId: number;
+}
+
+export interface RejectEquipmentUpdateSuggestionInput {
+  id: string;
+  reason?: string;
+}
+
+export interface RejectEquipmentUpdateSuggestionPayload {
+  rejected: boolean;
 }
 
 export interface UpdateEquipmentInput {
