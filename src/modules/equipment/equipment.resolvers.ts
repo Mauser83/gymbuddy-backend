@@ -1,4 +1,5 @@
 import { EquipmentSuggestionService } from './equipment-suggestion.service';
+import { EquipmentUpdateSuggestionService } from './equipment-update-suggestion.service';
 import { EquipmentService } from './equipment.service';
 import type { AuthContext } from '../auth/auth.types';
 import { PermissionService } from '../core/permission.service';
@@ -71,6 +72,12 @@ export const EquipmentResolvers = {
         where: { suggestionId: parent.id },
         orderBy: { createdAt: 'desc' },
       });
+    },
+  },
+
+  EquipmentUpdateSuggestion: {
+    equipment: (parent: any, _: any, context: AuthContext) => {
+      return context.prisma.equipment.findUnique({ where: { id: parent.equipmentId } });
     },
   },
 
@@ -270,6 +277,22 @@ export const EquipmentResolvers = {
         context.prisma,
         new PermissionService(context.prisma),
       );
+      return service.reject(args.input, context);
+    },
+    createEquipmentUpdateSuggestion: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentUpdateSuggestionService(context.prisma);
+      return service.create(args.input, context);
+    },
+    approveEquipmentUpdateSuggestion: async (
+      _: any,
+      args: { input: any },
+      context: AuthContext,
+    ) => {
+      const service = new EquipmentUpdateSuggestionService(context.prisma);
+      return service.approve(args.input, context);
+    },
+    rejectEquipmentUpdateSuggestion: async (_: any, args: { input: any }, context: AuthContext) => {
+      const service = new EquipmentUpdateSuggestionService(context.prisma);
       return service.reject(args.input, context);
     },
   },

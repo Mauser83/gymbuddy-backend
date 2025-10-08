@@ -69,6 +69,22 @@ export const equipmentTypeDefs = `
     updatedAt: String!
   }
 
+  type EquipmentUpdateSuggestion {
+    id: ID!
+    equipmentId: Int!
+    equipment: Equipment!
+    proposedName: String!
+    proposedBrand: String!
+    proposedManualUrl: String
+    status: EquipmentSuggestionStatus!
+    rejectedReason: String
+    submittedByUserId: Int!
+    approvedByUserId: Int
+    approvedAt: String
+    createdAt: String!
+    updatedAt: String!
+  }
+    
   type EquipmentSuggestionConnection {
     items: [EquipmentSuggestion!]!
     nextCursor: ID
@@ -147,9 +163,29 @@ export const equipmentTypeDefs = `
     reason: String
   }
 
+  input CreateEquipmentUpdateSuggestionInput {
+    equipmentId: Int!
+    proposedName: String!
+    proposedBrand: String!
+    proposedManualUrl: String
+  }
+
+  input ApproveEquipmentUpdateSuggestionInput {
+    id: ID!
+  }
+
+  input RejectEquipmentUpdateSuggestionInput {
+    id: ID!
+    reason: String
+  }
+    
   type CreateEquipmentSuggestionPayload {
     suggestion: EquipmentSuggestion!
     nearMatches: [Equipment!]!
+  }
+
+  type CreateEquipmentUpdateSuggestionPayload {
+    suggestion: EquipmentUpdateSuggestion!
   }
 
   type ApproveEquipmentSuggestionPayload {
@@ -157,7 +193,16 @@ export const equipmentTypeDefs = `
     equipmentId: Int!
   }
 
+  type ApproveEquipmentUpdateSuggestionPayload {
+    approved: Boolean!
+    equipmentId: Int!
+  }
+
   type RejectEquipmentSuggestionPayload {
+    rejected: Boolean!
+  }
+
+  type RejectEquipmentUpdateSuggestionPayload {
     rejected: Boolean!
   }
 
@@ -222,5 +267,8 @@ export const equipmentTypeDefs = `
     finalizeEquipmentSuggestionImages(input: FinalizeEquipmentSuggestionImagesInput!): [EquipmentSuggestionImage!]!
     approveEquipmentSuggestion(input: ApproveEquipmentSuggestionInput!): ApproveEquipmentSuggestionPayload!
     rejectEquipmentSuggestion(input: RejectEquipmentSuggestionInput!): RejectEquipmentSuggestionPayload!
+    createEquipmentUpdateSuggestion(input: CreateEquipmentUpdateSuggestionInput!): CreateEquipmentUpdateSuggestionPayload!
+    approveEquipmentUpdateSuggestion(input: ApproveEquipmentUpdateSuggestionInput!): ApproveEquipmentUpdateSuggestionPayload!
+    rejectEquipmentUpdateSuggestion(input: RejectEquipmentUpdateSuggestionInput!): RejectEquipmentUpdateSuggestionPayload!
   }
 `;

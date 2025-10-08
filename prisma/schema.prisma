@@ -108,6 +108,8 @@ model User {
   trainingCandidates        TrainingCandidate[] @relation("UserTrainingCandidates")
   equipmentSuggestions      EquipmentSuggestion[] @relation("EquipmentSuggestionsManager")
   exerciseSuggestions       ExerciseSuggestion[] @relation("ExerciseSuggestionsManager")
+  submittedEquipmentUpdateSuggestions EquipmentUpdateSuggestion[] @relation("EquipmentUpdateSuggestionSubmittedBy")
+  approvedEquipmentUpdateSuggestions EquipmentUpdateSuggestion[] @relation("EquipmentUpdateSuggestionApprovedBy")
 }
 
 model WorkoutPlan {
@@ -415,6 +417,7 @@ model Equipment {
   gyms              GymEquipment[]
   GymEquipmentImage GymEquipmentImage[]
   approvedSuggestions EquipmentSuggestion[] @relation("EquipmentSuggestionsApprovedEquipment")
+  updateSuggestions  EquipmentUpdateSuggestion[]
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -806,6 +809,26 @@ model EquipmentSuggestion {
 
   @@index([status, categoryId])
   @@index([status, gymId])
+}
+
+model EquipmentUpdateSuggestion {
+  id                String                    @id @default(cuid())
+  equipmentId       Int
+  equipment         Equipment                 @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  proposedName      String
+  proposedBrand     String
+  proposedManualUrl String?
+  status            EquipmentSuggestionStatus @default(PENDING)
+  rejectedReason    String?
+  submittedByUserId Int
+  submittedBy       User @relation("EquipmentUpdateSuggestionSubmittedBy", fields: [submittedByUserId], references: [id])
+  approvedByUserId  Int?
+  approvedBy        User? @relation("EquipmentUpdateSuggestionApprovedBy", fields: [approvedByUserId], references: [id])
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([equipmentId])
 }
 
 model EquipmentSuggestionImage {
